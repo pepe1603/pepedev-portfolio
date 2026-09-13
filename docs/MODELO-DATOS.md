@@ -9,9 +9,9 @@
 - **Sin claves foráneas entre tablas de contenido** → cada página pública = una sola lectura.
 - Bilingüe ES/EN = columnas `JSONB` con forma `{ "es": "...", "en": "..." }`. Si falta un
   idioma, la API sirve el disponible (nulo permite el fallback).
-- Enums como `VARCHAR(20)` + `CHECK`. En Java irán con `@Enumerated(STRING)`.
+- Enums como `VARCHAR(20)` + `CHECK` con **valores en MAYÚSCULAS** (en Java `@Enumerated(STRING)` persiste el nombre del enum).
 - Timestamps: `TIMESTAMPTZ NOT NULL DEFAULT now()`. `updated_at` lo gestiona JPA (sin triggers).
-- Identificadores: `BIGINT GENERATED ALWAYS AS IDENTITY`. Excepción: `profile.id SMALLINT`.
+- Identificadores: `UUID` **v7 (RFC 9562)** generados por Hibernate (`@UuidGenerator`) en users/projects/certificates/messages. Excepción: `profile.id SMALLINT` (= 1, singleton).
 - El schema lo crea Flyway. `ddl-auto: validate` en Hibernate, jamás Hibernate con `update`.
 - Secretos y admin: nunca en migraciones (el admin nace del bootstrap con `.env`).
 
@@ -21,7 +21,7 @@
 
 | Columna | Tipo | Restricciones |
 |---|---|---|
-| `id` | BIGINT | PK, identity |
+| `id` | UUID | PK, v7 (Hibernate) |
 | `email` | VARCHAR(320) | NOT NULL, UNIQUE |
 | `password_hash` | VARCHAR(255) | NOT NULL |
 | `role` | VARCHAR(20) | NOT NULL, `CHECK (role IN ('ADMIN'))` |
@@ -58,7 +58,7 @@ el CHECK se adaptaría en una V2 (advertir en la migración).
 
 | Columna | Tipo | Notas |
 |---|---|---|
-| `id` | BIGINT | PK, identity |
+| `id` | UUID | PK, v7 (Hibernate) |
 | `slug` | VARCHAR(120) | NOT NULL, UNIQUE → `{slug}` público |
 | `title` | JSONB | NOT NULL `{es,en}` |
 | `subtitle` | JSONB | `{es,en}` nullable |
@@ -73,7 +73,7 @@ el CHECK se adaptaría en una V2 (advertir en la migración).
 | `period_end` | DATE | NULL — NULL = en curso |
 | `is_featured` | BOOLEAN | NOT NULL DEFAULT false |
 | `sort_order` | INTEGER | NOT NULL DEFAULT 0 |
-| `status` | VARCHAR(20) | NOT NULL DEFAULT 'draft', `CHECK (status IN ('draft','published'))` |
+| `status` | VARCHAR(20) | NOT NULL DEFAULT 'DRAFT', `CHECK (status IN ('DRAFT','PUBLISHED'))` |
 | `published_at` | TIMESTAMPTZ | NULL — se setea al publicar |
 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT now() |
 | `updated_at` | TIMESTAMPTZ | NOT NULL DEFAULT now() — lo actualiza JPA |
@@ -82,17 +82,17 @@ el CHECK se adaptaría en una V2 (advertir en la migración).
 
 | Columna | Tipo | Notas |
 |---|---|---|
-| `id` | BIGINT | PK, identity |
+| `id` | UUID | PK, v7 (Hibernate) |
 | `title` | JSONB | NOT NULL `{es,en}` |
 | `issuer` | VARCHAR(120) | NOT NULL |
-| `kind` | VARCHAR(20) | NOT NULL, `CHECK (kind IN ('certificate','course'))` |
+| `kind` | VARCHAR(20) | NOT NULL, `CHECK (kind IN ('CERTIFICATE','COURSE'))` |
 | `issue_date` | DATE | NULL |
 | `expiry_date` | DATE | NULL — NULL = sin caducidad |
 | `credential_url` | VARCHAR(255) | NULL |
 | `image_url` | VARCHAR(255) | NULL |
 | `is_featured` | BOOLEAN | NOT NULL DEFAULT false |
 | `sort_order` | INTEGER | NOT NULL DEFAULT 0 |
-| `status` | VARCHAR(20) | NOT NULL DEFAULT 'draft', `CHECK (status IN ('draft','published'))` |
+| `status` | VARCHAR(20) | NOT NULL DEFAULT 'DRAFT', `CHECK (status IN ('DRAFT','PUBLISHED'))` |
 | `published_at` | TIMESTAMPTZ | NULL — ✅ propuesto (consistencia con projects) |
 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT now() |
 
@@ -100,14 +100,14 @@ el CHECK se adaptaría en una V2 (advertir en la migración).
 
 | Columna | Tipo | Notas |
 |---|---|---|
-| `id` | BIGINT | PK, identity |
+| `id` | UUID | PK, v7 (Hibernate) |
 | `name` | VARCHAR(120) | NOT NULL |
 | `email` | VARCHAR(320) | NOT NULL |
 | `subject` | VARCHAR(160) | NOT NULL |
 | `body` | TEXT | NOT NULL |
 | `ip` | VARCHAR(45) | NOT NULL — **anonimizada `/24`** antes de persistir |
 | `user_agent` | VARCHAR(255) | NULL |
-| `status` | VARCHAR(20) | NOT NULL DEFAULT 'new', `CHECK (status IN ('new','read','archived'))` |
+| `status` | VARCHAR(20) | NOT NULL DEFAULT 'NEW', `CHECK (status IN ('NEW','READ','ARCHIVED'))` |
 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT now() |
 
 El rate-limit vive en Redis (no aquí). Consentimiento de privacidad en `body`/front (RNF-06) — no requiere columna propia.
@@ -134,8 +134,8 @@ El rate-limit vive en Redis (no aquí). Consentimiento de privacidad en `body`/f
 
 | # | Tema | Decisión adoptada en este doc | Observación |
 |---|---|---|---|
-| 1 | IDs | BIGINT identity; profile SMALLINT 1 | cerrado en PLAN |
-| 2 | Enums | role=ADMIN · project.status=draft/published · cert.kind=certificate/course · cert.status=draft/published · message.status=new/read/archived | ✅ confirmar |
+| 1 | IDs | UUID v7 (Hibernate `@UuidGenerator`) en users/projects/certificates/messages; profile SMALLINT 1 | ✅ aprobado |
+| 2 | Enums | role=ADMIN · status=DRAFT/PUBLISHED · kind=CERTIFICATE/COURSE · message.status=NEW/READ/ARCHIVED (MAYÚSCULAS en BD y Java) | ✅ aprobado |
 | 3 | i18n | JSONB nullable para permitir fallback; `title` obligatorio | ✅ |
 | 4 | Arrays JSONB | NOT NULL DEFAULT `'[]'::jsonb` | ✅ |
 | 5 | Periodo | DATE nullable; `period_end` NULL = en curso | ✅ |
