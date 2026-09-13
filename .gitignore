@@ -1,0 +1,12 @@
+.env*
+!.env.example
+target/
+node_modules/
+.nuxt/
+.output/
+dist/
+*.iml
+.idea/
+.vscode/
+.DS_Store
+*.zip
