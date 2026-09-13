@@ -19,7 +19,7 @@ Abre <https://start.spring.io> y configura:
 | Group | `dev.pepe1603` |
 | Artifact | `portfolio-api` |
 | Name | `portfolio-api` |
-| Package name | `dev.pepe1603.portfolioapi` |
+| Package name | `dev.pepe1603.portfolio_api` |
 | Packaging | **Jar** |
 | Java | **21** |
 
@@ -45,29 +45,29 @@ Recomendadas:
 Se agregan DESPUÉS a mano en el `pom.xml` (Initializr no las tiene):
 
 ```xml
-<!-- Swagger UI / OpenAPI -->
+<!-- Swagger UI / OpenAPI (serie 3.x: la que soporta Spring Boot 4.x) -->
 <dependency>
   <groupId>org.springdoc</groupId>
   <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-  <version>2.8.9</version>
+  <version>3.1.0</version>
 </dependency>
 
-<!-- JWT (verifica la última 0.12.x en mvnrepository) -->
+<!-- JWT (verifica la última 0.12.x en Maven Central) -->
 <dependency>
   <groupId>io.jsonwebtoken</groupId>
   <artifactId>jjwt-api</artifactId>
-  <version>0.12.6</version>
+  <version>0.12.7</version>
 </dependency>
 <dependency>
   <groupId>io.jsonwebtoken</groupId>
   <artifactId>jjwt-impl</artifactId>
-  <version>0.12.6</version>
+  <version>0.12.7</version>
   <scope>runtime</scope>
 </dependency>
 <dependency>
   <groupId>io.jsonwebtoken</groupId>
   <artifactId>jjwt-jackson</artifactId>
-  <version>0.12.6</version>
+  <version>0.12.7</version>
   <scope>runtime</scope>
 </dependency>
 ```

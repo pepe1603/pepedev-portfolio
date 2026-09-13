@@ -23,7 +23,7 @@
 ## Decisiones cerradas (se aplican en su paso)
 
 - El proyecto `portfolio-api/` lo genera **el usuario** en start.spring.io y lo coloca en la raíz.
-- Metadata: Group `dev.pepe1603` · Artifact/Name `portfolio-api` · Package `dev.pepe1603.portfolioapi`
+- Metadata: Group `dev.pepe1603` · Artifact/Name `portfolio-api` · Package `dev.pepe1603.portfolio_api`
   · Java 21 · Maven · Jar · Spring Boot `4.1.1`.
 - Dependencias: Web, Data JPA, Flyway, PostgreSQL, Security, Redis, Mail, Validation, Actuator,
   Lombok, DevTools (Paso 3 de SETUP-FASE0).

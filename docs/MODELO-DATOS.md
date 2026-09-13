@@ -147,9 +147,8 @@ El rate-limit vive en Redis (no aquí). Consentimiento de privacidad en `body`/f
 
 ## Paquetes/dependencias afectadas por la aprobación (recordatorio 0.5)
 
-- Paquete Java: `dev.pepe1603.portfolioapi` (SETUP-FASE0) vs `dev.pepe1603.portfolio_api`
-  (generado en el zip de Initializr) → **decidir en el paso 0.5**.
-- springdoc-openapi v3.x (no la 2.8.x que aún cita SETUP-FASE0) y jjwt 0.12.x → añadir a mano.
+- Paquete Java: **`dev.pepe1603.portfolio_api`** (el que generó Initializr; SESION2 y SETUP-FASE0 corregidos).
+- springdoc-openapi **3.1.0** (serie 3.x, la que soporta Spring Boot 4) y jjwt **0.12.7** añadidos a mano al pom.
 
 ## Por qué es suficiente (recordatorio)
 
