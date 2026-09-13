@@ -12,7 +12,7 @@ Docker y la migración al VPS de producción llegan solo cuando todo funcione en
 | Capa | Tecnología |
 |---|---|
 | Frontend | Nuxt 3 + TailwindCSS (SSR/SSG híbrido, i18n ES/EN) |
-| Backend | Spring Boot 3 · Java 21 · Maven |
+| Backend | Spring Boot 4.1 · Java 21 · Maven |
 | Seguridad | Spring Security + JWT (access/refresh), BCrypt |
 | Persistencia | JPA / Hibernate + Flyway (migraciones versionadas) |
 | Base de datos | PostgreSQL |

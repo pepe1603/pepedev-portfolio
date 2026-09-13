@@ -12,6 +12,9 @@ desde su consola) o mantener el backend propio definido en los docs. El producto
 
 ### 1. Stack: continúa Spring Boot 3 + Nuxt 3. Supabase queda DESCARTADO.
 
+> **Corrección posterior (Sesión 2)**: al descargar desde start.spring.io la serie 3.x ya no
+> está disponible. Se adopta la **estable que ofrece el sitio: Spring Boot 4.1.1** (ver docs/SESION2.md).
+
 Razones (desarrolladas y aceptadas en la sesión):
 
 1. El backend **es** la demostración de la skill más fuerte (Spring/JWT/Flyway/Redis)

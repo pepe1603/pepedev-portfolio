@@ -3,7 +3,7 @@
 > Objetivo: dejar la API (`portfolio-api/`) lista para que el front (Nuxt) consuma todo lo que
 > necesita, avanzando **commit por commit** y aprobando cada paso. NO se corre delante:
 > cada bloque se revisa y aproba antes del siguiente.
-> Stack cerrado: Spring Boot 3.5.16 · Java 21 · Maven · PostgreSQL + JSONB · Flyway ·
+> Stack cerrado: Spring Boot 4.1.1 (estable de Initializr, ver SESION2) · Java 21 · Maven · PostgreSQL + JSONB · Flyway ·
 > Spring Security + jjwt · Redis · springdoc OpenAPI. Sin Docker en desarrollo.
 
 ## Reglas de trabajo

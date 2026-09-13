@@ -48,7 +48,7 @@ Principios:
 
 | Decisión | Elección | Justificación |
 |---|---|---|
-| Backend | **Spring Boot 3 · Java 21 · Maven** | Ya domino Spring (JWT, Hibernate): entrega rápida y el portafolio demuestra mi skill más fuerte ante reclutadores. *NestJS descartado*: curva de aprendizaje innecesaria retrasaría la entrega. *Express descartado*: sin estructura suficiente para un CRM |
+| Backend | **Spring Boot 4.1 · Java 21 · Maven** | Ya domino Spring (JWT, Hibernate): entrega rápida y el portafolio demuestra mi skill más fuerte ante reclutadores. *NestJS descartado*: curva de aprendizaje innecesaria retrasaría la entrega. *Express descartado*: sin estructura suficiente para un CRM. *Ver SESION2: 4.1.1 es la estable que ofrece Initializr (la serie 3.x ya no aparece)* |
 | ORM | JPA / Hibernate | Conocimiento previo directo; equivalente natural en Java |
 | Migraciones | Flyway | Versionado de schema reproducible en dev y prod |
 | Seguridad | Spring Security + jjwt + BCrypt | Patrón que ya manejo; filtros por endpoint |
