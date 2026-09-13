@@ -1,0 +1,7 @@
+package dev.pepe1603.portfolio_api.repository;
+
+import dev.pepe1603.portfolio_api.entity.Profile;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface ProfileRepository extends JpaRepository<Profile, Short> {
+}
