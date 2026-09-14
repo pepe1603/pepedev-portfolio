@@ -17,12 +17,12 @@
 
 | # | Tarea | Entregable | Commit sugerido | DoD (definición de hecho) |
 |---|---|---|---|---|
-| **0** | Cimientos del repo | `.gitignore`, `.env.example`, docs (incluido este plan), rama `main`. El proyecto `portfolio-api/` lo genera EL USUARIO en start.spring.io y lo coloca en la raíz (pom en `portfolio-api/pom.xml`), después se commitea como `chore: proyecto spring boot generado en spring.io` | `chore: base del monorepo` | `git status` limpio de secretos |
-| **1.1** | **Definir el modelo de datos** (revisión, sin código) | Modelo detallado: tablas, columnas, tipos, JSONB `{es,en}`, enums (CHECK), índices, singleton, seed, decisiones abiertas resueltas | `docs: modelo de datos mínimo (fuente de verdad)` | Modelo revisado y **aprobado por ti** |
-| **1.2** | Migración del modelo | `V1__init.sql` con las 5 tablas + CHECKs + índices + seed `profile` | `feat(db): migración flyway V1__init` | SQL revisado (se aplica en el paso 2.1, al conectar) |
-| **2** | Persistencia JPA | 5 entidades + mapeo JSONB (Hibernate 6 `@JdbcTypeCode(SqlTypes.JSON)`) + enums Java + repos Spring Data | `feat(api): entidades jpa y repositorios` | Compila sin BD (escribir no requiere conexión) |
-| **2.1** | **Conexión con Terramount (env)** | Crear `.env` real (credenciales que proporcione el usuario), arrancar con `./mvnw spring-boot:run`: Flyway aplica V1, `ddl-auto: validate` cuadra con el schema, `/actuator/health` OK | `feat(api): conexión a terramount por variables de entorno` | App arranca contra PG/Redis remotos · V1 aplicada · validate OK |
-| **3** | Config y seguridad base | `SecurityConfig` (health/swagger/contacto públicos), CORS por env, RedisConfig, OpenAPI info, `AdminBootstrap` (admin desde env) | `feat(api): config de seguridad, redis, cors y openapi` | App arranca · `/actuator/health` 200 |
+| ✔ **0** | Cimientos del repo | `.gitignore`, `.env.example`, docs (incluido este plan), rama `main`. El proyecto `portfolio-api/` lo genera EL USUARIO en start.spring.io y lo coloca en la raíz (pom en `portfolio-api/pom.xml`), después se commitea como `chore: proyecto spring boot generado en spring.io` | `chore: base del monorepo` | `git status` limpio de secretos |
+| ✔ **1.1** | **Definir el modelo de datos** (revisión, sin código) | Modelo detallado: tablas, columnas, tipos, JSONB `{es,en}`, enums (CHECK), índices, singleton, seed, decisiones abiertas resueltas | `docs: modelo de datos mínimo (fuente de verdad)` | Modelo revisado y **aprobado por ti** |
+| ✔ **1.2** | Migración del modelo | `V1__init.sql` con las 5 tablas + CHECKs + índices + seed `profile` | `feat(db): migración flyway V1__init` | SQL revisado (se aplica en el paso 2.1, al conectar) |
+| ✔ **2** | Persistencia JPA | 5 entidades + mapeo JSONB (Hibernate 6 `@JdbcTypeCode(SqlTypes.JSON)`) + enums Java + repos Spring Data | `feat(api): entidades jpa y repositorios` | Compila sin BD (escribir no requiere conexión) |
+| ✔ **2.1** | **Conexión con Terramount (env)** | Crear `.env` real (credenciales que proporcione el usuario), arrancar con `./mvnw spring-boot:run`: Flyway aplica V1, `ddl-auto: validate` cuadra con el schema, `/actuator/health` OK | `feat(api): conexión a terramount por variables de entorno` | App arranca contra PG/Redis remotos · V1 aplicada · validate OK |
+| ✔ **3** | Config y seguridad base | `SecurityConfig` (health/swagger/contacto públicos), CORS por env, RedisConfig, OpenAPI info, `AdminBootstrap` (admin desde env) | `feat(api): config de seguridad, redis, cors y openapi` | App arranca · `/actuator/health` 200 |
 | **4** | Auth JWT | `login`, `refresh` rotativo, `logout` (denylist en Redis), filtro JWT, rate limit de login | `feat(api): auth jwt access+refresh` | Flujo login → endpoint protegido → refresh → logout OK |
 | **5.1** | API pública: profile + projects | Listado/detalle de proyectos por slug + profile singleton, caché Redis + ETag | `feat(api): endpoints públicos profile y projects` | `curl` OK contra `.env` |
 | **5.2** | API pública: certificates | Listado con filtro kind/issuer | `feat(api): endpoint público certificates` | `curl` OK |
@@ -55,3 +55,14 @@ verificado.
 - Parámetros reales de rate limit / TTL de caché → Bloques 4 y 5.
 - Refresh token en cookie httpOnly vs body → Bloque 4.
 - Mapeo JSONB con Hibernate 6 nativo (sin dependencias extra) → Bloque 2.
+
+## Notas de operación
+
+- **Admin ya creado en BD ≠ `.env` (pendiente al Bloque 4).** En el primer arranque
+  (Sesión 3) `AdminBootstrap` creó la fila `users` con `admin@pepe1603.dev` y el secreto
+  de aquel momento (placeholder `cambia_esto`). Luego el `.env` se actualizó a
+  `000316jose@gmail.com` con un secreto nuevo, **pero la fila de BD no cambió**
+  (`AdminBootstrap` solo corre si `users` está vacía). Al llegar el Bloque 4 hay que
+  actualizar esa fila (email + hash BCrypt del nuevo secreto) o borrarla para que el
+  bootstrap la recree con las credenciales actuales del `.env`.
+- El túnel a Terramount es requisito para arrancar: `ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev` (PG y Redis corren como contenedores Docker en el VPS).
