@@ -24,7 +24,7 @@
 | ✔ **2.1** | **Conexión con Terramount (env)** | Crear `.env` real (credenciales que proporcione el usuario), arrancar con `./mvnw spring-boot:run`: Flyway aplica V1, `ddl-auto: validate` cuadra con el schema, `/actuator/health` OK | `feat(api): conexión a terramount por variables de entorno` | App arranca contra PG/Redis remotos · V1 aplicada · validate OK |
 | ✔ **3** | Config y seguridad base | `SecurityConfig` (health/swagger/contacto públicos), CORS por env, RedisConfig, OpenAPI info, `AdminBootstrap` (admin desde env) | `feat(api): config de seguridad, redis, cors y openapi` | App arranca · `/actuator/health` 200 |
 | ✔ **4** | Auth JWT | `login`, `refresh` rotativo, `logout` (denylist en Redis), filtro JWT, rate limit de login | 6 commits por pieza (`525d603`→`ac47b8c`) | Flujo login → endpoint protegido → refresh → logout OK · rate limit 5×401 + 429 |
-| **5.1** | API pública: profile + projects | Listado/detalle de proyectos por slug + profile singleton, caché Redis + ETag | 5 commits (`27ba602`→`2bb59fb`) | `curl` OK contra `.env` (**pendiente de verificar**) |
+| ✔ **5.1** | API pública: profile + projects | Listado/detalle de proyectos por slug + profile singleton, caché Redis + ETag | 7 commits (`27ba602`→`ef680f7`) | `curl` OK contra `.env` (verificado en SESION5) |
 | **5.2** | API pública: certificates | Listado con filtro kind/issuer | `feat(api): endpoint público certificates` | `curl` OK |
 | **5.3** | API pública: contacto + CV | `POST /contact` (honeypot + rate limit + validación + SMTP + persistencia), redirect CV es/en | `feat(api): contacto y descarga de cv` | Envío simulado OK · anti-spam activo |
 | **6.1** | CRM: CRUD projects + certificates | Crear/editar/publicar/despublicar/ordenar/borrar | `feat(api): crud admin projects y certificates` | Auth exigido · CRUD completo probado |
@@ -52,6 +52,7 @@ verificado.
 - Sin índice GIN sobre `stack[]` de momento (volumen pequeño); se añadiría en V2 si el filtro lo pide.
 - Tests (referencia durante todo el plan): unitarios con mocks; integración = H2-compatible o schema real en Terramount según se decida en el Bloque 2.
 - **API pública (Bloque 5.1)**: solo `PUBLISHED` visible vía `/public/*` (404 sin revelar si es draft o inexistente). Idioma por query param `?lang=es|en` (default `es`), fallback por campo bilingüe con `LocalizedText` (sin señal al cliente). Claves Redis `pub:profile:{lang}` / `pub:projects:{lang}` / `pub:project:{slug}:{lang}` guardando el **body JSON serializado**; TTL configurable `APP_PUBLIC_CACHE_TTL` (300 s). ETag fuerte SHA-256 del body + `Cache-Control: public, max-age=0, must-revalidate` → 304 en `If-None-Match`. Evicts explícitos `evictProfile()` / `evictProjectsList()` / `evictProject(slug)` borran variantes ES+EN; listos para Bloque 6. DTO público sin `views_count` ni timestamps; listado sin paginación/filtros (volumen ≤15).
+- **Error dispatch (Bloque 5.1)**: `dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()` en `SecurityConfig`. Sin esto, `/error` (donde viajan los `ResponseStatusException`) exigía auth y **un 404 público salía como 401**. El body de error sigue siendo el `BasicErrorController` (con stack en dev por devtools); unificar formato → Bloque 7.
 
 ## Pendiente de decidir (se cierran en su bloque, no antes)
 
