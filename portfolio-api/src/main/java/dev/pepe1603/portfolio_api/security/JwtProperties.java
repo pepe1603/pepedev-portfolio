@@ -24,6 +24,9 @@ public class JwtProperties {
     @Value("${APP_JWT_REFRESH_COOKIE:refresh_token}")
     private String refreshCookie;
 
+    @Value("${APP_JWT_REFRESH_COOKIE_SECURE:false}")
+    private boolean refreshCookieSecure;
+
     public Duration accessTtl() {
         return Duration.ofSeconds(accessTtlSeconds);
     }
