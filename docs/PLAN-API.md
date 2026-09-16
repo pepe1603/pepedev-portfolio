@@ -23,7 +23,7 @@
 | ✔ **2** | Persistencia JPA | 5 entidades + mapeo JSONB (Hibernate 6 `@JdbcTypeCode(SqlTypes.JSON)`) + enums Java + repos Spring Data | `feat(api): entidades jpa y repositorios` | Compila sin BD (escribir no requiere conexión) |
 | ✔ **2.1** | **Conexión con Terramount (env)** | Crear `.env` real (credenciales que proporcione el usuario), arrancar con `./mvnw spring-boot:run`: Flyway aplica V1, `ddl-auto: validate` cuadra con el schema, `/actuator/health` OK | `feat(api): conexión a terramount por variables de entorno` | App arranca contra PG/Redis remotos · V1 aplicada · validate OK |
 | ✔ **3** | Config y seguridad base | `SecurityConfig` (health/swagger/contacto públicos), CORS por env, RedisConfig, OpenAPI info, `AdminBootstrap` (admin desde env) | `feat(api): config de seguridad, redis, cors y openapi` | App arranca · `/actuator/health` 200 |
-| **4** | Auth JWT | `login`, `refresh` rotativo, `logout` (denylist en Redis), filtro JWT, rate limit de login | `feat(api): auth jwt access+refresh` | Flujo login → endpoint protegido → refresh → logout OK |
+| ✔ **4** | Auth JWT | `login`, `refresh` rotativo, `logout` (denylist en Redis), filtro JWT, rate limit de login | 6 commits por pieza (`525d603`→`ac47b8c`) | Flujo login → endpoint protegido → refresh → logout OK · rate limit 5×401 + 429 |
 | **5.1** | API pública: profile + projects | Listado/detalle de proyectos por slug + profile singleton, caché Redis + ETag | `feat(api): endpoints públicos profile y projects` | `curl` OK contra `.env` |
 | **5.2** | API pública: certificates | Listado con filtro kind/issuer | `feat(api): endpoint público certificates` | `curl` OK |
 | **5.3** | API pública: contacto + CV | `POST /contact` (honeypot + rate limit + validación + SMTP + persistencia), redirect CV es/en | `feat(api): contacto y descarga de cv` | Envío simulado OK · anti-spam activo |
@@ -41,6 +41,9 @@ verificado.
 ## Decisiones cerradas que se aplican según llega su paso
 
 - Admin (Blocker 4): crearlo por `ApplicationRunner` desde `APP_ADMIN_EMAIL`/`APP_ADMIN_SECRET` si `users` está vacía — nunca un hash en una migración.
+- **Auth JWT (Bloque 4)**: refresh token en **cookie httpOnly** (`SameSite=Lax`, `Path=/auth`, `Secure` por `APP_JWT_REFRESH_COOKIE_SECURE`) y access en `Authorization: Bearer`. TTLs: access 15 min (`APP_JWT_ACCESS_TTL`) · refresh 7 días (`APP_JWT_REFRESH_TTL`). Dos secretos distintos (`APP_JWT_SECRET`/`APP_JWT_REFRESH_SECRET`), claims `sub`(email)/`role`/`jti`/`typ`. **Rotación**: cada refresh revoca el anterior en la denylist de Redis (`jwt:revoked:{jti}` + TTL restante); logout revoca refresh (cookie) y access (Bearer).
+- **Rate limit login (Bloque 4)**: `INCR`+`EXPIRE` en Redis, ventana fija, **5 fallos/IP + 10 fallos/email por 15 min**, reset al login OK → 429 con `Retry-After` (`APP_LOGIN_RATE_*`). Detrás de proxy se confía en `X-Forwarded-For` (`server.forward-headers-strategy: framework`).
+- **Admin de BD resuelto (Bloque 4)**: la fila del primer arranque se borró (`DELETE FROM users`) y `AdminBootstrap` la recreó con el `.env` actual (`000316jose@gmail.com`).
 - Enums (Blocker 1): `varchar + CHECK`, no tipos enum PG; en Java `@Enumerated(STRING)`.
 - Bilingüe (Blocker 1): `headline`, `bio`, `subtitle`, `title`, `summary`, `description_md` en JSONB `{es,en}`; `certificates` también tiene `status`.
 - IP en `messages` (Blocker 5.3): guardar anonimizada (`/24`); el rate-limit vive en Redis.
@@ -52,8 +55,7 @@ verificado.
 ## Pendiente de decidir (se cierran en su bloque, no antes)
 
 - Estrategia de tests de BD (H2 vs Terramount dedicado) → Bloque 2.
-- Parámetros reales de rate limit / TTL de caché → Bloques 4 y 5.
-- Refresh token en cookie httpOnly vs body → Bloque 4.
+- Parámetros reales de TTL de caché de respuestas públicas → Bloque 5.
 - Mapeo JSONB con Hibernate 6 nativo (sin dependencias extra) → Bloque 2.
 
 ## Notas de operación
