@@ -24,7 +24,7 @@
 | ✔ **2.1** | **Conexión con Terramount (env)** | Crear `.env` real (credenciales que proporcione el usuario), arrancar con `./mvnw spring-boot:run`: Flyway aplica V1, `ddl-auto: validate` cuadra con el schema, `/actuator/health` OK | `feat(api): conexión a terramount por variables de entorno` | App arranca contra PG/Redis remotos · V1 aplicada · validate OK |
 | ✔ **3** | Config y seguridad base | `SecurityConfig` (health/swagger/contacto públicos), CORS por env, RedisConfig, OpenAPI info, `AdminBootstrap` (admin desde env) | `feat(api): config de seguridad, redis, cors y openapi` | App arranca · `/actuator/health` 200 |
 | ✔ **4** | Auth JWT | `login`, `refresh` rotativo, `logout` (denylist en Redis), filtro JWT, rate limit de login | 6 commits por pieza (`525d603`→`ac47b8c`) | Flujo login → endpoint protegido → refresh → logout OK · rate limit 5×401 + 429 |
-| **5.1** | API pública: profile + projects | Listado/detalle de proyectos por slug + profile singleton, caché Redis + ETag | `feat(api): endpoints públicos profile y projects` | `curl` OK contra `.env` |
+| **5.1** | API pública: profile + projects | Listado/detalle de proyectos por slug + profile singleton, caché Redis + ETag | 5 commits (`27ba602`→`2bb59fb`) | `curl` OK contra `.env` (**pendiente de verificar**) |
 | **5.2** | API pública: certificates | Listado con filtro kind/issuer | `feat(api): endpoint público certificates` | `curl` OK |
 | **5.3** | API pública: contacto + CV | `POST /contact` (honeypot + rate limit + validación + SMTP + persistencia), redirect CV es/en | `feat(api): contacto y descarga de cv` | Envío simulado OK · anti-spam activo |
 | **6.1** | CRM: CRUD projects + certificates | Crear/editar/publicar/despublicar/ordenar/borrar | `feat(api): crud admin projects y certificates` | Auth exigido · CRUD completo probado |
@@ -51,11 +51,11 @@ verificado.
 - Timestamps (Blocker 1.1): `TIMESTAMPTZ DEFAULT now()`; `updated_at` lo gestiona JPA, sin triggers.
 - Sin índice GIN sobre `stack[]` de momento (volumen pequeño); se añadiría en V2 si el filtro lo pide.
 - Tests (referencia durante todo el plan): unitarios con mocks; integración = H2-compatible o schema real en Terramount según se decida en el Bloque 2.
+- **API pública (Bloque 5.1)**: solo `PUBLISHED` visible vía `/public/*` (404 sin revelar si es draft o inexistente). Idioma por query param `?lang=es|en` (default `es`), fallback por campo bilingüe con `LocalizedText` (sin señal al cliente). Claves Redis `pub:profile:{lang}` / `pub:projects:{lang}` / `pub:project:{slug}:{lang}` guardando el **body JSON serializado**; TTL configurable `APP_PUBLIC_CACHE_TTL` (300 s). ETag fuerte SHA-256 del body + `Cache-Control: public, max-age=0, must-revalidate` → 304 en `If-None-Match`. Evicts explícitos `evictProfile()` / `evictProjectsList()` / `evictProject(slug)` borran variantes ES+EN; listos para Bloque 6. DTO público sin `views_count` ni timestamps; listado sin paginación/filtros (volumen ≤15).
 
 ## Pendiente de decidir (se cierran en su bloque, no antes)
 
 - Estrategia de tests de BD (H2 vs Terramount dedicado) → Bloque 2.
-- Parámetros reales de TTL de caché de respuestas públicas → Bloque 5.
 - Mapeo JSONB con Hibernate 6 nativo (sin dependencias extra) → Bloque 2.
 
 ## Notas de operación
@@ -68,3 +68,5 @@ verificado.
   actualizar esa fila (email + hash BCrypt del nuevo secreto) o borrarla para que el
   bootstrap la recree con las credenciales actuales del `.env`.
 - El túnel a Terramount es requisito para arrancar: `ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev` (PG y Redis corren como contenedores Docker en el VPS).
+- **Boot 4 = Spring Framework 7 + Spring Data 4 (rompe APIs de Boot 3, visto en Bloque 5.1)**: `Sort.by(Direction, String...)` → `Sort.by(Sort.Order.asc/desc(...))`; `RedisTemplate.delete(K...)` varargs → `delete(Collection<K>)`; `CacheControl.cachePublic()` deja de ser estático (factories: `maxAge/noCache/noStore`).
+- **Health con SMTP**: si `smtp.resend.com` no responde desde la máquina de dev, `/actuator/health` baja a `DOWN` y tarda ~134 s; arrancar con `MANAGEMENT_HEALTH_MAIL_ENABLED=false` para verificar en dev (override de entorno, no de código).
