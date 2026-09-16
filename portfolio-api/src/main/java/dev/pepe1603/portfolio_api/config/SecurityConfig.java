@@ -3,6 +3,7 @@ package dev.pepe1603.portfolio_api.config;
 import dev.pepe1603.portfolio_api.security.JwtAccessDeniedHandler;
 import dev.pepe1603.portfolio_api.security.JwtAuthEntryPoint;
 import dev.pepe1603.portfolio_api.security.JwtAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -61,6 +62,7 @@ public class SecurityConfig {
                 .authenticationEntryPoint(jwtAuthEntryPoint)
                 .accessDeniedHandler(jwtAccessDeniedHandler))
             .authorizeHttpRequests(auth -> auth
+                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers(PUBLIC_PATHS).permitAll()
                 .anyRequest().authenticated())
             .httpBasic(basic -> basic.disable())
