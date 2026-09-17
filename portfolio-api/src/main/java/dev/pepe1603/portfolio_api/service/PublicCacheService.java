@@ -50,6 +50,14 @@ public class PublicCacheService {
         put(key("project", slug, lang), body);
     }
 
+    public Optional<String> getCertificatesList(String lang) {
+        return get(key("certificates", lang));
+    }
+
+    public void putCertificatesList(String lang, String body) {
+        put(key("certificates", lang), body);
+    }
+
     public void evictProfile() {
         redis.delete(List.of(key("profile", "es"), key("profile", "en")));
     }
@@ -60,6 +68,10 @@ public class PublicCacheService {
 
     public void evictProject(String slug) {
         redis.delete(List.of(key("project", slug, "es"), key("project", slug, "en")));
+    }
+
+    public void evictCertificatesList() {
+        redis.delete(List.of(key("certificates", "es"), key("certificates", "en")));
     }
 
     public String etagFor(String body) {
