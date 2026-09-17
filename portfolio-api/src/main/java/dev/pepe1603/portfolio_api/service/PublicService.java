@@ -1,16 +1,21 @@
 package dev.pepe1603.portfolio_api.service;
 
+import dev.pepe1603.portfolio_api.dto.publicapi.CertificatePublicDTO;
 import dev.pepe1603.portfolio_api.dto.publicapi.ProfilePublicDTO;
 import dev.pepe1603.portfolio_api.dto.publicapi.ProjectDetailDTO;
 import dev.pepe1603.portfolio_api.dto.publicapi.ProjectSummaryDTO;
+import dev.pepe1603.portfolio_api.entity.Certificate;
 import dev.pepe1603.portfolio_api.entity.Profile;
 import dev.pepe1603.portfolio_api.entity.Project;
+import dev.pepe1603.portfolio_api.enums.CertificateStatus;
 import dev.pepe1603.portfolio_api.enums.ProjectStatus;
+import dev.pepe1603.portfolio_api.repository.CertificateRepository;
 import dev.pepe1603.portfolio_api.repository.ProfileRepository;
 import dev.pepe1603.portfolio_api.repository.ProjectRepository;
 import dev.pepe1603.portfolio_api.util.LocalizedText;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.springframework.data.domain.Sort;
@@ -23,10 +28,14 @@ public class PublicService {
 
     private final ProfileRepository profileRepository;
     private final ProjectRepository projectRepository;
+    private final CertificateRepository certificateRepository;
 
-    public PublicService(ProfileRepository profileRepository, ProjectRepository projectRepository) {
+    public PublicService(ProfileRepository profileRepository,
+            ProjectRepository projectRepository,
+            CertificateRepository certificateRepository) {
         this.profileRepository = profileRepository;
         this.projectRepository = projectRepository;
+        this.certificateRepository = certificateRepository;
     }
 
     public Optional<ProfilePublicDTO> getProfile(String lang) {
@@ -51,6 +60,18 @@ public class PublicService {
         String resolved = LocalizedText.normalizeLang(lang);
         return projectRepository.findBySlugAndStatus(slug, ProjectStatus.PUBLISHED)
                 .map(project -> toProjectDetail(project, resolved));
+    }
+
+    public List<CertificatePublicDTO> getPublishedCertificates(String lang) {
+        String resolved = LocalizedText.normalizeLang(lang);
+        Sort sort = Sort.by(
+                Sort.Order.asc("sortOrder"),
+                Sort.Order.desc("issueDate").nullsLast(),
+                Sort.Order.asc("createdAt"));
+        return certificateRepository.findByStatus(CertificateStatus.PUBLISHED, sort)
+                .stream()
+                .map(certificate -> toCertificateDTO(certificate, resolved))
+                .toList();
     }
 
     private ProfilePublicDTO toProfileDTO(Profile p, String lang) {
@@ -98,5 +119,17 @@ public class PublicService {
                 p.getPeriodStart(),
                 p.getPeriodEnd(),
                 p.isFeatured());
+    }
+
+    private CertificatePublicDTO toCertificateDTO(Certificate c, String lang) {
+        return new CertificatePublicDTO(
+                LocalizedText.resolve(c.getTitle(), lang),
+                c.getIssuer(),
+                c.getKind().name().toLowerCase(Locale.ROOT),
+                c.getIssueDate(),
+                c.getExpiryDate(),
+                c.getCredentialUrl(),
+                c.getImageUrl(),
+                c.isFeatured());
     }
 }
