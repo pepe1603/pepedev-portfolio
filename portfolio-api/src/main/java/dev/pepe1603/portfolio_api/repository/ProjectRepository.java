@@ -15,4 +15,8 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
     List<Project> findByStatus(ProjectStatus status, Sort sort);
 
     Optional<Project> findBySlugAndStatus(String slug, ProjectStatus status);
+
+    boolean existsBySlug(String slug);
+
+    boolean existsBySlugAndIdNot(String slug, UUID id);
 }
