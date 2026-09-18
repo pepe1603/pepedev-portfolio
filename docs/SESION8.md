@@ -16,7 +16,7 @@ El humano aprobó el desglose y las decisiones **antes** de escribir código; de
 | `7caf9ae` | `AdminCertificateService` (análogo, sin slug) |
 | `fa23b88` | `AdminProjectController` y `AdminCertificateController` bajo `/admin` |
 | `e420af2` | `SecurityConfig`: `/admin/**` con `hasRole("ADMIN")` |
-| `f0e6400` | docs (este documento + PLAN-API.md) |
+| `61ecbd7` | docs (este documento + PLAN-API.md) |
 
 ## Decisiones cerradas en esta sesión (Bloque 6.1)
 
