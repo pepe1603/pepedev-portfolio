@@ -1,6 +1,6 @@
 # Sesión 8 · API: Bloque 6.1 — CRM CRUD de projects + certificates
 
-> Fecha: 2026-09-18 · Estado: **implementación cerrada, DoD pendiente de verificación manual**
+> Fecha: 2026-09-18 · Estado: **implementación cerrada · DoD VERIFICADO manualmente (Postman)**
 > (la realiza el humano con Postman usando la guía de esta misma sesión). Bloque 6.1 código
 > completo: CRUD admin de `projects` y `certificates` bajo `/admin/**`.
 
@@ -46,7 +46,12 @@ El humano aprobó el desglose y las decisiones **antes** de escribir código; de
 - **Evicts tras la escritura y solo si toca algo publicado**: la caché pública nunca convive con
   contenido desactualizado; un draft jamás genera evict.
 
-## Verificación (PENDIENTE — la hace el humano con Postman/curl)
+## Verificación (HECHA — humano con Postman, 2026-09-19)
+
+A1→B3 OK a la primera. En B4 el único obstáculo fue de Postman (el UUID iba entre llaves
+`{...}`, que se envían literalmente y Spring no puede convertir a `UUID` → 400; se pasó el UUID
+pelado y todo el ciclo B4→B11 salió según lo esperado). Se validaron también los 404 de
+`/public/cv` con el placeholder de perfil y el 302 con URLs de prueba en `profile`.
 
 Base `http://localhost:8080`. Primero obtén un access token:
 
@@ -80,9 +85,8 @@ curl -s -X POST http://localhost:8080/auth/login -H 'Content-Type: application/j
 
 ## Hoja de ruta viva (detalle en docs/PLAN-API.md)
 
-0-3 ✔ · 4 Auth JWT ✔ · 5.1 profile+projects ✔ · 5.2 certificates ✔ · 5.3 contacto+CV
-implementado (verificación manual pendiente) · **6.1 CRM CRUD implementado (verificación manual
-pendiente)** · 6.2 bandeja de mensajes (siguiente) · 6.3 storage+profile · 7 Contrato OpenAPI.
+0-3 ✔ · 4 Auth JWT ✔ · 5.1 profile+projects ✔ · 5.2 certificates ✔ · 5.3 contacto+CV ✔ ·
+**6.1 CRM CRUD ✔ (verificado)** · 6.2 bandeja de mensajes (siguiente) · 6.3 storage+profile · 7 Contrato OpenAPI.
 
 ---
 
@@ -92,9 +96,9 @@ pendiente)** · 6.2 bandeja de mensajes (siguiente) · 6.3 storage+profile · 7 
 Retomamos el proyecto pepedev-portfolio (docs en /home/pepe-dev/Projects/pepedev-portfolio).
 
 Contexto cerrado (lee en orden docs/SESION7.md, docs/SESION8.md, docs/PLAN-API.md, docs/MODELO-DATOS.md):
-- Bloques 0-3, 4 (auth JWT), 5.1 y 5.2 COMPLETOS. 5.3 (contacto+CV) implementado; 6.1 (CRM CRUD
-  projects+certificates) IMPLEMENTADO en 6 commits 9850a42→e420af2; DoD de 5.3 y 6.1 PENDIENTE
-  de verificación manual (guías en SESION7 y SESION8).
+- Bloques 0-3, 4 (auth JWT), 5.1 y 5.2 COMPLETOS. 5.3 (contacto+CV) IMPLEMENTADO (6 commits
+  62ce705→3136418) y 6.1 (CRM CRUD) IMPLEMENTADO (6 commits 9850a42→e420af2); AMBOS DoD ya
+  VERIFICADOS manualmente en la sesión 8 (guías en SESION7 y SESION8).
 - /admin/** con hasRole(ADMIN): CRUD de projects y certificates bajo /admin/{recurso}
   (listar por UUID, crear=DRAFT, PUT completo mantiene status/published_at, PATCH publish/unpublish,
   PUT /order, DELETE hard). Decisiones: slug del cliente (único→409), published_at server-managed,

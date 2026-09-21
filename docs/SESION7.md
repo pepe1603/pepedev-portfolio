@@ -1,6 +1,6 @@
 # Sesión 7 · API: Bloque 5.3 — API pública contacto + CV
 
-> Fecha: 2026-09-17 · Estado: **implementación cerrada, DoD pendiente de verificación manual**
+> Fecha: 2026-09-17 · Estado: **implementación cerrada · DoD VERIFICADO manualmente en la Sesión 8**
 > (la realiza el humano con Postman usando la guía de esta misma sesión). Bloque 5.3 código
 > completo: `POST /contact` (honeypot + rate limit + validación + SMTP + persistencia) e
 > `GET /public/cv/{lang}` (redirect 302).
@@ -41,7 +41,12 @@ explícitamente) y se avanzó commit por commit:
 - **Validación 400** sigue saliendo por `BasicErrorController` (devtools trace en dev); el formato
   unificado de errores → Bloque 7.
 
-## Verificación (PENDIENTE — la hace el humano con Postman)
+## Verificación (HECHA — humano con Postman, Sesión 8)
+
+Todos los pasos de la lista siguiente se probaron el 19/09/2026 y dieron el resultado esperado
+(la única incidencia fue la URL de `PATCH /admin/projects/{id}` con llaves de Postman, no un bug
+de código): 201 válido, 201 falso honeypot, 400 de validación, 429 + `Retry-After`, 302 del CV
+(con URLs de prueba en `profile`) y 404 con placeholder, IP anonimizada `/24`.
 
 La guía completa está en el historial de la sesión 7. Resumen: base `http://localhost:8080`.
 
@@ -68,8 +73,7 @@ la "línea 47" de sesiones anteriores desapareció.
 
 ## Hoja de ruta viva (detalle en docs/PLAN-API.md)
 
-0-3 ✔ · 4 Auth JWT ✔ · 5.1 profile+projects ✔ · 5.2 certificates ✔ · **5.3 contacto+CV
-implementado (DoD pendiente de verificación manual)** · 6 CRM CRUD (siguiente) · 7 Contrato OpenAPI.
+0-3 ✔ · 4 Auth JWT ✔ · 5.1 profile+projects ✔ · 5.2 certificates ✔ · 5.3 contacto+CV ✔ · 6 CRM CRUD (siguiente) · 7 Contrato OpenAPI.
 
 ---
 
