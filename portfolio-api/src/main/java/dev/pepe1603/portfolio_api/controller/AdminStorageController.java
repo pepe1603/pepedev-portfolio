@@ -25,7 +25,11 @@ public class AdminStorageController {
 
     @PostMapping
     public Map<String, String> upload(@RequestParam String use,
-            @RequestPart("file") MultipartFile file) {
+            @RequestPart(value = "file", required = false) MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Falta la parte 'file' en el multipart/form-data");
+        }
         StorageUse resolved = resolveUse(use);
         String url = storageService.store(resolved, file);
         return Map.of("url", url);

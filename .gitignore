@@ -2,6 +2,7 @@
 !.env.example
 target/
 node_modules/
+uploads/
 .nuxt/
 .output/
 dist/
