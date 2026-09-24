@@ -27,6 +27,10 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST}
       port: ${SPRING_DATA_REDIS_PORT:6379}
       password: ${SPRING_DATA_REDIS_PASSWORD:}
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 20MB
 
 server:
   port: 8080
