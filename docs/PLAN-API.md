@@ -28,7 +28,7 @@
 | **5.2** | API pública: certificates | Listado con filtro kind/issuer | 5 commits (`bc103ea`→`2b62369`) | `curl` OK |
 | ✔ **5.3** | API pública: contacto + CV | `POST /contact` (honeypot + rate limit + validación + SMTP + persistencia), redirect CV es/en | `feat(api): contacto y descarga de cv` | Verificado (Postman, sesión 8) |
 | ✔ **6.1** | CRM: CRUD projects + certificates | Crear/editar/publicar/despublicar/ordenar/borrar | 6 commits (`9850a42`→`e420af2`) | Verificado (Postman, sesión 8) |
-| ✔ **6.2** | CRM: bandeja de mensajes | Listar por status, marcar leído/archivado, borrar | 4 commits (`cc1ab0d`→docs) | Pendiente de verificación manual (guía en SESION9) |
+| ✔ **6.2** | CRM: bandeja de mensajes | Listar por status, marcar leído/archivado, borrar | 4 commits (`cc1ab0d`→`452b47f`) | Verificado (Postman, sesión 9) |
 | **6.3** | CRM: storage + profile | Upload multipart → URL (`avatar`, `thumbnail`, `gallery`, `image`, CV es/en) + edición de profile | `feat(api): storage y gestión de profile` | Subida validada (mime/tamaño/nombre) · URL servida |
 | **7** | Contrato y cierre | `docs/API.md` alineado con lo implementado + respuestas de error + Swagger verificado | `docs: contrato openapi verificado y docs de api` | El front puede consumir todo · Swagger UI lo documenta |
 

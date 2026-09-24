@@ -1,8 +1,7 @@
 # Sesión 9 · API: Bloque 6.2 — CRM bandeja de mensajes
 
-> Fecha: 2026-09-20 · Estado: **implementación cerrada · DoD PENDIENTE de verificación manual**
-> (la realiza el humano con Postman usando la guía de esta misma sesión). Bloque 6.2 código
-> completo: bandeja de mensajes de contacto bajo `/admin/messages`.
+> Fecha: 2026-09-20 · Estado: **implementación cerrada · DoD VERIFICADO manualmente (Postman,
+> 2026-09-23)**. Bloque 6.2 código completo: bandeja de mensajes de contacto bajo `/admin/messages`.
 
 ## Qué se hizo en esta sesión
 
@@ -39,7 +38,12 @@ ruta), ni DTOs, ni evicts de caché (messages no se cachea ni se sirve en públi
 - **Sin paginación**: volumen pequeño y listado admin con filtro por status; se revisaría si el
   inbox creciera. Sin contadores por status (no es requisito; se puede añadir en Bloque 7).
 
-## Verificación (PENDIENTE — humano con Postman)
+## Verificación (HECHA — humano con Postman, 2026-09-23)
+
+Todos los pasos 1→10 de la lista siguiente dieron el resultado esperado: 401 sin token,
+listado completo y ordenado, filtro por status (y 400 con status inválido o en minúsculas),
+GET que no muta, read/archive idempotentes y con restauración, delete 204 → 404, y 404 sobre
+UUID inexistente.
 
 Base `http://localhost:8080`. Primero obtén un access token:
 
@@ -79,8 +83,8 @@ Spring no lo convierte a UUID y responde 400).
 
 ## Hoja de ruta viva (detalle en docs/PLAN-API.md)
 
-0-3 ✔ · 4 Auth JWT ✔ · 5.1-5.3 ✔ · 6.1 CRM CRUD ✔ · **6.2 bandeja de mensajes ✔ (implementation;
-DoD pendiente de verificación)** · 6.3 storage+profile (siguiente) · 7 Contrato OpenAPI.
+0-3 ✔ · 4 Auth JWT ✔ · 5.1-5.3 ✔ · 6.1 CRM CRUD ✔ · **6.2 bandeja de mensajes ✔** ·
+6.3 storage+profile (siguiente) · 7 Contrato OpenAPI.
 
 ---
 
