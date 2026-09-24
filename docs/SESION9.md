@@ -93,11 +93,11 @@ Spring no lo convierte a UUID y responde 400).
 ```
 Retomamos el proyecto pepedev-portfolio (docs en /home/pepe-dev/Projects/pepedev-portfolio).
 
-Contexto cerrado (lee en orden docs/SESION8.md, docs/SESION9.md, docs/PLAN-API.md y docs/MODELO-DATOS.md):
+Contexto cerrado (lee en orden docs/SESION9.md, docs/PLAN-API.md y docs/MODELO-DATOS.md):
 - Bloques 0-3, 4 (auth JWT), 5.1-5.3 COMPLETOS y verificados. 6.1 (CRM CRUD) y 6.2 (bandeja de
-  mensajes) IMPLEMENTADOS (6.1 verificado en sesión 8; 6.2 pendiente de verificación con la guía
-  de SESION9: /admin/messages listado con ?status, PATCH read/archive libres e idempotentes,
-  DELETE hard, 404s, sin paginación ni evicts).
+  mensajes) IMPLEMENTADOS y DoD VERIFICADOS manualmente (6.1 sesión 8; 6.2 sesión 9). /
+  admin/messages: listado con ?status, PATCH read/archive libres e idempotentes, DELETE hard,
+  sin paginación ni evicts.
 - /admin/** con hasRole(ADMIN). API pública completa + POST /contact + GET /public/cv/{lang}.
 - Reglas: sin Docker en dev; secrets solo por .env; Flyway validate; bilingüe JSONB {es,en};
   túnel ssh para BD/Redis; errores 4xx por BasicErrorController hasta Bloque 7.
@@ -114,10 +114,22 @@ Método de trabajo (pair programming / mentoría):
 - Se avanza commit por commit (UN commit por pieza para más control).
 
 Tarea de la próxima sesión:
-- Bloque 6.3 (CRM: storage + profile) siguiendo el plan. PRIMERO preséntame el desglose y los
-  puntos abiertos (upload multipart → URL para avatar/thumbnail/gallery/image y CV es/en,
-  validación mime/tamaño/nombre, dónde se guardan los archivos, edición de profile) ANTES de
-  escribir código.
+- Bloque 6.3 (CRM: storage + edición de profile) con estas DECISIONES YA CERRADAS:
+  * Storage en local FS: APP_STORAGE_DIR + APP_STORAGE_PUBLIC_URL; servidos por la propia API
+    (GET /files/** estático en SecurityConfig como ruta pública); sin Docker ni S3/MinIO.
+  * Un solo endpoint genérico POST /admin/storage?use={avatar|thumbnail|gallery|image|cv} que
+    recibe multipart, valida, guarda y devuelve { "url" }; el front persiste la URL con el CRUD
+    existente (6.1). El upload NO muta entidades ni hace evicts.
+  * Validación por magic bytes (allowlist: images jpeg/png/webp; PDF solo para cv) + tamaño máx
+    (5 MB imágenes / 10 MB CV) + nombre generado por servidor (UUID + extensión normalizada);
+    rechazo de mime → 415. Sin borrado de orfanatos por ahora.
+  * PUT /admin/profile completo (como 6.1): full_name, headline/bio bilingües, location, urls,
+    avatar_url, skills[{name,category,level}], experiences. views_count y timestamps se IGNORAN
+    silenciosamente. @LocalizedNonBlank en headline/bio, @Email en email_public, @URL en urls.
+    404 si la fila id=1 no existiera. Cada PUT → evict de pub:profile ES+EN (y el CV que lo
+    reutiliza). @Valid en el body del PUT (DTO con @LocalizedNonBlank/headline y bio, @Email,
+    @URL, y shape de skills/experiences).
+  Implementa el bloque sin reabrir estas decisiones; solo mentoriza y avanza commit por commit.
 ```
 
 ---
