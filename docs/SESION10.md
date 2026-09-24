@@ -1,8 +1,8 @@
 # Sesión 10 · API: Bloque 6.3 — CRM storage + profile
 
-> Fecha: 2026-09-23 · Estado: **implementación cerrada · DoD PENDIENTE de verificación manual
-> (Postman)**. Bloque 6.3 completo: subida de ficheros a storage local servido por la propia API
-> y edición del profile singleton.
+> Fecha: 2026-09-23 (implementación) / 2026-09-24 (verificación) · Estado: **implementación
+> cerrada · DoD VERIFICADO manualmente (curl)**. Bloque 6.3 completo: subida de ficheros a storage
+> local servido por la propia API y edición del profile singleton.
 
 ## Qué se hizo en esta sesión
 
@@ -18,6 +18,7 @@ de editar (pieza 0) y delegó en la IA el resto del bloque, avanzando commit por
 | `c0eb431` | `ProfileRequest` DTO con validación |
 | `360caaf` | `AdminProfileService.update` + evict de caché pública |
 | `45103c0` | `AdminProfileController` `PUT /admin/profile` @Valid |
+| `ad56ad1` | Fix verificación: falta de parte `file` o fichero vacío → **400** (era 500). `upload/` gitignored |
 | (docs) | PLAN-API + este documento con la guía de verificación |
 
 ## Decisiones cerradas en esta sesión (Bloque 6.3)
@@ -39,8 +40,12 @@ de editar (pieza 0) y delegó en la IA el resto del bloque, avanzando commit por
     que el negocio, y 10 MB exactos falla por el overhead del boundary).
   - **Nombre** generado por servidor (UUID v4 aleatorio + extensión normalizada del tipo
     detectado: jpg/png/webp/pdf) → sin colisiones ni path traversal.
-  - Fichero vacío / `use` inválido / falta de parte → **400** (`use` se recibe como `String` y se
-    pasa a `StorageUse.valueOf(use.toUpperCase(Locale.ROOT))`; `@RequestPart` obligatorio).
+  - Fichero vacío / `use` inválido / falta de parte → **400**. `use` se recibe como `String` y se
+    pasa a `StorageUse.valueOf(use.toUpperCase(Locale.ROOT))`. La parte `file` se declara
+    `@RequestPart(required=false)` y se valida explícitamente (`null` o `isEmpty()` → 400) porque
+    **`@ExceptionHandler`/`@ControllerAdvice` NO se ejecutan en este proyecto** (ver Notas de
+    operación); `@RequestPart` obligatorio lanzaba `MultipartException: Current request is not a
+    multipart request` → 500 si el cliente no mandaba `multipart/form-data`.
   - **Sin borrado de orfanatos** por ahora.
 - **`GET /admin/profile`** (pieza 0, añadida por el humano): devuelve la entidad `Profile` para
   que el front pueble el formulario; 404 `ResponseStatusException` si la fila id=1 no existiera.
@@ -55,7 +60,7 @@ de editar (pieza 0) y delegó en la IA el resto del bloque, avanzando commit por
   **CV reutiliza la caché `pub:profile:{lang}`** (`CvController`), por eso no requiere evict
   propio. Perfil siempre es público → el evict es **incondicional**.
 
-## Verificación (PENDIENTE — humano con Postman)
+## Verificación (VERIFICADO — 2026-09-24, curl contra localhost:8080)
 
 Base `http://localhost:8080`. Primero obtén un access token:
 
@@ -80,6 +85,9 @@ cliente no importa** — solo los bytes (el test del `.txt` renombrado a `.png` 
 7. `POST /admin/storage?use=cv` con `foto.jpg` → **415** (imagen no vale como CV).
 8. `POST /admin/storage?use=avatar` con el `.txt` renombrado a `foto.png` → **415** (bytes, no contentType).
 9. `POST /admin/storage?use=image` con `grande.bin` (>5MB) → **413** (payload demasiado grande).
+   Importante: `grande.bin` debe **tener un header válido** (p. ej. `printf '\x89PNG\r\n\x1a\n' >
+   grande.bin` y luego `dd if=/dev/urandom bs=1M count=6 >> grande.bin`); si son bytes aleatorios
+   puros el check de tipo gana antes y da 415 (comportamiento correcto, tipo antes que tamaño).
 10. `POST /admin/storage?use=avatar` sin parte `file` → **400**; con `?use=foo` → **400**; sin `?use` → **400**.
 11. `GET /admin/profile` sin token → **401**; con token → **200** con la entidad (perfil actual).
 12. `PUT /admin/profile` sin token → **401**; **con `@Valid`**: body malo → **400**
@@ -97,6 +105,29 @@ cliente no importa** — solo los bytes (el test del `.txt` renombrado a `.png` 
 16. `GET /admin/profile` después del PUT → **200** y devuelve lo guardado (el front rellena el
     formulario con esto).
 
+### Resultado de la verificación (todas ✔)
+
+| Paso | Esperado | Obtenido |
+|---|---|---|
+| 1 | 401 | 401 ✔ |
+| 2 | 200 + url `/files/<uuid>.png` | 200 ✔ (`3234d884-...png`) |
+| 3 | GET `/files/<uuid>.png` 200 público | 200 ✔, contentType correcto, **bytes idénticos** al subido |
+| 4-5 | image jpg / cv pdf 200 | 200 / 200 ✔ |
+| 6-8 | 415 (pdf como avatar, jpg como cv, .txt→`foto.png`) | 415 / 415 / 415 ✔ |
+| 9 | image >5MB → 413; cv >10MB → 413 | 413 / 413 ✔ (con header válido) |
+| 10 | multipart sin parte → 400; `use=foo` → 400; sin `use` → 400 | 400 / 400 / 400 ✔ |
+| 11 | GET `/admin/profile` 401 / 200 | 401 / 200 ✔ |
+| 12 | 4 bodies inválidos → 400 | 400 ×4 ✔ |
+| 13 | PUT completo + `viewsCount:999`+timestamps ignorados | 200 ✔, `viewsCount` sigue 0, `updatedAt` nuevo |
+| 14 | evict: `/public/profile` es y en muestran lo nuevo | es=ES / en=EN inmediato ✔ |
+| 15 | `/public/cv/es` → 302 con Location | 302 → `cv_url_es` ✔ |
+| 16 | GET `/admin/profile` post-PUT | 200 ✔ |
+
+Nota de prueba: `POST /admin/storage` **sin** `multipart/form-data` (ni parte ni contentType
+multipart) → **400** tras el fix `ad56ad1` (antes 500). Los ficheros con header válido >15 MB aún
+los corta el propio Tomcat (respuesta `100` + `413` sin body) antes de llegar a Spring; los límites
+de negocio (5/10 MB) se evaluan antes, así que el comportamiento es consistente.
+
 ## Notas de operación
 
 - Túnel: `ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev`.
@@ -107,11 +138,23 @@ cliente no importa** — solo los bytes (el test del `.txt` renombrado a `.png` 
 - Recordatorio Boot 4/Jackson 3: las respuestas `Map` de `{ "url": ... }` se serializan con el
   `ObjectMapper` de Jackson 3 configurado por Boot (sin código propio).
 - Errores 4xx siguen saliendo por `BasicErrorController` (formato unificado → Bloque 7).
+- **Hallazgo importante para el Bloque 7**: en este proyecto (Boot 4.1.1 / Spring Framework
+  7.0.9) los `@ExceptionHandler` **no se ejecutan**, ni como método local del controlador ni vía
+  `@ControllerAdvice`/`@RestControllerAdvice`, ni para excepciones de resolución de argumentos ni
+  de cuerpo (verificado empíricamente con casos de prueba; el bean del advice sí aparece en
+  `/actuator/beans` pero nunca resuelve). Solo resuelven `ResponseStatusExceptionResolver`
+  (`ResponseStatusException` lanzada desde el controlador/servicio → funciona) y
+  `DefaultHandlerExceptionResolver` (400 de binding). **Mantener el estilo `ResponseStatusException`
+  para los errores de negocio** y, antes de diseñar el manejo de errores del Bloque 7, investigar la
+  causa (sospecha: resolución de métodos anotados en `ExceptionHandlerExceptionResolver` de Spring
+  7; descartado devtools).
+- `.env`: la línea de `SPRING_MAIL_PASSWORD` tenía el valor sin comillas (bash la interpretaba:
+  "rcyh: orden no encontrada"); envuelta en comillas simples en la sesión de verificación.`
 
 ## Hoja de ruta viva (detalle en docs/PLAN-API.md)
 
 0-3 ✔ · 4 Auth JWT ✔ · 5.1-5.3 ✔ · 6.1 CRM CRUD ✔ · 6.2 bandeja de mensajes ✔ ·
-**6.3 storage+profile ✔ (implementado; DoD pendiente de verificación)** · 7 Contrato OpenAPI.
+**6.3 storage+profile ✔ (implementado y DoD VERIFICADO)** · 7 Contrato OpenAPI.
 
 ---
 
@@ -122,18 +165,22 @@ Retomamos el proyecto pepedev-portfolio (docs en /home/pepe-dev/Projects/pepedev
 
 Contexto cerrado (lee en orden docs/SESION10.md, docs/PLAN-API.md y docs/MODELO-DATOS.md):
 - Bloques 0-3, 4 (auth JWT), 5.1-5.3 COMPLETOS y verificados. 6.1, 6.2 y 6.3 (storage + profile)
-  IMPLEMENTADOS; DoD de 6.1 y 6.2 VERIFICADO manualmente (Postman), el de 6.3 PENDIENTE.
-  POST /admin/storage?use= → { "url" } (magic bytes, límites 5/10 MB, UUID+ext, sin evicts),
+  IMPLEMENTADOS y con DoD VERIFICADO manualmente (Postman/curl).
+  POST /admin/storage?use= → { "url" } (magic bytes, límites 5/10 MB, UUID+ext, sin evicts;
+  falta de parte/fichero vacío → 400 vía @RequestPart(required=false)+check explícito),
   GET /admin/profile y PUT /admin/profile (evict pub:profile ES+EN; CV reutiliza esa caché).
-- /admin/** con hasRole(ADMIN); /files/** público sirviendo APP_STORAGE_DIR desde local FS.
+- /admin/** con hasRole(ADMIN); /files/** público sirviendo APP_STORAGE_DIR desde local FS
+  (uploads/ gitignored).
 - Reglas: sin Docker en dev; secrets solo por .env; Flyway validate; bilingüe JSONB {es,en};
   túnel ssh para BD/Redis; errores 4xx por BasicErrorController hasta Bloque 7.
 
-Notas de operación: .env real limpio y source .env OK (APP_STORAGE_DIR + APP_STORAGE_PUBLIC_URL);
-health SMTP DOWN en dev → MANAGEMENT_HEALTH_MAIL_ENABLED=false; background con setsid nohup...
-spring-boot:run; pkill -f spring-boot:run; Boot 4 rompe APIs de Boot 3 (Sort.Order,
-redis.delete(Collection), CacheControl, nullsFirst/Last); @URL es de Hibernate Validator, no de
-jakarta.validation.constraints.
+Notas de operación: .env real limpio y source .env OK (APP_STORAGE_DIR + APP_STORAGE_PUBLIC_URL;
+SPRING_MAIL_PASSWORD comillada); health SMTP DOWN en dev → MANAGEMENT_HEALTH_MAIL_ENABLED=false;
+background con setsid nohup... spring-boot:run; pkill -f spring-boot:run; Boot 4 rompe APIs de
+Boot 3 (Sort.Order, redis.delete(Collection), CacheControl, nullsFirst/Last); @URL es de Hibernate
+Validator, no de jakarta.validation.constraints. IMPORTANTE: @ExceptionHandler/@ControllerAdvice
+NO se ejecutan en este proyecto (verificado); usar ResponseStatusException. Investigar la causa de
+esto en Bloque 7.
 
 Método de trabajo (pair programming / mentoría):
 - Yo (humano) desarrollo la API poco a poco, clase por clase, siguiendo docs/PLAN-API.md.
@@ -142,9 +189,10 @@ Método de trabajo (pair programming / mentoría):
 - Se avanza commit por commit (UN commit por pieza para más control).
 
 Tarea de la próxima sesión:
-- (PDTE) Verificar manualmente (Postman) el DoD del Bloque 6.3 con la guía de docs/SESION10.md.
 - Bloque 7: Contrato y cierre (docs/API.md alineado con lo implementado + respuestas de error
-  unificadas + Swagger verificado).
+  unificadas + Swagger verificado). Investigar primero por qué @ExceptionHandler no resuelve en
+  esta combinación Boot 4.1.1/Spring 7.0.9 (reproducción mínima) antes de elegir el diseño de
+  errores.
 ```
 
 ---
