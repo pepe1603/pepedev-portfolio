@@ -166,14 +166,14 @@ Salvo `POST /admin/storage`, las respuestas devuelven la **entidad** (sin DTO ad
 - `DELETE /admin/projects/{id}` → `204`. Al borrar (`DELETE`) o cambiar
   `thumbnailUrl`/`gallery[]` (`PUT`), las URLs que ya no use nadie se borran de `uploads/`
   (limpieza de orfanatos).
-- `DELETE /admin/projects/{id}` → `204`.
 
 ### Certificates
 - `GET /admin/certificates` → lista (todo status).
 - `GET /admin/certificates/{id}` → `404` si no existe.
 - `POST` crea **DRAFT**. Body `CertificateRequest`: `title`, `issuer` (req.), `kind` (req.,
-  `certificate`/`course`; inválido → `400`), `issueDate`, `expiryDate`, `credentialUrl`,
-  `imageUrl`, `featured`, `sortOrder`.
+  **`CERTIFICATE`/`COURSE` en mayúsculas** — el binding de Jackson es case-sensitive y
+  `certificate`/`course` → `400`; en público se publica en minúsculas), `issueDate`, `expiryDate`,
+  `credentialUrl`, `imageUrl`, `featured`, `sortOrder`.
 - `PUT /{id}` edición completa · `PATCH /{id}/publish` / `unpublish` · `PUT /order` · `DELETE` `204`.
 - Al borrar (`DELETE`) o cambiar `imageUrl` (`PUT`), el fichero antiguo de `uploads/` se
   elimina **si y solo si** ningún otro registro lo referencia (limpieza de orfanatos).
