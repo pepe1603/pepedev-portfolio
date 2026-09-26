@@ -79,3 +79,17 @@ verificado.
 - El túnel a Terramount es requisito para arrancar: `ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev` (PG y Redis corren como contenedores Docker en el VPS).
 - **Boot 4 = Spring Framework 7 + Spring Data 4 (rompe APIs de Boot 3, visto en Bloques 5.1 y 5.2)**: `Sort.by(Direction, String...)` → `Sort.by(Sort.Order.asc/desc(...))`; `RedisTemplate.delete(K...)` varargs → `delete(Collection<K>)`; `CacheControl.cachePublic()` deja de ser estático (factories: `maxAge/noCache/noStore`); `Sort.Order.nulls(...)` → `nullsFirst()/nullsLast()/nullsNative()`.
 - **Health con SMTP**: si `smtp.resend.com` no responde desde la máquina de dev, `/actuator/health` baja a `DOWN` y tarda ~134 s; arrancar con `MANAGEMENT_HEALTH_MAIL_ENABLED=false` para verificar en dev (override de entorno, no de código).
+## Anexo (Sesión 12): cierre de la deuda documentada — 2026-09-26
+
+Toda la deuda que quedó anotada en esta guía (frasando "por ahora", "pendiente", "gap",
+"Sin paginación", "sin borrado de orfanatos", "BasicErrorController") se cerró con tests
+verdes (suite completa: **86 tests, 0 fallos**) y un commit por pieza:
+
+| # | Deuda (dónde estaba anotada) | Cierre | Commit |
+|---|---|---|---|
+| A | Bandeja de mensajes **sin paginación** (línea Bloque 6.2) | `GET /admin/messages` paginado: `{items,page,size,totalElements,totalPages,last}`, `page` 0-based + `size` 1..100 (400 si fuera de rango), orden determinista `createdAt DESC, id DESC`, índice compuesto `idx_messages_status_created_at` (V2). Slice test `AdminMessageListTest` (7 casos) | `77450cb` |
+| B | Storage **sin borrado de orfanatos** (línea Bloque 6.3) | `StorageService.deleteByUrl` (+`baseName` con patrón `UUID.(jpg\|png\|webp\|pdf)` y guarda anti-traversal), `StorageReferenceChecker` (profile avatar/cv×2, certificates imageUrl, projects thumbnail+gallery), `OrphanFileCleaner`. Conectado a `AdminProjectService.{update,delete}`, `AdminCertificateService.{update,delete}`, `AdminProfileService.update`: se limpian las URLs que dejan de usarse **solo si** nadie más las referencia. Tests unitarios + de servicios (13 nuevos) | `b21cd7b` |
+| C | **Gap de errores a nivel contenedor** (`/error` con `timestamp/path/trace`; 413 de multipart fuera del envelope) | `JsonErrorController implements ErrorController` (reemplaza `BasicErrorController`): `/error` siempre ProblemDetail JSON con `title` de razón, `detail` en español y **sin** `type/timestamp/path/trace`; `server.error.include-message=never`. `@Override handleMaxUploadSizeExceededException` → `413 "El fichero supera el tamaño máximo permitido"` (antes caía en el 400 de `MultipartException`; título 413 en Spring 7 = **`Content Too Large`**). 404 de recurso estático ya era ProblemDetail de Framework 7 (`NoResourceFoundException`), fuera de `/error`. Tests: `JsonErrorControllerTest` (4) + casos en `ApiErrorContractTest` | `e70175f` |
+| D | Swagger **sin documentar** `errors[]` ni multipart | Schemas `ApiProblemDetail` (`errors[]: ErrorField[]`) + `ErrorField`; `@ApiResponse` para el envelope en `login`, `contact` y `upload` (400/413/415) | `07b239e` |
+| E | Producción (CORS/cookie ya configurables) **sin runbook** | `docs/PRODUCCION.md`: variables de producción, build+systemd, proxy TLS (Caddy/nginx), checklist de verificación y operación | `Pieza E` (docs) |
+| F | Anexos de sesión **pendientes** del Bloque 7 | `docs/SESION12.md` con esta sesión de cierre | `Pieza F` (docs) |
