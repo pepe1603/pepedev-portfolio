@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +22,9 @@ public class StorageService {
     private static final long MAX_CV_BYTES = 10L * 1024 * 1024;
 
     private static final byte[] MAGIC_PNG = {0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+
+    private static final Pattern STORAGE_FILE_NAME = Pattern.compile(
+            "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(jpg|png|webp|pdf)$");
 
     private final StorageProperties properties;
 
@@ -106,5 +110,33 @@ public class StorageService {
 
     private static String publicUrl(String url) {
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
+    public static String baseName(String url) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        String candidate = url.contains("/") ? url.substring(url.lastIndexOf('/') + 1) : url;
+        return STORAGE_FILE_NAME.matcher(candidate).matches() ? candidate : null;
+    }
+
+    public void deleteByUrl(String url) {
+        deleteByName(baseName(url));
+    }
+
+    public void deleteByName(String fileName) {
+        if (fileName == null || !STORAGE_FILE_NAME.matcher(fileName).matches()) {
+            return;
+        }
+        Path dir = Path.of(properties.getDir()).toAbsolutePath().normalize();
+        Path target = dir.resolve(fileName).normalize();
+        if (!target.startsWith(dir)) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(target);
+        } catch (IOException ignored) {
+            // borrado best-effort: no debe romper la transacción dominante
+        }
     }
 }

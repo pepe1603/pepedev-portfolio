@@ -157,6 +157,9 @@ Salvo `POST /admin/storage`, las respuestas devuelven la **entidad** (sin DTO ad
 - `PATCH /admin/projects/{id}/publish` → `published_at=now()`. `PATCH .../unpublish` → limpia.
 - `PUT /admin/projects/order` → body `[uuid, ...]` ordenado (posición = índice); `404` si alguno
   no existe.
+- `DELETE /admin/projects/{id}` → `204`. Al borrar (`DELETE`) o cambiar
+  `thumbnailUrl`/`gallery[]` (`PUT`), las URLs que ya no use nadie se borran de `uploads/`
+  (limpieza de orfanatos).
 - `DELETE /admin/projects/{id}` → `204`.
 
 ### Certificates
@@ -166,6 +169,8 @@ Salvo `POST /admin/storage`, las respuestas devuelven la **entidad** (sin DTO ad
   `certificate`/`course`; inválido → `400`), `issueDate`, `expiryDate`, `credentialUrl`,
   `imageUrl`, `featured`, `sortOrder`.
 - `PUT /{id}` edición completa · `PATCH /{id}/publish` / `unpublish` · `PUT /order` · `DELETE` `204`.
+- Al borrar (`DELETE`) o cambiar `imageUrl` (`PUT`), el fichero antiguo de `uploads/` se
+  elimina **si y solo si** ningún otro registro lo referencia (limpieza de orfanatos).
 
 ### Messages
 - `GET /admin/messages?status=NEW|READ|ARCHIVED&page=0&size=20` — **paginado (Bloque 8)**:
@@ -185,6 +190,8 @@ Salvo `POST /admin/storage`, las respuestas devuelven la **entidad** (sin DTO ad
   `avatarUrl` (`@URL` ≤255), `emailPublic` (`@Email` ≤320), `skills[{name,category,level}]`,
   `experiences[]`. `views_count` y timestamps se ignoran. Cada PUT → evict de `pub:profile:*`.
   `404` si la fila id=1 no existe (no debería ocurrir).
+- Al cambiar `avatarUrl`/`cvUrlEs`/`cvUrlEn`, las URLs antiguas que ya no use nadie se borran
+  de `uploads/` (limpieza de orfanatos).
 
 ### Storage (`POST /admin/storage?use={avatar|thumbnail|gallery|image|cv}`)
 Multipart: parte `file` **obligatoria** (`@RequestPart`) + `use` por **query o form field, nunca

@@ -14,10 +14,13 @@ public class AdminProfileService {
 
     private final ProfileRepository profileRepository;
     private final PublicCacheService cacheService;
+    private final OrphanFileCleaner orphanFileCleaner;
 
-    public AdminProfileService(ProfileRepository profileRepository, PublicCacheService cacheService) {
+    public AdminProfileService(ProfileRepository profileRepository, PublicCacheService cacheService,
+                               OrphanFileCleaner orphanFileCleaner) {
         this.profileRepository = profileRepository;
         this.cacheService = cacheService;
+        this.orphanFileCleaner = orphanFileCleaner;
     }
 
     @Transactional(readOnly = true)
@@ -29,9 +32,15 @@ public class AdminProfileService {
     @Transactional
     public Profile update(ProfileRequest request) {
         Profile profile = get();
+        String oldAvatarUrl = profile.getAvatarUrl();
+        String oldCvUrlEs = profile.getCvUrlEs();
+        String oldCvUrlEn = profile.getCvUrlEn();
         applyRequest(profile, request);
         Profile saved = profileRepository.save(profile);
         cacheService.evictProfile();
+        orphanFileCleaner.cleanupIfUnreferenced(oldAvatarUrl);
+        orphanFileCleaner.cleanupIfUnreferenced(oldCvUrlEs);
+        orphanFileCleaner.cleanupIfUnreferenced(oldCvUrlEn);
         return saved;
     }
 

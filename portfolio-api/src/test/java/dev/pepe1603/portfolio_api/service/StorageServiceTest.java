@@ -143,4 +143,49 @@ class StorageServiceTest {
                     assertThat(ex.getReason()).isEqualTo("El fichero supera el tamaño máximo de 10 MB");
                 });
     }
+
+    @Test
+    void deleteByUrlBorraElFicheroDelDisco() throws Exception {
+        String url = service.store(StorageUse.AVATAR, file("foto.png", "image/png", PNG));
+        Path saved = tempDir.resolve(url.substring(url.lastIndexOf('/') + 1));
+        assertThat(saved).exists();
+
+        service.deleteByUrl(url);
+
+        assertThat(saved).doesNotExist();
+    }
+
+    @Test
+    void deleteByUrlIgnoraUrlsAjenasYNoRompe() {
+        service.deleteByUrl("http://localhost:8080/files/avatar.png");
+        service.deleteByUrl("https://cdn.example.com/logo.svg");
+        service.deleteByUrl(null);
+        assertThat(tempDir.toFile().list()).isEmpty();
+    }
+
+    @Test
+    void deleteByUrlBorraSoloDentroDelDirectorioDeAlmacenamiento() throws Exception {
+        Path fuera = Path.of(tempDir.toString(), "..", "fuera.txt");
+        Files.writeString(fuera, "x");
+
+        service.deleteByUrl("http://localhost:8080/files/../fuera.txt");
+
+        assertThat(fuera).exists();
+    }
+
+    @Test
+    void baseNameExtraeElNombreSoloSiCumpleElPatron() {
+        String name = "123e4567-e89b-12d3-a456-426614174000.png";
+        assertThat(StorageService.baseName("http://host/files/" + name)).isEqualTo(name);
+        assertThat(StorageService.baseName(name)).isEqualTo(name);
+        assertThat(StorageService.baseName("http://host/files/avatar.png")).isNull();
+        assertThat(StorageService.baseName("http://host/files/123e4567-e89b-12d3-a456-426614174000.xyz")).isNull();
+        assertThat(StorageService.baseName(null)).isNull();
+        assertThat(StorageService.baseName("  ")).isNull();
+    }
+
+    @Test
+    void deleteByUrlDeUnFicheroInexistenteNoLanza() {
+        service.deleteByUrl("http://localhost:8080/files/123e4567-e89b-12d3-a456-426614174000.png");
+    }
 }

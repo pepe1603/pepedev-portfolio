@@ -1,6 +1,7 @@
 package dev.pepe1603.portfolio_api.service;
 
 import dev.pepe1603.portfolio_api.dto.admin.ProjectRequest;
+import dev.pepe1603.portfolio_api.entity.GalleryImage;
 import dev.pepe1603.portfolio_api.entity.Project;
 import dev.pepe1603.portfolio_api.enums.ProjectStatus;
 import dev.pepe1603.portfolio_api.repository.ProjectRepository;
@@ -23,10 +24,13 @@ public class AdminProjectService {
 
     private final ProjectRepository projectRepository;
     private final PublicCacheService cacheService;
+    private final OrphanFileCleaner orphanFileCleaner;
 
-    public AdminProjectService(ProjectRepository projectRepository, PublicCacheService cacheService) {
+    public AdminProjectService(ProjectRepository projectRepository, PublicCacheService cacheService,
+                               OrphanFileCleaner orphanFileCleaner) {
         this.projectRepository = projectRepository;
         this.cacheService = cacheService;
+        this.orphanFileCleaner = orphanFileCleaner;
     }
 
     @Transactional(readOnly = true)
@@ -53,6 +57,7 @@ public class AdminProjectService {
         Project project = findOrThrow(id);
         ensureSlugFreeExcludingSelf(request.slug(), id);
         String oldSlug = project.getSlug();
+        List<String> replacedFileUrls = fileUrls(project);
         applyRequest(project, request);
         Project saved = projectRepository.save(project);
         if (saved.getStatus() == ProjectStatus.PUBLISHED) {
@@ -61,6 +66,9 @@ public class AdminProjectService {
             if (!oldSlug.equals(saved.getSlug())) {
                 cacheService.evictProject(saved.getSlug());
             }
+        }
+        for (String url : replacedFileUrls) {
+            orphanFileCleaner.cleanupIfUnreferenced(url);
         }
         return saved;
     }
@@ -99,11 +107,28 @@ public class AdminProjectService {
     @Transactional
     public void delete(UUID id) {
         Project project = findOrThrow(id);
+        List<String> fileUrls = fileUrls(project);
         projectRepository.delete(project);
         if (project.getStatus() == ProjectStatus.PUBLISHED) {
             cacheService.evictProjectsList();
             cacheService.evictProject(project.getSlug());
         }
+        for (String url : fileUrls) {
+            orphanFileCleaner.cleanupIfUnreferenced(url);
+        }
+    }
+
+    private static List<String> fileUrls(Project project) {
+        List<String> urls = new ArrayList<>();
+        if (project.getThumbnailUrl() != null) {
+            urls.add(project.getThumbnailUrl());
+        }
+        for (GalleryImage image : project.getGallery()) {
+            if (image.url() != null) {
+                urls.add(image.url());
+            }
+        }
+        return urls;
     }
 
     private void applyRequest(Project project, ProjectRequest request) {

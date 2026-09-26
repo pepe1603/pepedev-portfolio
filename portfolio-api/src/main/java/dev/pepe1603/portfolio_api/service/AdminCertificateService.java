@@ -22,10 +22,13 @@ public class AdminCertificateService {
 
     private final CertificateRepository certificateRepository;
     private final PublicCacheService cacheService;
+    private final OrphanFileCleaner orphanFileCleaner;
 
-    public AdminCertificateService(CertificateRepository certificateRepository, PublicCacheService cacheService) {
+    public AdminCertificateService(CertificateRepository certificateRepository, PublicCacheService cacheService,
+                                   OrphanFileCleaner orphanFileCleaner) {
         this.certificateRepository = certificateRepository;
         this.cacheService = cacheService;
+        this.orphanFileCleaner = orphanFileCleaner;
     }
 
     @Transactional(readOnly = true)
@@ -49,11 +52,13 @@ public class AdminCertificateService {
     @Transactional
     public Certificate update(UUID id, CertificateRequest request) {
         Certificate certificate = findOrThrow(id);
+        String oldImageUrl = certificate.getImageUrl();
         applyRequest(certificate, request);
         Certificate saved = certificateRepository.save(certificate);
         if (saved.getStatus() == CertificateStatus.PUBLISHED) {
             cacheService.evictCertificatesList();
         }
+        orphanFileCleaner.cleanupIfUnreferenced(oldImageUrl);
         return saved;
     }
 
@@ -91,10 +96,12 @@ public class AdminCertificateService {
     @Transactional
     public void delete(UUID id) {
         Certificate certificate = findOrThrow(id);
+        String imageUrl = certificate.getImageUrl();
         certificateRepository.delete(certificate);
         if (certificate.getStatus() == CertificateStatus.PUBLISHED) {
             cacheService.evictCertificatesList();
         }
+        orphanFileCleaner.cleanupIfUnreferenced(imageUrl);
     }
 
     private void applyRequest(Certificate certificate, CertificateRequest request) {
