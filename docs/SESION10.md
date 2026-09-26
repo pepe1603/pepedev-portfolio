@@ -40,12 +40,13 @@ de editar (pieza 0) y delegó en la IA el resto del bloque, avanzando commit por
     que el negocio, y 10 MB exactos falla por el overhead del boundary).
   - **Nombre** generado por servidor (UUID v4 aleatorio + extensión normalizada del tipo
     detectado: jpg/png/webp/pdf) → sin colisiones ni path traversal.
-  - Fichero vacío / `use` inválido / falta de parte → **400**. `use` se recibe como `String` y se
-    pasa a `StorageUse.valueOf(use.toUpperCase(Locale.ROOT))`. La parte `file` se declara
-    `@RequestPart(required=false)` y se valida explícitamente (`null` o `isEmpty()` → 400) porque
-    **`@ExceptionHandler`/`@ControllerAdvice` NO se ejecutan en este proyecto** (ver Notas de
-    operación); `@RequestPart` obligatorio lanzaba `MultipartException: Current request is not a
-    multipart request` → 500 si el cliente no mandaba `multipart/form-data`.
+  - Fichero vacío / `use` inválido / falta de parte / request no multipart → **400**. `use` se
+    recibe como `String` y se pasa a `StorageUse.valueOf(use.toUpperCase(Locale.ROOT))`.
+  - **CORRECCIÓN (Bloque 7)**: la parte `file` es `@RequestPart MultipartFile` **obligatoria**.
+    El workaround anterior `required=false` + check explícito se **revertió** (`1c7e09d`): el 500
+    real era porque el advice no tenía `@ExceptionHandler(MultipartException.class)`. El advice
+    global SÍ resuelve (ver Piezas 1-4): "no codificado como multipart" y "falta la parte 'file'"
+    → 400, fichero vacío → 400 (lo valida `StorageService.store`).
   - **Sin borrado de orfanatos** por ahora.
 - **`GET /admin/profile`** (pieza 0, añadida por el humano): devuelve la entidad `Profile` para
   que el front pueble el formulario; 404 `ResponseStatusException` si la fila id=1 no existiera.
@@ -138,16 +139,18 @@ de negocio (5/10 MB) se evaluan antes, así que el comportamiento es consistente
 - Recordatorio Boot 4/Jackson 3: las respuestas `Map` de `{ "url": ... }` se serializan con el
   `ObjectMapper` de Jackson 3 configurado por Boot (sin código propio).
 - Errores 4xx siguen saliendo por `BasicErrorController` (formato unificado → Bloque 7).
-- **Hallazgo importante para el Bloque 7**: en este proyecto (Boot 4.1.1 / Spring Framework
-  7.0.9) los `@ExceptionHandler` **no se ejecutan**, ni como método local del controlador ni vía
-  `@ControllerAdvice`/`@RestControllerAdvice`, ni para excepciones de resolución de argumentos ni
-  de cuerpo (verificado empíricamente con casos de prueba; el bean del advice sí aparece en
-  `/actuator/beans` pero nunca resuelve). Solo resuelven `ResponseStatusExceptionResolver`
-  (`ResponseStatusException` lanzada desde el controlador/servicio → funciona) y
-  `DefaultHandlerExceptionResolver` (400 de binding). **Mantener el estilo `ResponseStatusException`
-  para los errores de negocio** y, antes de diseñar el manejo de errores del Bloque 7, investigar la
-  causa (sospecha: resolución de métodos anotados en `ExceptionHandlerExceptionResolver` de Spring
-  7; descartado devtools).
+- **RETRACTADO (Bloque 7)**: la afirmación de que `@ExceptionHandler`/`@ControllerAdvice` "no se
+  ejecutan" en Boot 4.1.1/Spring 7.0.9 era **incorrecta**. El advice global
+  (`config/ApiExceptionHandler extends ResponseEntityExceptionHandler`) resuelve y está
+  **verificado en vivo**: `ResponseStatusException` de negocio, validación 400 con `errors[]`,
+  `MultipartException` (no-multipart / parte ausente), tamaño excedido, `BadCredentialsException`
+  401, ratelimits 429 con `Retry-After`, `NoResourceFoundException` 404 — todo como `ProblemDetail`
+  RFC 9457 con `instance` = path. Detalle clave de Spring 7.0.9: `handleExceptionInternal(ex,
+  null, ...)` solo rellena el body si la excepción es `ErrorResponse` (por eso `MultipartException`,
+  bad-credentials y ratelimits necesitan `ProblemDetail` explícito) y `MethodArgumentNotValidException.
+  getBody()` no incluye los `errors[]` (por eso el override). El 500 del storage se debía a **no
+  haber handler de `MultipartException`**, no a que el mécanismo estuviera roto. Mantener igualmente
+  `ResponseStatusException` para el negocio (estilo claro), pero ya no "como workaround".
 - `.env`: la línea de `SPRING_MAIL_PASSWORD` tenía el valor sin comillas (bash la interpretaba:
   "rcyh: orden no encontrada"); envuelta en comillas simples en la sesión de verificación.`
 
@@ -160,6 +163,9 @@ de negocio (5/10 MB) se evaluan antes, así que el comportamiento es consistente
 
 ## Prompt para la siguiente sesión (copiar/pegar)
 
+> **NOTA (Bloque 7): este prompt quedó superado. La afirmación sobre `@ExceptionHandler` era falsa**
+> (retractada arriba, ver `docs/SESION11.md` y `docs/API.md`). Se conserva como historial.
+
 ```
 Retomamos el proyecto pepedev-portfolio (docs en /home/pepe-dev/Projects/pepedev-portfolio).
 
@@ -167,7 +173,7 @@ Contexto cerrado (lee en orden docs/SESION10.md, docs/PLAN-API.md y docs/MODELO-
 - Bloques 0-3, 4 (auth JWT), 5.1-5.3 COMPLETOS y verificados. 6.1, 6.2 y 6.3 (storage + profile)
   IMPLEMENTADOS y con DoD VERIFICADO manualmente (Postman/curl).
   POST /admin/storage?use= → { "url" } (magic bytes, límites 5/10 MB, UUID+ext, sin evicts;
-  falta de parte/fichero vacío → 400 vía @RequestPart(required=false)+check explícito),
+  falta de parte/fichero vacío → 400 por el advice global),
   GET /admin/profile y PUT /admin/profile (evict pub:profile ES+EN; CV reutiliza esa caché).
 - /admin/** con hasRole(ADMIN); /files/** público sirviendo APP_STORAGE_DIR desde local FS
   (uploads/ gitignored).
