@@ -3,6 +3,9 @@
 > Fuente de verdad del Bloque 7 (verificado contra el código y la app en ejecución).
 > Stack: Spring Boot 4.1.1 · Spring Framework 7.0.9 · Java 21 · PostgreSQL+JSONB · Redis · springdoc.
 > Base URL en dev: `http://localhost:8080`. Contrato vivo en `/v3/api-docs` (OpenAPI 3.1.0).
+> Swagger UI en `/swagger-ui.html`. Schemas documentados: `ApiProblemDetail` (envelope de
+> error, con `errors[]: ErrorField[]` en 400 de validación), `TokenResponse`, `LoginRequest`,
+> `ContactRequest` y el multipart del storage (`use` + `file`).
 
 ## Autenticación
 

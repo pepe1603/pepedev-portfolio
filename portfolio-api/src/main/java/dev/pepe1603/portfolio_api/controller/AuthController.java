@@ -3,6 +3,7 @@ package dev.pepe1603.portfolio_api.controller;
 import dev.pepe1603.portfolio_api.dto.auth.LoginRequest;
 import dev.pepe1603.portfolio_api.dto.auth.MeResponse;
 import dev.pepe1603.portfolio_api.dto.auth.TokenResponse;
+import dev.pepe1603.portfolio_api.dto.common.ApiProblemDetail;
 import dev.pepe1603.portfolio_api.entity.User;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.AppUserDetails;
@@ -14,6 +15,10 @@ import dev.pepe1603.portfolio_api.security.RateLimitProperties;
 import dev.pepe1603.portfolio_api.security.TokenBlacklist;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -64,6 +69,17 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Iniciar sesión",
+            description = "Valida credenciales y emite access token (body) + refresh token (cookie HttpOnly SameSite=Lax). "
+                    + "Sujeto a rate limit por IP y email (429 con Retry-After).")
+    @ApiResponse(responseCode = "200", description = "Tokens emitidos",
+            content = @Content(schema = @Schema(implementation = TokenResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Campos obligatorios ausentes o inválidos",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "401", description = "Credenciales inválidas",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "429", description = "Demasiados intentos (Retry-After en segundos)",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request,
             HttpServletRequest servletRequest, HttpServletResponse response) {
         String ip = servletRequest.getRemoteAddr();

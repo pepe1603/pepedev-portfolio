@@ -1,9 +1,14 @@
 package dev.pepe1603.portfolio_api.controller;
 
+import dev.pepe1603.portfolio_api.dto.common.ApiProblemDetail;
 import dev.pepe1603.portfolio_api.dto.contact.ContactRequest;
 import dev.pepe1603.portfolio_api.security.ContactRateLimitedException;
 import dev.pepe1603.portfolio_api.security.ContactRateLimiter;
 import dev.pepe1603.portfolio_api.service.ContactService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +32,15 @@ public class ContactController {
     }
 
     @PostMapping
+    @Operation(summary = "Enviar mensaje de contacto",
+            description = "Persiste el mensaje y lo envía por email. Campo oculto 'website' = honeypot "
+                    + "anti-spam (si viene relleno se responde 201 sin persistir). Sujeto a rate limit "
+                    + "por IP (429 con Retry-After).")
+    @ApiResponse(responseCode = "201", description = "Mensaje recibido (persistido o honeypot)")
+    @ApiResponse(responseCode = "400", description = "Campos obligatorios ausentes o inválidos",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "429", description = "Demasiados envíos (Retry-After en segundos)",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
     public ResponseEntity<Void> submit(@Valid @RequestBody ContactRequest request,
             HttpServletRequest servletRequest) {
         if (isHoneypotFilled(request)) {

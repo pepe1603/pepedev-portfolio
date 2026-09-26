@@ -1,10 +1,12 @@
 package dev.pepe1603.portfolio_api.controller;
 
+import dev.pepe1603.portfolio_api.dto.common.ApiProblemDetail;
 import dev.pepe1603.portfolio_api.enums.StorageUse;
 import dev.pepe1603.portfolio_api.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import java.util.Locale;
@@ -30,12 +32,20 @@ public class AdminStorageController {
     }
 
     @PostMapping
-    @Operation(summary = "Subir fichero", description = "Multipart: parte 'file' obligatoria + 'use' por query o form (nunca ambos).",
+    @Operation(summary = "Subir fichero", description = "Multipart: parte 'file' obligatoria + 'use' por query o form (nunca ambos). "
+            + "Validación por magic bytes: jpeg/png/webp (imágenes) y pdf (solo para 'cv'). Límites 5 MB imágenes / 10 MB CV.",
             requestBody = @RequestBody(required = true, content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
                     schema = @Schema(type = "object",
                             properties = {
                                     @StringToClassMapItem(key = "use", value = String.class),
                                     @StringToClassMapItem(key = "file", value = MultipartFile.class)}))))
+    @ApiResponse(responseCode = "200", description = "{ \"url\": \"https://.../files/<uuid>.<ext>\" }")
+    @ApiResponse(responseCode = "400", description = "use inválido/duplicado, fichero vacío o parte file ausente",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "413", description = "Fichero mayor que el límite (5/10 MB negocio o 15/20 MB multipart del contenedor)",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "415", description = "Tipo de fichero no permitido (p. ej. pdf para un uso que no es 'cv')",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
     public Map<String, String> upload(@RequestParam String use, @RequestPart MultipartFile file) {
         StorageUse resolved = resolveUse(use);
         String url = storageService.store(resolved, file);
