@@ -168,11 +168,15 @@ Salvo `POST /admin/storage`, las respuestas devuelven la **entidad** (sin DTO ad
 - `PUT /{id}` edición completa · `PATCH /{id}/publish` / `unpublish` · `PUT /order` · `DELETE` `204`.
 
 ### Messages
-- `GET /admin/messages?status=NEW|READ|ARCHIVED` (opcional; sin filtro → todo; `createdAt DESC`).
-  Chateo `status` inválido → `400`.
+- `GET /admin/messages?status=NEW|READ|ARCHIVED&page=0&size=20` — **paginado (Bloque 8)**:
+  respuesta `{items: Message[], page, size, totalElements, totalPages, last}`. `status`
+  opcional (sin filtro → todo); orden fijo determinista `createdAt DESC, id DESC` (desempate
+  por UUID v7). `page` 0-based (default `0`), `size` 1..100 (default `20`); `page<0` o
+  `size` fuera de rango → `400`; `status` inválido → `400`.
 - `GET /admin/messages/{id}` → detalle (no muta estado). `DELETE` → `204`.
 - `PATCH /admin/messages/{id}/read` y `.../archive` → transiciones libres e idempotentes
-  (any→READ / any→ARCHIVED; repetir = `200` no-op). Sin `/unread`. Sin paginación; sin evicts.
+  (any→READ / any→ARCHIVED; repetir = `200` no-op). Sin `/unread`; sin evicts de caché
+  (messages no se sirve en público).
 
 ### Profile
 - `GET /admin/profile` → entidad (para precargar el formulario).
