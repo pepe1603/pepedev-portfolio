@@ -21,7 +21,6 @@ import jakarta.validation.Valid;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.function.Function;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -31,7 +30,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -138,24 +136,6 @@ public class AuthController {
                 .findFirst()
                 .orElse(null);
         return new MeResponse(authentication.getName(), role);
-    }
-
-    @ExceptionHandler(LoginRateLimitedException.class)
-    public ResponseEntity<Map<String, Object>> handleRateLimited(LoginRateLimitedException e) {
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .header(HttpHeaders.RETRY_AFTER, String.valueOf(e.getRetryAfterSeconds()))
-                .body(Map.of(
-                        "status", 429,
-                        "error", "Too Many Requests",
-                        "message", "Demasiados intentos de login. Inténtalo de nuevo más tarde"));
-    }
-
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleBadCredentials() {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-                "status", 401,
-                "error", "Unauthorized",
-                "message", "Credenciales inválidas"));
     }
 
     private void setRefreshCookie(HttpServletResponse response, String token, Duration ttl) {

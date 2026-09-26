@@ -6,11 +6,9 @@ import dev.pepe1603.portfolio_api.security.ContactRateLimiter;
 import dev.pepe1603.portfolio_api.service.ContactService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,15 +43,5 @@ public class ContactController {
 
     private boolean isHoneypotFilled(ContactRequest request) {
         return request.website() != null && !request.website().isBlank();
-    }
-
-    @ExceptionHandler(ContactRateLimitedException.class)
-    public ResponseEntity<Map<String, Object>> handleRateLimited(ContactRateLimitedException e) {
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                .header(HttpHeaders.RETRY_AFTER, String.valueOf(e.getRetryAfterSeconds()))
-                .body(Map.of(
-                        "status", 429,
-                        "error", "Too Many Requests",
-                        "message", "Demasiados envíos de contacto. Inténtalo de nuevo más tarde"));
     }
 }
