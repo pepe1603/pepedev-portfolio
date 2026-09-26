@@ -48,12 +48,15 @@ Reglas y extensiones:
 - **Rate limit (`429`)**: incluye cabecera `Retry-After: <segundos>`.
 - **401/403 de seguridad**: los escriben los filtros (`JwtAuthEntryPoint`/`JwtAccessDeniedHandler`)
   con el mismo shape (sin `errors[]`), con UTF-8 correcto.
-- **Fuera del envelope unificado** (gap conocido, documentado): los rechazos a nivel de
-  **contenedor/parsing previos a Spring MVC** (p. ej. multipart desmesurado cortado por Tomcat)
-  y cualquier excepción no prevista que deriva a `/error` (BasicErrorController: `timestamp`,
-  `status`, `error`, `path`, y `trace` en dev por devtools). El advice (`ApiExceptionHandler`)
-  cubre: negocio `ResponseStatusException`, validación, multipart (no-multipart / parte ausente),
-  tamaño excedido, tipo de medio, `NoResourceFoundException`, 401 bad-credentials y 429.
+- **Gap de contenedor cerrado**: las excepciones no previstas derivan a `/error`, servido por
+  `JsonErrorController` con **el mismo envelope** (título razón del status, `detail` en español,
+  sin `type`/`timestamp`/`path`/`trace`; `server.error.include-message=never`). Mensajes por
+  status: `400`/`404`/`405`/`413`/`429` y, en cualquier otro caso, `500` "Error interno del
+  servidor". **Los 413 de multipart desmesurado (15/20 MB del contenedor) también entran en el
+  envelope**: `MaxUploadSizeExceededException` → `413` "El fichero supera el tamaño máximo
+  permitido" (`@Override handleMaxUploadSizeExceededException`).
+- **404 de recurso estático**: Spring Framework 7 lo resuelve antes de `/error` (`NoResourceFoundException`)
+  y ya responde ProblemDetail JSON (`title: Not Found`, `detail: "No static resource ..."`).
 
 Códigos de error más comunes por familia:
 
@@ -64,7 +67,7 @@ Códigos de error más comunes por familia:
 | `403` | token válido sin `ROLE_ADMIN` en `/admin/**` |
 | `404` | recurso inexistente (UUID, slug, fichero estático, CV sin URL) |
 | `409` | conflicto (slug de project ya existe) |
-| `413` | upload mayor que el límite de negocio (5 MB imagen / 10 MB CV) |
+| `413` | fichero mayor que el límite (5/10 MB negocio, 15/20 MB contenedor) — título RFC 9110 `Content Too Large` |
 | `415` | tipo de fichero no permitido |
 | `429` | rate limit de login o contacto (con `Retry-After`) |
 

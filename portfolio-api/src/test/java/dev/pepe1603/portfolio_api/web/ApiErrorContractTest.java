@@ -42,6 +42,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultMatcher;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 @WebMvcTest(controllers = {AuthController.class, ContactController.class, AdminStorageController.class,
@@ -260,6 +261,22 @@ class ApiErrorContractTest {
                         jsonPath("$.instance").value("/admin/storage"),
                         NO_LEGACY_FIELDS);
         verify(storageService, never()).store(any(), any());
+    }
+
+    @Test
+    void storageFicheroDemasiadoGrande_413() throws Exception {
+        given(storageService.store(any(), any())).willThrow(
+                new MaxUploadSizeExceededException(15L * 1024 * 1024));
+        MockMultipartFile file = new MockMultipartFile("file", "big.png", MediaType.IMAGE_PNG_VALUE, new byte[64]);
+
+        mockMvc.perform(multipart("/admin/storage").file(file).param("use", "avatar"))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpectAll(
+                        jsonPath("$.title").value("Content Too Large"),
+                        jsonPath("$.status").value(413),
+                        jsonPath("$.detail").value("El fichero supera el tamaño máximo permitido"),
+                        jsonPath("$.instance").value("/admin/storage"),
+                        NO_LEGACY_FIELDS);
     }
 
     @Test

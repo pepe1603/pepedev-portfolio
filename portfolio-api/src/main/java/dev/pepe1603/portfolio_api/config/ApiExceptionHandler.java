@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -36,6 +37,14 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail body = createProblemDetail(ex, HttpStatus.BAD_REQUEST,
                 "Petición no codificada como multipart/form-data", null, null, request);
         return handleExceptionInternal(ex, body, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ProblemDetail body = createProblemDetail(ex, status,
+                "El fichero supera el tamaño máximo permitido", null, null, request);
+        return handleExceptionInternal(ex, body, headers, status, request);
     }
 
     @ExceptionHandler(BadCredentialsException.class)
