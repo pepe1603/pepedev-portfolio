@@ -80,7 +80,7 @@ class ApiErrorContractTest {
     private AdminCertificateService adminCertificateService;
 
     private static final ResultMatcher NO_LEGACY_FIELDS = result -> {
-        for (String legacy : new String[] {"trace", "timestamp", "path"}) {
+        for (String legacy : new String[] {"trace", "timestamp", "path", "type"}) {
             jsonPath("$." + legacy).doesNotExist().match(result);
         }
     };
@@ -243,6 +243,23 @@ class ApiErrorContractTest {
                         jsonPath("$.detail").value("Tipo de fichero no permitido para AVATAR"),
                         jsonPath("$.instance").value("/admin/storage"),
                         NO_LEGACY_FIELDS);
+    }
+
+    @Test
+    void storageUseDuplicado_400() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "f.png", MediaType.IMAGE_PNG_VALUE, new byte[8]);
+
+        mockMvc.perform(multipart("/admin/storage")
+                        .file(file)
+                        .param("use", "avatar")
+                        .queryParam("use", "avatar"))
+                .andExpect(status().isBadRequest())
+                .andExpectAll(
+                        jsonPath("$.status").value(400),
+                        jsonPath("$.detail").value("Uso no permitido. Valores válidos: avatar, thumbnail, gallery, image, cv"),
+                        jsonPath("$.instance").value("/admin/storage"),
+                        NO_LEGACY_FIELDS);
+        verify(storageService, never()).store(any(), any());
     }
 
     @Test
