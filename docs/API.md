@@ -24,7 +24,6 @@ Todos los errores del contrato usan el mismo envelope JSON (UTF-8):
 
 ```json
 {
-  "type": "about:blank",
   "title": "Not Found",
   "status": 404,
   "detail": "Certificado no encontrado",
@@ -34,11 +33,13 @@ Todos los errores del contrato usan el mismo envelope JSON (UTF-8):
 
 | Campo | Contenido |
 |---|---|
-| `type` | `about:blank` |
 | `title` | reason phrase en inglés del status |
 | `status` | código HTTP |
 | `detail` | mensaje en español, específico del caso |
 | `instance` | ruta del request que produjo el error |
+
+Nota: `type` (RFC 9455) equivale a `about:blank` en todos los casos y **no se serializa** por el
+serializador de Spring (solo aparecería si fuera distinto del default).
 
 Reglas y extensiones:
 

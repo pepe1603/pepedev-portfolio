@@ -32,9 +32,11 @@ Causa real del `500` del storage: el advice anterior **no tenía** `@ExceptionHa
 ## CONTRATO DE ERROR VERIFICADO (RFC 9457)
 
 ```json
-{ "type": "about:blank", "title": "Not Found", "status": 404,
-  "detail": "Certificado no encontrado", "instance": "/admin/certificates/{id}" }
+{ "title": "Not Found", "status": 404, "detail": "Certificado no encontrado", "instance": "/admin/certificates/{id}" }
 ```
+
+- `type` (RFC 9455) es siempre `about:blank` y Spring **no lo serializa** (solo aparecería si
+  difiriera del default). Verificado también por los tests (Pieza 1 de la tanda de tests).
 
 - Validación 400 → `"errors": [{"field","message"}]`.
 - 429 → cabecera `Retry-After: <segundos>` (ventana Redis 900 s).
