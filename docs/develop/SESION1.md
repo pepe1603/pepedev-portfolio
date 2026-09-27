@@ -24,11 +24,33 @@
 
 | Pieza | Tarea | Estado |
 |---|---|---|
-| P0 | Esta acta + backlog (doc de sesión) | ⬜ |
-| P1 | Crear paquete `exception/`; mover `ContactRateLimitedException` y `LoginRateLimitedException` fuera de `security/`; actualizar imports | ⬜ |
-| P2 | Mover `ApiExceptionHandler` de `config/` a `exception/`; actualizar imports de tests | ⬜ |
-| P3 | Veredicto documentado sobre "controller → service 1:1" (sin cambios de código salvo hallazgo) | ⬜ |
-| P4 | Acta final: resultados, dificultades, estado de la rama | ⬜ |
+| P0 | Esta acta + backlog (doc de sesión) | ✅ |
+| P1 | Crear paquete `exception/`; mover `ContactRateLimitedException` y `LoginRateLimitedException` fuera de `security/`; actualizar imports | ✅ |
+| P2 | Mover `ApiExceptionHandler` de `config/` a `exception/`; actualizar imports de tests | ✅ |
+| P3 | Veredicto documentado sobre "controller → service 1:1" (sin cambios de código salvo hallazgo) | ✅ |
+| P4 | Acta final: resultados, dificultades, estado de la rama | ✅ |
+
+## Acta de cierre
+
+Commits de la sesión (rama `develop`):
+
+| Commit | Contenido |
+|---|---|
+| `4d8390a` | P0 — backlog y acta de la sesión |
+| `ac7d524` | P1 — excepciones de rate-limit → `exception/` (git detectó el `rename`) |
+| `ced5a27` | P2 — `ApiExceptionHandler` → `exception/` |
+
+Resultados:
+- **Suite completa: 86 tests, 0 fallos** tras cada pieza (P1 y P2, una a una).
+- Sin cambios de comportamiento ni de contrato: refactorización de empaquetado pura
+  (`git mv` + ajuste de `import` en 5 ficheros).
+- Paquete `security/` queda solo con infraestructura de seguridad legítima
+  (entry point, access denied, error writer, limiters, filtro, JWT, blacklist).
+- Paquete `exception/`: excepciones comerciales + `ApiExceptionHandler` global
+  (el "Exceptions folder" que pedía el usuario).
+
+Estado de la rama: `develop` con working tree limpio al cierre. La sesión 2 abrirá el
+siguiente grupo de mejoras de organización/arquitectura.
 
 ## Veredicto de arquitectura (P3, decidido en planificación)
 
