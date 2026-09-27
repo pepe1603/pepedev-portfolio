@@ -2,6 +2,8 @@ package dev.pepe1603.portfolio_api.controller;
 
 import dev.pepe1603.portfolio_api.dto.auth.LoginRequest;
 import dev.pepe1603.portfolio_api.dto.auth.MeResponse;
+import dev.pepe1603.portfolio_api.dto.auth.OtpChallengeResponse;
+import dev.pepe1603.portfolio_api.dto.auth.OtpLoginVerifyRequest;
 import dev.pepe1603.portfolio_api.dto.auth.PasswordResetConfirm;
 import dev.pepe1603.portfolio_api.dto.auth.PasswordResetRequest;
 import dev.pepe1603.portfolio_api.dto.auth.SessionResponse;
@@ -13,11 +15,14 @@ import dev.pepe1603.portfolio_api.enums.AuditAction;
 import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.repository.AuthSessionRepository;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
+import dev.pepe1603.portfolio_api.security.AccessTokenReader;
 import dev.pepe1603.portfolio_api.security.AppUserDetails;
 import dev.pepe1603.portfolio_api.security.JwtProperties;
 import dev.pepe1603.portfolio_api.security.JwtTokenService;
+import dev.pepe1603.portfolio_api.security.OtpProperties;
 import dev.pepe1603.portfolio_api.security.ResetRateLimiter;
 import dev.pepe1603.portfolio_api.service.AuditService;
+import dev.pepe1603.portfolio_api.service.OtpService;
 import dev.pepe1603.portfolio_api.service.PasswordResetService;
 import dev.pepe1603.portfolio_api.exception.LoginRateLimitedException;
 import dev.pepe1603.portfolio_api.security.LoginRateLimiter;
@@ -73,12 +78,16 @@ public class AuthController {
     private final AuditService auditService;
     private final PasswordResetService passwordResetService;
     private final ResetRateLimiter resetRateLimiter;
+    private final OtpService otpService;
+    private final OtpProperties otpProperties;
+    private final AccessTokenReader accessTokenReader;
     private final PasswordEncoder passwordEncoder;
 
     public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository,
             AuthSessionRepository authSessionRepository, JwtTokenService jwtTokenService, JwtProperties jwtProperties,
             RateLimitProperties rateLimitProperties, LoginRateLimiter loginRateLimiter, TokenBlacklist tokenBlacklist,
             AuditService auditService, PasswordResetService passwordResetService, ResetRateLimiter resetRateLimiter,
+            OtpService otpService, OtpProperties otpProperties, AccessTokenReader accessTokenReader,
             PasswordEncoder passwordEncoder) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
@@ -91,22 +100,29 @@ public class AuthController {
         this.auditService = auditService;
         this.passwordResetService = passwordResetService;
         this.resetRateLimiter = resetRateLimiter;
+        this.otpService = otpService;
+        this.otpProperties = otpProperties;
+        this.accessTokenReader = accessTokenReader;
         this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/login")
     @Operation(summary = "Iniciar sesión",
             description = "Valida credenciales y emite access token (body) + refresh token (cookie HttpOnly SameSite=Lax). "
-                    + "Sujeto a rate limit por IP y email (429 con Retry-After).")
+                    + "Sujeto a rate limit por IP y email (429 con Retry-After). "
+                    + "Si el OTP está activo para el usuario, responde 202 con un challengeId "
+                    + "y el token se obtiene en /auth/login/verify.")
     @ApiResponse(responseCode = "200", description = "Tokens emitidos",
             content = @Content(schema = @Schema(implementation = TokenResponse.class)))
+    @ApiResponse(responseCode = "202", description = "Credenciales correctas; se requiere verificación OTP",
+            content = @Content(schema = @Schema(implementation = OtpChallengeResponse.class)))
     @ApiResponse(responseCode = "400", description = "Campos obligatorios ausentes o inválidos",
             content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
     @ApiResponse(responseCode = "401", description = "Credenciales inválidas",
             content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
     @ApiResponse(responseCode = "429", description = "Demasiados intentos (Retry-After en segundos)",
             content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
-    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request,
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request,
             HttpServletRequest servletRequest, HttpServletResponse response) {
         String ip = servletRequest.getRemoteAddr();
         if (loginRateLimiter.isBlocked(ip, request.email())) {
@@ -117,33 +133,60 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.email(), request.password()));
             AppUserDetails details = (AppUserDetails) authentication.getPrincipal();
             User user = details.getUser();
-            Instant loginAt = Instant.now();
-            user.setLastLoginAt(loginAt);
-            userRepository.save(user);
-
-            String refreshJti = UUID.randomUUID().toString();
-            UUID sessionId = UUID.randomUUID();
-            AuthSession session = new AuthSession();
-            session.setSessionId(sessionId);
-            session.setUserId(user.getId());
-            session.setRefreshJti(refreshJti);
-            session.setCreatedAt(loginAt);
-            session.setLastSeenAt(loginAt);
-            session.setExpiresAt(loginAt.plus(jwtProperties.refreshTtl()));
-            session.setIpAddress(ip);
-            session.setUserAgent(truncate(servletRequest.getHeader(HttpHeaders.USER_AGENT), 255));
-            authSessionRepository.save(session);
-
-            JwtTokenService.TokenPair tokens = jwtTokenService.issueTokenPair(user, sessionId.toString(),
-                    refreshJti);
-            setRefreshCookie(response, tokens.refreshToken(), jwtProperties.refreshTtl());
             loginRateLimiter.onSuccess(ip, request.email());
-            return ResponseEntity.ok(new TokenResponse(tokens.accessToken(), "Bearer",
-                    jwtProperties.accessTtl().toSeconds()));
+            if (otpProperties.isEnabled() && Boolean.TRUE.equals(user.getOtpEnabled())) {
+                String challengeId = otpService.createChallenge(user.getEmail(), servletRequest.getLocale());
+                return ResponseEntity.accepted().body(new OtpChallengeResponse(challengeId));
+            }
+            return issueSessionAndTokens(user, ip, servletRequest.getHeader(HttpHeaders.USER_AGENT), response);
         } catch (BadCredentialsException e) {
             loginRateLimiter.recordFailure(ip, request.email());
             throw e;
         }
+    }
+
+    @PostMapping("/login/verify")
+    @Operation(summary = "Verificar el código OTP del login",
+            description = "Consume el challenge de un solo uso (5 min, máx. 5 intentos) y emite los tokens. "
+                    + "En este punto se registra la sesión y se actualiza last_login_at.")
+    @ApiResponse(responseCode = "200", description = "Tokens emitidos",
+            content = @Content(schema = @Schema(implementation = TokenResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Campos obligatorios ausentes o inválidos",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "401", description = "Código o challenge inválido/caducado/agotado",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    public ResponseEntity<TokenResponse> loginVerify(@Valid @RequestBody OtpLoginVerifyRequest request,
+            HttpServletRequest servletRequest, HttpServletResponse response) {
+        User user = otpService.verify(request.challengeId(), request.code())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "Código de verificación inválido o caducado"));
+        return issueSessionAndTokens(user, servletRequest.getRemoteAddr(),
+                servletRequest.getHeader(HttpHeaders.USER_AGENT), response);
+    }
+
+    private ResponseEntity<TokenResponse> issueSessionAndTokens(User user, String ip, String userAgent,
+            HttpServletResponse response) {
+        Instant loginAt = Instant.now();
+        user.setLastLoginAt(loginAt);
+        userRepository.save(user);
+
+        String refreshJti = UUID.randomUUID().toString();
+        UUID sessionId = UUID.randomUUID();
+        AuthSession session = new AuthSession();
+        session.setSessionId(sessionId);
+        session.setUserId(user.getId());
+        session.setRefreshJti(refreshJti);
+        session.setCreatedAt(loginAt);
+        session.setLastSeenAt(loginAt);
+        session.setExpiresAt(loginAt.plus(jwtProperties.refreshTtl()));
+        session.setIpAddress(ip);
+        session.setUserAgent(truncate(userAgent, 255));
+        authSessionRepository.save(session);
+
+        JwtTokenService.TokenPair tokens = jwtTokenService.issueTokenPair(user, sessionId.toString(), refreshJti);
+        setRefreshCookie(response, tokens.refreshToken(), jwtProperties.refreshTtl());
+        return ResponseEntity.ok(new TokenResponse(tokens.accessToken(), "Bearer",
+                jwtProperties.accessTtl().toSeconds()));
     }
 
     @PostMapping("/refresh")
@@ -383,7 +426,7 @@ public class AuthController {
     }
 
     private User requireUser(HttpServletRequest request) {
-        String email = currentSessionClaim(request, claim -> claim.getSubject());
+        String email = accessTokenReader.read(request).map(Claims::getSubject).orElse(null);
         if (email == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token de acceso ausente o inválido");
         }
@@ -392,19 +435,7 @@ public class AuthController {
     }
 
     private String currentSid(HttpServletRequest request) {
-        return currentSessionClaim(request, claim -> claim.get("sid", String.class));
-    }
-
-    private String currentSessionClaim(HttpServletRequest request, java.util.function.Function<Claims, String> extractor) {
-        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header == null || !header.startsWith(BEARER_PREFIX)) {
-            return null;
-        }
-        try {
-            return extractor.apply(jwtTokenService.parseAccessToken(header.substring(BEARER_PREFIX.length())));
-        } catch (JwtException e) {
-            return null;
-        }
+        return accessTokenReader.read(request).map(claims -> claims.get("sid", String.class)).orElse(null);
     }
 
     private UUID parseSessionId(String raw) {

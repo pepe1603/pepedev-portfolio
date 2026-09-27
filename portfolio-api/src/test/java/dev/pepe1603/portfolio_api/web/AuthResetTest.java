@@ -20,13 +20,16 @@ import dev.pepe1603.portfolio_api.enums.UserRole;
 import dev.pepe1603.portfolio_api.exception.ApiExceptionHandler;
 import dev.pepe1603.portfolio_api.repository.AuthSessionRepository;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
+import dev.pepe1603.portfolio_api.security.AccessTokenReader;
 import dev.pepe1603.portfolio_api.security.JwtProperties;
 import dev.pepe1603.portfolio_api.security.JwtTokenService;
 import dev.pepe1603.portfolio_api.security.LoginRateLimiter;
+import dev.pepe1603.portfolio_api.security.OtpProperties;
 import dev.pepe1603.portfolio_api.security.RateLimitProperties;
 import dev.pepe1603.portfolio_api.security.ResetRateLimiter;
 import dev.pepe1603.portfolio_api.security.TokenBlacklist;
 import dev.pepe1603.portfolio_api.service.AuditService;
+import dev.pepe1603.portfolio_api.service.OtpService;
 import dev.pepe1603.portfolio_api.service.PasswordResetService;
 import java.time.Instant;
 import java.util.List;
@@ -77,6 +80,12 @@ class AuthResetTest {
     private ResetRateLimiter resetRateLimiter;
     @MockitoBean
     private PasswordEncoder passwordEncoder;
+    @MockitoBean
+    private OtpService otpService;
+    @MockitoBean
+    private OtpProperties otpProperties;
+    @MockitoBean
+    private AccessTokenReader accessTokenReader;
 
     private User admin() {
         User user = new User();

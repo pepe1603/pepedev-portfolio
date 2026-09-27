@@ -47,4 +47,7 @@ public class User {
 
     @Column(name = "token_version", nullable = false)
     private Integer tokenVersion = 0;
+
+    @Column(name = "otp_enabled", nullable = false)
+    private Boolean otpEnabled = Boolean.FALSE;
 }

@@ -34,6 +34,7 @@ public class SecurityConfig {
             "/files/**",
             "/contact",
             "/auth/login",
+            "/auth/login/verify",
             "/auth/refresh",
             "/auth/logout",
             "/auth/reset/request",

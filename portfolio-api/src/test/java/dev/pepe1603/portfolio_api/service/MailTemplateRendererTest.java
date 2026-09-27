@@ -170,4 +170,33 @@ class MailTemplateRendererTest {
                 .contains("&lt;b&gt;")
                 .doesNotContain("<b>\"");
     }
+
+    private Map<String, Object> otpVariables(String code) {
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("code", code);
+        vars.put("minutes", 5L);
+        return vars;
+    }
+
+    @Test
+    void otpHtmlMuestraElCodigoYElVigenciaEnEspanol() {
+        String html = renderer.renderOtpHtml(otpVariables("123456"), Locale.forLanguageTag("es"));
+
+        assertThat(html)
+                .contains("Tu código de acceso")
+                .contains("123456")
+                .contains("caduca en 5 minutos")
+                .doesNotContain("Your access code");
+    }
+
+    @Test
+    void otpHtmlRenderizaEnInglesConLocaleEn() {
+        String html = renderer.renderOtpHtml(otpVariables("123456"), Locale.forLanguageTag("en"));
+
+        assertThat(html)
+                .contains("Your access code")
+                .contains("expires in 5 minutes")
+                .contains("123456")
+                .doesNotContain("Tu código de acceso");
+    }
 }

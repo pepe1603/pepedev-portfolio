@@ -23,20 +23,22 @@ import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.enums.UserRole;
 import dev.pepe1603.portfolio_api.repository.AuthSessionRepository;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
+import dev.pepe1603.portfolio_api.security.AccessTokenReader;
 import dev.pepe1603.portfolio_api.security.JwtProperties;
 import dev.pepe1603.portfolio_api.security.JwtTokenService;
 import dev.pepe1603.portfolio_api.security.LoginRateLimiter;
+import dev.pepe1603.portfolio_api.security.OtpProperties;
 import dev.pepe1603.portfolio_api.security.RateLimitProperties;
 import dev.pepe1603.portfolio_api.security.TokenBlacklist;
 import dev.pepe1603.portfolio_api.security.ResetRateLimiter;
 import dev.pepe1603.portfolio_api.service.AuditService;
+import dev.pepe1603.portfolio_api.service.OtpService;
 import dev.pepe1603.portfolio_api.service.PasswordResetService;
 import io.jsonwebtoken.Claims;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,9 +47,6 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -86,17 +85,16 @@ class AuthSessionControlTest {
     private ResetRateLimiter resetRateLimiter;
     @MockitoBean
     private PasswordEncoder passwordEncoder;
+    @MockitoBean
+    private OtpService otpService;
+    @MockitoBean
+    private OtpProperties otpProperties;
+    @MockitoBean
+    private AccessTokenReader accessTokenReader;
 
     @BeforeEach
     void setUp() {
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                "admin@pepe.dev", null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
         given(jwtProperties.getRefreshCookie()).willReturn("refresh_token");
-    }
-
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
     }
 
     private User admin() {
@@ -121,17 +119,17 @@ class AuthSessionControlTest {
         return s;
     }
 
-    private void stubAccessSid(String sid) {
+    private void stubAccessToken(String sid) {
         Claims claims = org.mockito.Mockito.mock(Claims.class);
         given(claims.getSubject()).willReturn("admin@pepe.dev");
         given(claims.get("sid", String.class)).willReturn(sid);
-        given(jwtTokenService.parseAccessToken("access-token")).willReturn(claims);
+        given(accessTokenReader.read(any())).willReturn(Optional.of(claims));
     }
 
     @Test
     void sessionsListaActivasConPruneOportunistaYMarcaActual() throws Exception {
         given(userRepository.findByEmail("admin@pepe.dev")).willReturn(Optional.of(admin()));
-        stubAccessSid(CURRENT.toString());
+        stubAccessToken(CURRENT.toString());
         given(authSessionRepository.findAllByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(any()))
                 .willReturn(List.of(session(CURRENT, "jti-current"), session(OTHER, "jti-other")));
 
@@ -175,7 +173,7 @@ class AuthSessionControlTest {
     @Test
     void revokeOthersSaltaLaSesionActual() throws Exception {
         given(userRepository.findByEmail("admin@pepe.dev")).willReturn(Optional.of(admin()));
-        stubAccessSid(CURRENT.toString());
+        stubAccessToken(CURRENT.toString());
         given(authSessionRepository.findAllByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(any()))
                 .willReturn(List.of(session(CURRENT, "jti-current"), session(OTHER, "jti-other")));
 
@@ -191,7 +189,7 @@ class AuthSessionControlTest {
     @Test
     void logoutAllBumpaTvRevocaTodasYAclaraCookie() throws Exception {
         User user = admin();
-        stubAccessSid(CURRENT.toString());
+        stubAccessToken(CURRENT.toString());
         given(userRepository.findByEmail("admin@pepe.dev")).willReturn(Optional.of(user));
         given(authSessionRepository.findAllByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(any()))
                 .willReturn(List.of(session(CURRENT, "jti-current"), session(OTHER, "jti-other")));
