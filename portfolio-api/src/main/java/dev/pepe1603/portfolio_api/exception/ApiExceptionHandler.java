@@ -1,4 +1,4 @@
-package dev.pepe1603.portfolio_api.config;
+package dev.pepe1603.portfolio_api.exception;
 
 import dev.pepe1603.portfolio_api.exception.ContactRateLimitedException;
 import dev.pepe1603.portfolio_api.exception.LoginRateLimitedException;

@@ -4,7 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import dev.pepe1603.portfolio_api.config.ApiExceptionHandler;
+import dev.pepe1603.portfolio_api.exception.ApiExceptionHandler;
 import dev.pepe1603.portfolio_api.config.StorageProperties;
 import dev.pepe1603.portfolio_api.controller.AdminMessageController;
 import dev.pepe1603.portfolio_api.entity.Message;
