@@ -10,11 +10,17 @@
 ## Autenticación
 
 - **Access token**: `Authorization: Bearer <jwt>` (vida por defecto 15 min / `APP_JWT_ACCESS_TTL`).
-  Claims: `sub` (email), `role`, `jti`, `typ=access`, `iat`, `exp`. Algoritmo HS512.
+  Claims: `sub` (email), `role`, `jti`, `typ=access`, `tv` (versión del token), `sid` (sesión),
+  `iat`, `exp`. Algoritmo HS512.
 - **Refresh token**: cookie **httpOnly** `refresh_token`, `Path=/auth`, `SameSite=Lax`,
   `Secure` si `APP_JWT_REFRESH_COOKIE_SECURE=true`, vida 7 días (`APP_JWT_REFRESH_TTL`). Rotación:
   cada refresh revoca el refresh anterior (denylist Redis `jwt:revoked:{jti}` + TTL restante).
-- **Logout**: revoca refresh (cookie) y access (Bearer) en la denylist. Respuesta `204`.
+- **Logout**: revoca refresh (cookie) y access (Bearer) en la denylist. Siempre `204` (revocación best-effort).
+- **Sesiones activas**: cada login crea una fila en `auth_sessions` (`session_id` = claim `sid`).
+  `GET /auth/sessions` lista las activas del usuario y revoca (`revoked_at`) + mete en la denylist
+  las caducadas/revocadas por adelantado. `token_version` (`tv`) permite invalidar todos los tokens
+  de golpe: se valida al rotar (`/auth/refresh`), por lo que un access token puede vivir hasta
+  `APP_JWT_ACCESS_TTL` minutos tras una revocación global.
 - Las operaciones `/admin/**` requieren `ROLE_ADMIN` (claim `role=ADMIN`). El resto de
   operaciones autenticadas aceptan cualquier rol autenticado.
 - `Authorization` con token inválido/revocado/caducado → `401` (el filtro ignora el header y
@@ -97,18 +103,59 @@ IP afecta a cualquier email desde esa IP). `server.forward-headers-strategy: fra
 Público. Body: `{ "email": "...", "password": "..." }` (ambos obligatorios).
 - `200` → `{ "accessToken": "<jwt>", "tokenType": "Bearer", "expiresIn": 900 }`
   (Segundos) + `Set-Cookie: refresh_token=...; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=604800`.
+- `202` → `{ "challengeId": "<uuid>" }` cuando el OTP está activo para el usuario
+  (feature flag `APP_AUTH_OTP_ENABLED=true` **y** `users.otp_enabled`): no se emiten tokens
+  todavía, hay que llamar a `/auth/login/verify`.
 - `400` validación (con `errors[]`). `401` credenciales inválidas. `429` rate limit + `Retry-After`.
+
+### POST `/auth/login/verify`
+Público. Body: `{ "challengeId": "...", "code": "123456" }`.
+- `200` → tokens + cookie, y aquí se registra la sesión y se actualiza `last_login_at`.
+- `400` validación. `401` challenge caducado (5 min por defecto), código incorrecto o
+  intentos agotados (5 por defecto, `APP_AUTH_OTP_MAX_ATTEMPTS`).
 
 ### POST `/auth/refresh`
 Público. Usa la cookie `refresh_token`. Sin body.
 - `200` → mismo cuerpo que login y nueva cookie (rotación).
-- `401` si falta la cookie / token inválido-caducado-revocado / usuario inexistente.
+- `401` si falta la cookie / token inválido-caducado-revocado / usuario inexistente /
+  sesión revocada / `tv` desactualizado.
 
 ### POST `/auth/logout`
-Público. Revoca access (Bearer) y refresh (cookie). Siempre `204` (revocación best-effort).
+Público. Revoca access (Bearer) y refresh (cookie) y marca la sesión como revocada.
+Siempre `204` (revocación best-effort).
 
 ### GET `/auth/me`
 Requiere access token. `200` → `{ "email": "...", "role": "ADMIN" }`.
+
+### GET `/auth/sessions`
+Requiere access token. `200` → array de sesiones activas del usuario, de la más reciente a la más antigua:
+`[{ "id": "<uuid>", "createdAt": "...", "lastSeenAt": "...", "expiresAt": "...",
+"ipAddress": "...", "userAgent": "...", "current": true }]`. De paso purga las filas
+caducadas o ya revocadas.
+
+### POST `/auth/sessions/{id}/revoke`
+Requiere access token. Marca esa sesión como revocada y mete su `refresh_jti` en la denylist.
+`204` siempre (idempotente, también si no existe); `400` si el id no es un UUID.
+
+### POST `/auth/sessions/revoke-others`
+Requiere access token. Revoca todas las sesiones salvo la actual (claim `sid` del access token). `204`.
+
+### POST `/auth/logout-all`
+Requiere access token. Revoca **todas** las sesiones, sube `users.token_version` (invalida los
+tokens ya emitidos) y limpia la cookie de refresh. `204`. Auditoría: `REVOKE` / `SESSION`.
+
+### POST `/auth/reset/request`
+Público. Body: `{ "email": "..." }`.
+- `202` siempre (exista o no la cuenta, para no filtrar qué emails están dados de alta).
+  Si existe, se genera un token de un solo uso (Redis `pwreset:{token}`, 30 min) y se envía el
+  correo con el enlace `{APP_FRONT_RESET_URL}?token=...`.
+- `400` email ausente o inválido. `429` rate limit por IP (`APP_RESET_RATE_MAX_IP` / `APP_RESET_RATE_WINDOW`).
+
+### POST `/auth/reset/confirm`
+Público. Body: `{ "email": "...", "token": "...", "password": "..." }` (mínimo 8 caracteres).
+- `204` → contraseña actualizada, `token_version` subido y sesiones revocadas.
+- `400` validación. `401` token caducado, ya usado o de otro email.
+  Auditoría: `RESET` / `USER`.
 
 ---
 
@@ -227,6 +274,25 @@ ambos** (si Spring recibe el mismo parámetro duplicado los une con coma → `40
 - `400`: fichero vacío ("Se requiere un fichero no vacío"), `use` inválido, parte `file` ausente o
   request no multipart ("Petición no codificada como multipart/form-data").
 - No muta entidades ni hace evicts; sin borrado de orfanatos por ahora.
+
+### OTP (`PATCH /admin/otp`)
+- Body `{ "enabled": true | false }` → `204`. Activa/desactiva el segundo factor por email del
+  propio admin (columna `users.otp_enabled`). Solo surte efecto con el feature flag global
+  `APP_AUTH_OTP_ENABLED=true`; con el flag apagado el login sigue siendo de un solo paso.
+  `400` si falta `enabled`. Auditoría: `UPDATE` / `USER` con detalle `otp-enabled:<valor>`.
+
+## Hardening por entorno (Sesión 5)
+
+Al arrancar, la API revisa la configuración y escribe `WARN` en el log (`StartupSecurityWarnings`):
+
+- `APP_JWT_SECRET` y `APP_JWT_REFRESH_SECRET` **deben ser distintos** y aleatorios por entorno
+  (`openssl rand -base64 64`); avisa si coinciden o si parecen de desarrollo.
+- `APP_JWT_REFRESH_COOKIE_SECURE=true` en producción: la cookie de refresh solo viaja por HTTPS.
+- Si `APP_AUTH_OTP_ENABLED=true`, hace falta `APP_CONTACT_FROM_EMAIL` (remitente verificado)
+  para poder entregar los códigos.
+
+Variables de la sesión: `APP_FRONT_RESET_URL`, `APP_RESET_RATE_MAX_IP`, `APP_RESET_RATE_WINDOW`,
+`APP_AUTH_OTP_ENABLED`, `APP_AUTH_OTP_TTL`, `APP_AUTH_OTP_MAX_ATTEMPTS` (ver `.env.example`).
 
 ## Comprobación rápida
 

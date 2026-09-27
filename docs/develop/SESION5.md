@@ -40,13 +40,54 @@
 
 | Pieza | Tarea | Estado |
 |---|---|---|
-| P5-0 | Este documento (backlog + decisiones) | ⬜ |
-| P5-1 | **P1 Security stamp**: V4 (users.token_version) + `User.tokenVersion` + claim `tv` en access/refresh + validación en `/auth/refresh` + tests | ⬜ |
-| P5-2 | **P2 Registro de sesiones**: V5 `auth_sessions` + entidad/repo + claim `sid` + registro en login/refresh + `last_seen_at` + purga + tests | ⬜ |
-| P5-3 | **P3 Control de sesiones**: `GET /auth/sessions`, `POST /auth/sessions/{id}/revoke`, `/revoke-others`, `/auth/logout-all` + auditoría REVOKE + tests | ⬜ |
-| P5-4 | **P4 Password reset**: `POST /auth/reset/request` + `/confirm` (token Redis single-use, `tv` bump, plantilla `mail/reset.html` es/en, rate limit) + tests | ⬜ |
-| P5-5 | **P5 OTP email login**: login 2 pasos (`/auth/login` 202 + `/auth/login/verify`), plantilla `mail/otp.html` es/en, `PATCH /admin/otp`, properties + tests | ⬜ |
-| P5-6 | **P6 Hardening + docs**: warnings de arranque, `API.md`, `.env.example`, acta de cierre | ⬜ |
+| P5-0 | Este documento (backlog + decisiones) | ✅ `18f22c3` |
+| P5-1 | **P1 Security stamp**: V4 (users.token_version) + `User.tokenVersion` + claim `tv` en access/refresh + validación en `/auth/refresh` + tests | ✅ `06a4bac` |
+| P5-2 | **P2 Registro de sesiones**: V5 `auth_sessions` + entidad/repo + claim `sid` + registro en login/refresh + `last_seen_at` + purga + tests | ✅ `90abdc3` |
+| P5-3 | **P3 Control de sesiones**: `GET /auth/sessions`, `POST /auth/sessions/{id}/revoke`, `/revoke-others`, `/auth/logout-all` + auditoría REVOKE + tests | ✅ `443d91f` |
+| P5-4 | **P4 Password reset**: `POST /auth/reset/request` + `/confirm` (token Redis single-use, `tv` bump, plantilla `mail/reset.html` es/en, rate limit) + tests | ✅ `2a5caa0` |
+| P5-5 | **P5 OTP email login**: login 2 pasos (`/auth/login` 202 + `/auth/login/verify`), plantilla `mail/otp.html` es/en, `PATCH /admin/otp`, properties + tests | ✅ `7c72652` |
+| P5-6 | **P6 Hardening + docs**: warnings de arranque, `API.md`, `.env.example`, acta de cierre | ✅ (este commit) |
+
+## Acta de cierre
+
+**Resultado**: 6 piezas, 6 commits, suite en **173 tests / 0 fallos**. La autenticación pasa de
+"tokens sin identidad de sesión" a "sesiones registradas y revocables de forma selectiva o global".
+
+**Migraciones**: `V4__users_token_version.sql` (`token_version`), `V5__auth_sessions.sql`
+(`auth_sessions` con `refresh_jti`, `expires_at`, `revoked_at`, ip y user-agent) y
+`V6__users_otp_enabled.sql` (`otp_enabled`). `audit_log` no necesitó migración: sus columnas son
+varchar sin CHECK, así que `REVOKE`/`RESET` y `SESSION`/`USER` son valores Java nuevos
+(`AuditAction`, `AuditResource`).
+
+**Endpoints nuevos**: `GET /auth/sessions`, `POST /auth/sessions/{id}/revoke`,
+`POST /auth/sessions/revoke-others`, `POST /auth/logout-all`, `POST /auth/reset/request`,
+`POST /auth/reset/confirm`, `POST /auth/login/verify`, `PATCH /admin/otp`. Público en
+`SecurityConfig`: `/auth/login/verify`, `/auth/reset/request` y `/auth/reset/confirm`.
+
+**Redes**: claves nuevas `pwreset:{token}` (30 min, single-use), `rl:reset:ip:*`,
+`auth:otp:{challengeId}` + `auth:otp:{challengeId}:attempts` (5 min, máx 5 intentos); el código
+OTP nunca se guarda en claro (SHA-256) ni viaja en la respuesta (solo el `challengeId`).
+
+**Correcciones de diseño sobre lo planificado**:
+- Los endpoints de sesiones resuelven el usuario por el `sub` del access token
+  (`AccessTokenReader`) en lugar del argumento `Authentication`: en `@WebMvcTest` con la cadena de
+  filtros desactivada `request.getUserPrincipal()` es `null`, así que el resolver no llega a
+  inyectarlo y los endpoints no eran testeables. En producción el comportamiento es el mismo.
+- La purga de `auth_sessions` va en `GET /auth/sessions` (oportunísticamente), no en un scheduler.
+- El access token no se revalida contra `token_version` en cada request (rompería la
+  statelessness): tras un `logout-all` o un reset sobrevive como máximo `APP_JWT_ACCESS_TTL`
+  minutos. Documentado en `API.md`.
+- `logout` (el simple) también marca la sesión como revocada en tabla, no solo mete los `jti` en
+  la denylist.
+
+**Pendiente para el front** (fuera de este backend): pantalla de reset que consuma
+`?token=`, pantalla de introducción del código OTP tras el `202` del login, y panel de sesiones
+activas que consuma `GET /auth/sessions` + los `revoke`.
+
+**Pendiente de despliegue**: `APP_FRONT_RESET_URL` por entorno, `APP_AUTH_OTP_ENABLED=false`
+hasta que exista la pantalla OTP, secretos JWT distintos por entorno y
+`APP_JWT_REFRESH_COOKIE_SECURE=true` en producción (los avisos de `StartupSecurityWarnings`
+salen en el log de arranque si no se cumple).
 
 ## Conexiones entre piezas
 
