@@ -25,6 +25,10 @@ public class MailTemplateRenderer {
         return renderContactHtml(variables, ADMIN_LOCALE);
     }
 
+    public String renderAckHtml(Map<String, Object> variables, Locale locale) {
+        return render("mail/ack", variables, locale);
+    }
+
     private String render(String template, Map<String, Object> variables, Locale locale) {
         Context context = new Context(locale);
         context.setVariables(variables);

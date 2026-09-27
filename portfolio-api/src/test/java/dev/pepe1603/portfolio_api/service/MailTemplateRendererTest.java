@@ -94,4 +94,41 @@ class MailTemplateRendererTest {
                 .contains("Ana García")
                 .doesNotContain("Nuevo mensaje de contacto");
     }
+
+    @Test
+    void ackHtmlContieneLosCamposEnEspanol() {
+        String html = renderer.renderAckHtml(variables(), Locale.forLanguageTag("es"));
+
+        assertThat(html)
+                .contains("Hemos recibido tu mensaje")
+                .contains("Hola,")
+                .contains("Ana García")
+                .contains("Consulta sobre un proyecto")
+                .doesNotContain("We've received your message");
+    }
+
+    @Test
+    void ackHtmlRenderizaEnInglesConLocaleEn() {
+        String html = renderer.renderAckHtml(variables(), Locale.forLanguageTag("en"));
+
+        assertThat(html)
+                .contains("received your message")
+                .contains("Hi,")
+                .contains("Ana García")
+                .doesNotContain("Hemos recibido tu mensaje");
+    }
+
+    @Test
+    void ackHtmlEscapaContenidoDeUsuario() {
+        Map<String, Object> vars = variables();
+        vars.put("name", "<b>Pepe</b>");
+        vars.put("subject", "<script>alert('spam')</script>");
+
+        String html = renderer.renderAckHtml(vars, Locale.forLanguageTag("es"));
+
+        assertThat(html)
+                .contains("&lt;b&gt;Pepe&lt;/b&gt;")
+                .contains("&lt;script&gt;")
+                .doesNotContain("<script>");
+    }
 }
