@@ -14,4 +14,6 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     List<Message> findByStatus(MessageStatus status, Sort sort);
 
     Page<Message> findByStatus(MessageStatus status, Pageable pageable);
+
+    long countByStatus(MessageStatus status);
 }

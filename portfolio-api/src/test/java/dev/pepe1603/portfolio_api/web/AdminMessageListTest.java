@@ -156,4 +156,13 @@ class AdminMessageListTest {
                         jsonPath("$.status").value(400),
                         jsonPath("$.instance").value("/admin/messages"));
     }
+
+    @Test
+    void unreadCountDevuelveElContador() throws Exception {
+        given(messageService.unreadCount()).willReturn(4L);
+
+        mockMvc.perform(get("/admin/messages/unread-count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.count").value(4));
+    }
 }

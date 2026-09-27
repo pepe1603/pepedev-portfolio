@@ -1,9 +1,12 @@
 package dev.pepe1603.portfolio_api.controller;
 
+import dev.pepe1603.portfolio_api.dto.admin.MessageCountResponse;
 import dev.pepe1603.portfolio_api.dto.admin.PageResponse;
 import dev.pepe1603.portfolio_api.entity.Message;
 import dev.pepe1603.portfolio_api.enums.MessageStatus;
 import dev.pepe1603.portfolio_api.service.AdminMessageService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -50,6 +53,14 @@ public class AdminMessageController {
         Pageable pageable = PageRequest.of(page, size, INBOX_SORT);
         Page<Message> result = messageService.list(status, pageable);
         return PageResponse.of(result);
+    }
+
+    @GetMapping("/unread-count")
+    @Operation(summary = "Mensajes no leídos", description = "Contador de mensajes con status NEW (para el badge del panel).")
+    @ApiResponse(responseCode = "200", description = "{ \"count\": N }")
+    @ApiResponse(responseCode = "401", description = "No autenticado")
+    public MessageCountResponse unreadCount() {
+        return new MessageCountResponse(messageService.unreadCount());
     }
 
     @GetMapping("/{id}")

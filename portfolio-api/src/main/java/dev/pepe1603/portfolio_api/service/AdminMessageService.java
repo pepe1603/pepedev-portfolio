@@ -37,6 +37,11 @@ public class AdminMessageService {
         return findOrThrow(id);
     }
 
+    @Transactional(readOnly = true)
+    public long unreadCount() {
+        return messageRepository.countByStatus(MessageStatus.NEW);
+    }
+
     @Transactional
     public Message markRead(UUID id) {
         Message message = findOrThrow(id);
