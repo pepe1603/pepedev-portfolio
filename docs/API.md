@@ -139,6 +139,11 @@ Orden: validación → **honeypot** (`website` relleno = `201` falso idéntico, 
 limit por IP → persistir `Message` (IP anonimizada) → notificación por email **best-effort async**
 (si falla SMTP, sigue `201`; la BD manda).
 - `201` éxito. `400` validación / body inválido. `429` + `Retry-After`.
+- La notificación es `multipart/alternative` (texto plano + HTML) renderizada con plantillas
+  **Thymeleaf** (`templates/mail/contact.html`, estilo inline y tablas ~600px). El HTML se
+  escapa con `th:text` (nunca `th:utext` con datos de usuario). `replyTo` al remitente y
+  asunto `[Contacto] …`. Si `APP_CONTACT_FROM_EMAIL` o `APP_CONTACT_DEST_EMAIL` están vacíos
+  no se envía correo.
 
 ---
 
