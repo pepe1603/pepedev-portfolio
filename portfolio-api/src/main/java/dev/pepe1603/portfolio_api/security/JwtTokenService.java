@@ -27,10 +27,10 @@ public class JwtTokenService {
         this.refreshKey = parseKey(properties.getRefreshSecret(), "APP_JWT_REFRESH_SECRET");
     }
 
-    public TokenPair issueTokenPair(User user) {
+    public TokenPair issueTokenPair(User user, String sid, String refreshJti) {
         Date now = new Date();
-        String access = buildToken(user, accessKey, "access", now, properties.accessTtl());
-        String refresh = buildToken(user, refreshKey, "refresh", now, properties.refreshTtl());
+        String access = buildToken(user, accessKey, "access", now, properties.accessTtl(), sid, null);
+        String refresh = buildToken(user, refreshKey, "refresh", now, properties.refreshTtl(), sid, refreshJti);
         return new TokenPair(access, refresh);
     }
 
@@ -42,15 +42,19 @@ public class JwtTokenService {
         return parse(token, refreshKey, "refresh");
     }
 
-    private String buildToken(User user, SecretKey key, String type, Date issuedAt,
-            java.time.Duration ttl) {
+    private String buildToken(User user, SecretKey key, String type, Date issuedAt, java.time.Duration ttl,
+            String sid, String jti) {
         Date expiration = new Date(issuedAt.getTime() + ttl.toMillis());
-        return Jwts.builder()
-                .id(UUID.randomUUID().toString())
+        io.jsonwebtoken.JwtBuilder builder = Jwts.builder()
+                .id(jti != null ? jti : UUID.randomUUID().toString())
                 .subject(user.getEmail())
                 .claim("role", user.getRole().name())
                 .claim("tv", user.getTokenVersion())
-                .claim("typ", type)
+                .claim("typ", type);
+        if (sid != null) {
+            builder.claim("sid", sid);
+        }
+        return builder
                 .issuedAt(issuedAt)
                 .expiration(expiration)
                 .signWith(key)

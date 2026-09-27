@@ -50,18 +50,21 @@ class JwtTokenServiceTest {
 
     @Test
     void emiteParAccessRefreshConClaimsCorrectos() {
-        JwtTokenService.TokenPair pair = service.issueTokenPair(adminUser());
+        JwtTokenService.TokenPair pair = service.issueTokenPair(adminUser(), "sess-1", "refresh-jti-1");
 
         Claims access = service.parseAccessToken(pair.accessToken());
         assertThat(access.getSubject()).isEqualTo("admin@pepe.dev");
         assertThat(access.get("role", String.class)).isEqualTo("ADMIN");
         assertThat(access.get("typ", String.class)).isEqualTo("access");
+        assertThat(access.get("sid", String.class)).isEqualTo("sess-1");
         assertThat(access.getId()).isNotBlank();
         assertThat(access.getExpiration().getTime() - access.getIssuedAt().getTime()).isEqualTo(900_000L);
 
         Claims refresh = service.parseRefreshToken(pair.refreshToken());
         assertThat(refresh.getSubject()).isEqualTo("admin@pepe.dev");
         assertThat(refresh.get("typ", String.class)).isEqualTo("refresh");
+        assertThat(refresh.get("sid", String.class)).isEqualTo("sess-1");
+        assertThat(refresh.getId()).isEqualTo("refresh-jti-1");
         assertThat(refresh.getExpiration().getTime() - refresh.getIssuedAt().getTime()).isEqualTo(604_800_000L);
     }
 
@@ -70,19 +73,19 @@ class JwtTokenServiceTest {
         User user = adminUser();
         user.setTokenVersion(3);
 
-        JwtTokenService.TokenPair pair = service.issueTokenPair(user);
+        JwtTokenService.TokenPair pair = service.issueTokenPair(user, "sess-1", "refresh-jti-1");
 
         assertThat(service.parseAccessToken(pair.accessToken()).get("tv", Integer.class)).isEqualTo(3);
         assertThat(service.parseRefreshToken(pair.refreshToken()).get("tv", Integer.class)).isEqualTo(3);
 
         user.setTokenVersion(4);
-        JwtTokenService.TokenPair pair2 = service.issueTokenPair(user);
+        JwtTokenService.TokenPair pair2 = service.issueTokenPair(user, "sess-1", "refresh-jti-2");
         assertThat(service.parseAccessToken(pair2.accessToken()).get("tv", Integer.class)).isEqualTo(4);
     }
 
     @Test
     void accessNoPasaComoRefreshNiViceversa() {
-        JwtTokenService.TokenPair pair = service.issueTokenPair(adminUser());
+        JwtTokenService.TokenPair pair = service.issueTokenPair(adminUser(), "sess-1", "refresh-jti-1");
 
         assertThatThrownBy(() -> service.parseRefreshToken(pair.accessToken()))
                 .isInstanceOf(JwtException.class);
@@ -93,7 +96,7 @@ class JwtTokenServiceTest {
     @Test
     void tokenFirmadoConOtraClaveEsRechazado() {
         JwtTokenService other = new JwtTokenService(buildProperties(900L));
-        JwtTokenService.TokenPair pair = other.issueTokenPair(adminUser());
+        JwtTokenService.TokenPair pair = other.issueTokenPair(adminUser(), "sess-1", "refresh-jti-1");
 
         assertThatThrownBy(() -> service.parseAccessToken(pair.accessToken()))
                 .isInstanceOf(JwtException.class);
@@ -103,7 +106,7 @@ class JwtTokenServiceTest {
 
     @Test
     void tokenManipuladoSeRechazaPorFirma() {
-        JwtTokenService.TokenPair pair = service.issueTokenPair(adminUser());
+        JwtTokenService.TokenPair pair = service.issueTokenPair(adminUser(), "sess-1", "refresh-jti-1");
         String[] parts = pair.accessToken().split("\\.");
         char flipped = parts[2].charAt(0) == 'A' ? 'B' : 'A';
         String tampered = parts[0] + "." + parts[1] + "." + flipped + parts[2].substring(1);
@@ -116,7 +119,7 @@ class JwtTokenServiceTest {
     @Test
     void tokenCaducadoSeRechaza() {
         JwtTokenService expired = new JwtTokenService(buildProperties(-1L));
-        JwtTokenService.TokenPair pair = expired.issueTokenPair(adminUser());
+        JwtTokenService.TokenPair pair = expired.issueTokenPair(adminUser(), "sess-1", "refresh-jti-1");
 
         assertThatThrownBy(() -> expired.parseAccessToken(pair.accessToken()))
                 .isInstanceOf(ExpiredJwtException.class)

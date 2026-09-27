@@ -29,6 +29,7 @@ import dev.pepe1603.portfolio_api.security.JwtTokenService;
 import dev.pepe1603.portfolio_api.security.LoginRateLimiter;
 import dev.pepe1603.portfolio_api.security.RateLimitProperties;
 import dev.pepe1603.portfolio_api.security.TokenBlacklist;
+import dev.pepe1603.portfolio_api.repository.AuthSessionRepository;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,8 @@ class ApiErrorContractTest {
     private AuthenticationManager authenticationManager;
     @MockitoBean
     private UserRepository userRepository;
+    @MockitoBean
+    private AuthSessionRepository authSessionRepository;
     @MockitoBean
     private JwtTokenService jwtTokenService;
     @MockitoBean

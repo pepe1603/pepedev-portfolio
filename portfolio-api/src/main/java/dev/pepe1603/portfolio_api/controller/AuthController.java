@@ -4,7 +4,9 @@ import dev.pepe1603.portfolio_api.dto.auth.LoginRequest;
 import dev.pepe1603.portfolio_api.dto.auth.MeResponse;
 import dev.pepe1603.portfolio_api.dto.auth.TokenResponse;
 import dev.pepe1603.portfolio_api.dto.common.ApiProblemDetail;
+import dev.pepe1603.portfolio_api.entity.AuthSession;
 import dev.pepe1603.portfolio_api.entity.User;
+import dev.pepe1603.portfolio_api.repository.AuthSessionRepository;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.AppUserDetails;
 import dev.pepe1603.portfolio_api.security.JwtProperties;
@@ -26,6 +28,7 @@ import jakarta.validation.Valid;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.UUID;
 import java.util.function.Function;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -50,6 +53,7 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
+    private final AuthSessionRepository authSessionRepository;
     private final JwtTokenService jwtTokenService;
     private final JwtProperties jwtProperties;
     private final RateLimitProperties rateLimitProperties;
@@ -57,10 +61,11 @@ public class AuthController {
     private final TokenBlacklist tokenBlacklist;
 
     public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository,
-            JwtTokenService jwtTokenService, JwtProperties jwtProperties, RateLimitProperties rateLimitProperties,
-            LoginRateLimiter loginRateLimiter, TokenBlacklist tokenBlacklist) {
+            AuthSessionRepository authSessionRepository, JwtTokenService jwtTokenService, JwtProperties jwtProperties,
+            RateLimitProperties rateLimitProperties, LoginRateLimiter loginRateLimiter, TokenBlacklist tokenBlacklist) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
+        this.authSessionRepository = authSessionRepository;
         this.jwtTokenService = jwtTokenService;
         this.jwtProperties = jwtProperties;
         this.rateLimitProperties = rateLimitProperties;
@@ -91,10 +96,25 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.email(), request.password()));
             AppUserDetails details = (AppUserDetails) authentication.getPrincipal();
             User user = details.getUser();
-            user.setLastLoginAt(Instant.now());
+            Instant loginAt = Instant.now();
+            user.setLastLoginAt(loginAt);
             userRepository.save(user);
 
-            JwtTokenService.TokenPair tokens = jwtTokenService.issueTokenPair(user);
+            String refreshJti = UUID.randomUUID().toString();
+            UUID sessionId = UUID.randomUUID();
+            AuthSession session = new AuthSession();
+            session.setSessionId(sessionId);
+            session.setUserId(user.getId());
+            session.setRefreshJti(refreshJti);
+            session.setCreatedAt(loginAt);
+            session.setLastSeenAt(loginAt);
+            session.setExpiresAt(loginAt.plus(jwtProperties.refreshTtl()));
+            session.setIpAddress(ip);
+            session.setUserAgent(truncate(servletRequest.getHeader(HttpHeaders.USER_AGENT), 255));
+            authSessionRepository.save(session);
+
+            JwtTokenService.TokenPair tokens = jwtTokenService.issueTokenPair(user, sessionId.toString(),
+                    refreshJti);
             setRefreshCookie(response, tokens.refreshToken(), jwtProperties.refreshTtl());
             loginRateLimiter.onSuccess(ip, request.email());
             return ResponseEntity.ok(new TokenResponse(tokens.accessToken(), "Bearer",
@@ -126,8 +146,15 @@ public class AuthController {
         if (tokenVersion == null || !tokenVersion.equals(user.getTokenVersion())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesión revocada");
         }
-        JwtTokenService.TokenPair tokens = jwtTokenService.issueTokenPair(user);
+        AuthSession session = findActiveSession(claims);
+        String refreshJti = UUID.randomUUID().toString();
+        JwtTokenService.TokenPair tokens = jwtTokenService.issueTokenPair(user, session.getSessionId().toString(),
+                refreshJti);
         revokeToken(claims);
+        session.setLastSeenAt(Instant.now());
+        session.setExpiresAt(Instant.now().plus(jwtProperties.refreshTtl()));
+        session.setRefreshJti(refreshJti);
+        authSessionRepository.save(session);
         setRefreshCookie(response, tokens.refreshToken(), jwtProperties.refreshTtl());
         return ResponseEntity.ok(new TokenResponse(tokens.accessToken(), "Bearer",
                 jwtProperties.accessTtl().toSeconds()));
@@ -204,5 +231,30 @@ public class AuthController {
         if (remainingMillis > 0) {
             tokenBlacklist.revoke(claims.getId(), Duration.ofMillis(remainingMillis));
         }
+    }
+
+    private AuthSession findActiveSession(Claims claims) {
+        String sid = claims.get("sid", String.class);
+        if (sid == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesión revocada");
+        }
+        AuthSession session;
+        try {
+            session = authSessionRepository.findBySessionId(UUID.fromString(sid))
+                    .orElse(null);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesión revocada");
+        }
+        if (session == null || session.getRevokedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesión revocada");
+        }
+        return session;
+    }
+
+    private String truncate(String value, int max) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() <= max ? value : value.substring(0, max);
     }
 }
