@@ -1,7 +1,10 @@
 package dev.pepe1603.portfolio_api.controller;
 
 import dev.pepe1603.portfolio_api.dto.common.ApiProblemDetail;
+import dev.pepe1603.portfolio_api.enums.AuditAction;
+import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.enums.StorageUse;
+import dev.pepe1603.portfolio_api.service.AuditService;
 import dev.pepe1603.portfolio_api.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -26,9 +29,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminStorageController {
 
     private final StorageService storageService;
+    private final AuditService auditService;
 
-    public AdminStorageController(StorageService storageService) {
+    public AdminStorageController(StorageService storageService, AuditService auditService) {
         this.storageService = storageService;
+        this.auditService = auditService;
     }
 
     @PostMapping
@@ -49,6 +54,7 @@ public class AdminStorageController {
     public Map<String, String> upload(@RequestParam String use, @RequestPart MultipartFile file) {
         StorageUse resolved = resolveUse(use);
         String url = storageService.store(resolved, file);
+        auditService.record(AuditAction.UPLOAD, AuditResource.STORAGE, null, url);
         return Map.of("url", url);
     }
 

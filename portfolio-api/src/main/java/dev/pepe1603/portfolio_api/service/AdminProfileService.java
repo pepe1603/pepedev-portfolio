@@ -2,6 +2,8 @@ package dev.pepe1603.portfolio_api.service;
 
 import dev.pepe1603.portfolio_api.dto.admin.ProfileRequest;
 import dev.pepe1603.portfolio_api.entity.Profile;
+import dev.pepe1603.portfolio_api.enums.AuditAction;
+import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.repository.ProfileRepository;
 import java.util.ArrayList;
 import org.springframework.http.HttpStatus;
@@ -15,12 +17,14 @@ public class AdminProfileService {
     private final ProfileRepository profileRepository;
     private final PublicCacheService cacheService;
     private final OrphanFileCleaner orphanFileCleaner;
+    private final AuditService auditService;
 
     public AdminProfileService(ProfileRepository profileRepository, PublicCacheService cacheService,
-                               OrphanFileCleaner orphanFileCleaner) {
+                               OrphanFileCleaner orphanFileCleaner, AuditService auditService) {
         this.profileRepository = profileRepository;
         this.cacheService = cacheService;
         this.orphanFileCleaner = orphanFileCleaner;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -41,6 +45,7 @@ public class AdminProfileService {
         orphanFileCleaner.cleanupIfUnreferenced(oldAvatarUrl);
         orphanFileCleaner.cleanupIfUnreferenced(oldCvUrlEs);
         orphanFileCleaner.cleanupIfUnreferenced(oldCvUrlEn);
+        auditService.record(AuditAction.UPDATE, AuditResource.PROFILE, null, "perfil actualizado");
         return saved;
     }
 

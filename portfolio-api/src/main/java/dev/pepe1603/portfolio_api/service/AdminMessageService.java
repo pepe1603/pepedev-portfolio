@@ -1,6 +1,8 @@
 package dev.pepe1603.portfolio_api.service;
 
 import dev.pepe1603.portfolio_api.entity.Message;
+import dev.pepe1603.portfolio_api.enums.AuditAction;
+import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.enums.MessageStatus;
 import dev.pepe1603.portfolio_api.repository.MessageRepository;
 import java.util.UUID;
@@ -15,9 +17,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminMessageService {
 
     private final MessageRepository messageRepository;
+    private final AuditService auditService;
 
-    public AdminMessageService(MessageRepository messageRepository) {
+    public AdminMessageService(MessageRepository messageRepository, AuditService auditService) {
         this.messageRepository = messageRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -37,20 +41,27 @@ public class AdminMessageService {
     public Message markRead(UUID id) {
         Message message = findOrThrow(id);
         message.setStatus(MessageStatus.READ);
-        return messageRepository.save(message);
+        Message saved = messageRepository.save(message);
+        auditService.record(AuditAction.READ, AuditResource.MESSAGE, saved.getId(),
+                "de " + saved.getEmail());
+        return saved;
     }
 
     @Transactional
     public Message markArchived(UUID id) {
         Message message = findOrThrow(id);
         message.setStatus(MessageStatus.ARCHIVED);
-        return messageRepository.save(message);
+        Message saved = messageRepository.save(message);
+        auditService.record(AuditAction.ARCHIVE, AuditResource.MESSAGE, saved.getId(),
+                "de " + saved.getEmail());
+        return saved;
     }
 
     @Transactional
     public void delete(UUID id) {
         Message message = findOrThrow(id);
         messageRepository.delete(message);
+        auditService.record(AuditAction.DELETE, AuditResource.MESSAGE, id, "de " + message.getEmail());
     }
 
     private Message findOrThrow(UUID id) {

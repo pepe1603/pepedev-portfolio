@@ -6,6 +6,8 @@ import static org.mockito.Mockito.verify;
 
 import dev.pepe1603.portfolio_api.entity.GalleryImage;
 import dev.pepe1603.portfolio_api.entity.Project;
+import dev.pepe1603.portfolio_api.enums.AuditAction;
+import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.enums.ProjectStatus;
 import dev.pepe1603.portfolio_api.repository.ProjectRepository;
 import java.util.List;
@@ -18,8 +20,9 @@ class AdminProjectServiceTest {
     private final ProjectRepository projectRepository = mock(ProjectRepository.class);
     private final PublicCacheService cacheService = mock(PublicCacheService.class);
     private final OrphanFileCleaner orphanFileCleaner = mock(OrphanFileCleaner.class);
+    private final AuditService auditService = mock(AuditService.class);
     private final AdminProjectService service =
-            new AdminProjectService(projectRepository, cacheService, orphanFileCleaner);
+            new AdminProjectService(projectRepository, cacheService, orphanFileCleaner, auditService);
 
     @Test
     void deleteLimpiaLaMiniaturaYLasImagenesDeLaGaleria() {
@@ -40,5 +43,6 @@ class AdminProjectServiceTest {
         verify(orphanFileCleaner).cleanupIfUnreferenced("/files/123e4567-e89b-12d3-a456-426614174001.png");
         verify(cacheService).evictProjectsList();
         verify(cacheService).evictProject("mi-proyecto");
+        verify(auditService).record(AuditAction.DELETE, AuditResource.PROJECT, id, "slug=mi-proyecto");
     }
 }

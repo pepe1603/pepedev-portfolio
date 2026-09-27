@@ -1,6 +1,8 @@
 package dev.pepe1603.portfolio_api.service;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -8,6 +10,8 @@ import static org.mockito.Mockito.verify;
 
 import dev.pepe1603.portfolio_api.dto.admin.CertificateRequest;
 import dev.pepe1603.portfolio_api.entity.Certificate;
+import dev.pepe1603.portfolio_api.enums.AuditAction;
+import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.enums.CertificateKind;
 import dev.pepe1603.portfolio_api.enums.CertificateStatus;
 import dev.pepe1603.portfolio_api.repository.CertificateRepository;
@@ -21,8 +25,9 @@ class AdminCertificateServiceTest {
     private final CertificateRepository certificateRepository = mock(CertificateRepository.class);
     private final PublicCacheService cacheService = mock(PublicCacheService.class);
     private final OrphanFileCleaner orphanFileCleaner = mock(OrphanFileCleaner.class);
+    private final AuditService auditService = mock(AuditService.class);
     private final AdminCertificateService service =
-            new AdminCertificateService(certificateRepository, cacheService, orphanFileCleaner);
+            new AdminCertificateService(certificateRepository, cacheService, orphanFileCleaner, auditService);
 
     @Test
     void deleteLimpiaLaImagenDelCertificadoEliminado() {
@@ -38,6 +43,7 @@ class AdminCertificateServiceTest {
         verify(certificateRepository).delete(certificate);
         verify(orphanFileCleaner).cleanupIfUnreferenced("/files/123e4567-e89b-12d3-a456-426614174000.png");
         verify(cacheService).evictCertificatesList();
+        verify(auditService).record(eq(AuditAction.DELETE), eq(AuditResource.CERTIFICATE), eq(id), anyString());
     }
 
     @Test
@@ -59,5 +65,6 @@ class AdminCertificateServiceTest {
 
         verify(orphanFileCleaner).cleanupIfUnreferenced("/files/123e4567-e89b-12d3-a456-426614174000.png");
         verify(cacheService, never()).evictCertificatesList();
+        verify(auditService).record(eq(AuditAction.UPDATE), eq(AuditResource.CERTIFICATE), eq(id), anyString());
     }
 }

@@ -7,6 +7,8 @@ import static org.mockito.Mockito.verify;
 
 import dev.pepe1603.portfolio_api.dto.admin.ProfileRequest;
 import dev.pepe1603.portfolio_api.entity.Profile;
+import dev.pepe1603.portfolio_api.enums.AuditAction;
+import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.repository.ProfileRepository;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +20,9 @@ class AdminProfileServiceTest {
     private final ProfileRepository profileRepository = mock(ProfileRepository.class);
     private final PublicCacheService cacheService = mock(PublicCacheService.class);
     private final OrphanFileCleaner orphanFileCleaner = mock(OrphanFileCleaner.class);
+    private final AuditService auditService = mock(AuditService.class);
     private final AdminProfileService service =
-            new AdminProfileService(profileRepository, cacheService, orphanFileCleaner);
+            new AdminProfileService(profileRepository, cacheService, orphanFileCleaner, auditService);
 
     @Test
     void updateLimpiaLosFicherosAntiguosQueDejanDeUsarse() {
@@ -44,5 +47,6 @@ class AdminProfileServiceTest {
         verify(orphanFileCleaner).cleanupIfUnreferenced("/files/123e4567-e89b-12d3-a456-426614174001.pdf");
         verify(orphanFileCleaner).cleanupIfUnreferenced("/files/123e4567-e89b-12d3-a456-426614174002.pdf");
         verify(cacheService).evictProfile();
+        verify(auditService).record(AuditAction.UPDATE, AuditResource.PROFILE, null, "perfil actualizado");
     }
 }

@@ -2,6 +2,8 @@ package dev.pepe1603.portfolio_api.service;
 
 import dev.pepe1603.portfolio_api.dto.admin.CertificateRequest;
 import dev.pepe1603.portfolio_api.entity.Certificate;
+import dev.pepe1603.portfolio_api.enums.AuditAction;
+import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.enums.CertificateStatus;
 import dev.pepe1603.portfolio_api.repository.CertificateRepository;
 import java.time.Instant;
@@ -23,12 +25,14 @@ public class AdminCertificateService {
     private final CertificateRepository certificateRepository;
     private final PublicCacheService cacheService;
     private final OrphanFileCleaner orphanFileCleaner;
+    private final AuditService auditService;
 
     public AdminCertificateService(CertificateRepository certificateRepository, PublicCacheService cacheService,
-                                   OrphanFileCleaner orphanFileCleaner) {
+                                   OrphanFileCleaner orphanFileCleaner, AuditService auditService) {
         this.certificateRepository = certificateRepository;
         this.cacheService = cacheService;
         this.orphanFileCleaner = orphanFileCleaner;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -46,7 +50,10 @@ public class AdminCertificateService {
         Certificate certificate = new Certificate();
         applyRequest(certificate, request);
         certificate.setStatus(CertificateStatus.DRAFT);
-        return certificateRepository.save(certificate);
+        Certificate saved = certificateRepository.save(certificate);
+        auditService.record(AuditAction.CREATE, AuditResource.CERTIFICATE, saved.getId(),
+                "issuer=" + saved.getIssuer());
+        return saved;
     }
 
     @Transactional
@@ -59,6 +66,8 @@ public class AdminCertificateService {
             cacheService.evictCertificatesList();
         }
         orphanFileCleaner.cleanupIfUnreferenced(oldImageUrl);
+        auditService.record(AuditAction.UPDATE, AuditResource.CERTIFICATE, saved.getId(),
+                "issuer=" + saved.getIssuer());
         return saved;
     }
 
@@ -69,6 +78,8 @@ public class AdminCertificateService {
         certificate.setPublishedAt(Instant.now());
         Certificate saved = certificateRepository.save(certificate);
         cacheService.evictCertificatesList();
+        auditService.record(AuditAction.UPDATE, AuditResource.CERTIFICATE, saved.getId(),
+                "publicado: " + saved.getTitle().getOrDefault("es", saved.getTitle().getOrDefault("en", "?")));
         return saved;
     }
 
@@ -79,6 +90,8 @@ public class AdminCertificateService {
         certificate.setPublishedAt(null);
         Certificate saved = certificateRepository.save(certificate);
         cacheService.evictCertificatesList();
+        auditService.record(AuditAction.UPDATE, AuditResource.CERTIFICATE, saved.getId(),
+                "despublicado: " + saved.getTitle().getOrDefault("es", saved.getTitle().getOrDefault("en", "?")));
         return saved;
     }
 
@@ -90,6 +103,8 @@ public class AdminCertificateService {
             certificateRepository.save(certificate);
         }
         cacheService.evictCertificatesList();
+        auditService.record(AuditAction.UPDATE, AuditResource.CERTIFICATE, null,
+                "reorden de " + ids.size() + " certificados");
         return listAll();
     }
 
@@ -101,6 +116,8 @@ public class AdminCertificateService {
         if (certificate.getStatus() == CertificateStatus.PUBLISHED) {
             cacheService.evictCertificatesList();
         }
+        auditService.record(AuditAction.DELETE, AuditResource.CERTIFICATE, id,
+                "issuer=" + certificate.getIssuer());
         orphanFileCleaner.cleanupIfUnreferenced(imageUrl);
     }
 

@@ -3,6 +3,8 @@ package dev.pepe1603.portfolio_api.service;
 import dev.pepe1603.portfolio_api.dto.admin.ProjectRequest;
 import dev.pepe1603.portfolio_api.entity.GalleryImage;
 import dev.pepe1603.portfolio_api.entity.Project;
+import dev.pepe1603.portfolio_api.enums.AuditAction;
+import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.enums.ProjectStatus;
 import dev.pepe1603.portfolio_api.repository.ProjectRepository;
 import java.time.Instant;
@@ -25,12 +27,14 @@ public class AdminProjectService {
     private final ProjectRepository projectRepository;
     private final PublicCacheService cacheService;
     private final OrphanFileCleaner orphanFileCleaner;
+    private final AuditService auditService;
 
     public AdminProjectService(ProjectRepository projectRepository, PublicCacheService cacheService,
-                               OrphanFileCleaner orphanFileCleaner) {
+                               OrphanFileCleaner orphanFileCleaner, AuditService auditService) {
         this.projectRepository = projectRepository;
         this.cacheService = cacheService;
         this.orphanFileCleaner = orphanFileCleaner;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -49,7 +53,9 @@ public class AdminProjectService {
         Project project = new Project();
         applyRequest(project, request);
         project.setStatus(ProjectStatus.DRAFT);
-        return projectRepository.save(project);
+        Project saved = projectRepository.save(project);
+        auditService.record(AuditAction.CREATE, AuditResource.PROJECT, saved.getId(), "slug=" + saved.getSlug());
+        return saved;
     }
 
     @Transactional
@@ -70,6 +76,7 @@ public class AdminProjectService {
         for (String url : replacedFileUrls) {
             orphanFileCleaner.cleanupIfUnreferenced(url);
         }
+        auditService.record(AuditAction.UPDATE, AuditResource.PROJECT, saved.getId(), "slug=" + saved.getSlug());
         return saved;
     }
 
@@ -80,6 +87,8 @@ public class AdminProjectService {
         project.setPublishedAt(Instant.now());
         Project saved = projectRepository.save(project);
         evictProjectPublic(saved);
+        auditService.record(AuditAction.UPDATE, AuditResource.PROJECT, saved.getId(),
+                "publicado: " + saved.getSlug());
         return saved;
     }
 
@@ -90,6 +99,8 @@ public class AdminProjectService {
         project.setPublishedAt(null);
         Project saved = projectRepository.save(project);
         evictProjectPublic(saved);
+        auditService.record(AuditAction.UPDATE, AuditResource.PROJECT, saved.getId(),
+                "despublicado: " + saved.getSlug());
         return saved;
     }
 
@@ -101,6 +112,8 @@ public class AdminProjectService {
             projectRepository.save(project);
         }
         cacheService.evictProjectsList();
+        auditService.record(AuditAction.UPDATE, AuditResource.PROJECT, null,
+                "reorden de " + ids.size() + " proyectos");
         return listAll();
     }
 
@@ -113,6 +126,7 @@ public class AdminProjectService {
             cacheService.evictProjectsList();
             cacheService.evictProject(project.getSlug());
         }
+        auditService.record(AuditAction.DELETE, AuditResource.PROJECT, id, "slug=" + project.getSlug());
         for (String url : fileUrls) {
             orphanFileCleaner.cleanupIfUnreferenced(url);
         }

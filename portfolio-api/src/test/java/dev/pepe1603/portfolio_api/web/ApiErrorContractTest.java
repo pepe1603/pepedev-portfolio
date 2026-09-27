@@ -20,6 +20,7 @@ import dev.pepe1603.portfolio_api.controller.AdminStorageController;
 import dev.pepe1603.portfolio_api.controller.AuthController;
 import dev.pepe1603.portfolio_api.controller.ContactController;
 import dev.pepe1603.portfolio_api.service.AdminCertificateService;
+import dev.pepe1603.portfolio_api.service.AuditService;
 import dev.pepe1603.portfolio_api.service.ContactService;
 import dev.pepe1603.portfolio_api.service.StorageService;
 import dev.pepe1603.portfolio_api.security.ContactRateLimiter;
@@ -79,6 +80,8 @@ class ApiErrorContractTest {
     private StorageService storageService;
     @MockitoBean
     private AdminCertificateService adminCertificateService;
+    @MockitoBean
+    private AuditService auditService;
 
     private static final ResultMatcher NO_LEGACY_FIELDS = result -> {
         for (String legacy : new String[] {"trace", "timestamp", "path", "type"}) {
