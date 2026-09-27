@@ -148,6 +148,13 @@ Salvo `POST /admin/storage`, las respuestas devuelven la **entidad** (sin DTO ad
 `404` con `ResponseStatusException`. Escrituras con evict de caché pública solo si tocan algo
 **publicado** (listado + detalle, con slug viejo y nuevo si se renombra).
 
+**Auditoría (Sesión 2 develop)**: toda escritura de admin (proyectos, certificados, perfil,
+mensajes, subidas de storage) queda registrada en la tabla `audit_log`
+(actor `id`/`email` desde el JWT, `action` `CREATE|UPDATE|DELETE|READ|ARCHIVE|UPLOAD`,
+`resource_type`, `resource_id`, `detail`, `created_at`). Sin actor autenticado ⇒
+`actor_email='SISTEMA'`. La limpieza automática de orfanatos no se audita (sin actor).
+La auditoría es write-only (sin endpoint de lectura) de momento.
+
 ### Projects
 - `GET /admin/projects` → lista (todo status, `sortOrder ASC → createdAt ASC`).
 - `GET /admin/projects/{id}` → detalle por UUID. `404` si no existe.
@@ -185,8 +192,10 @@ Salvo `POST /admin/storage`, las respuestas devuelven la **entidad** (sin DTO ad
   por UUID v7). `page` 0-based (default `0`), `size` 1..100 (default `20`); `page<0` o
   `size` fuera de rango → `400`; `status` inválido → `400`.
 - `GET /admin/messages/{id}` → detalle (no muta estado). `DELETE` → `204`.
+- `GET /admin/messages/unread-count` → `200 {"count": N}` (**Sesión 2 develop**):
+  contador de mensajes con status `NEW` para el badge del panel. Sin parámetros.
 - `PATCH /admin/messages/{id}/read` y `.../archive` → transiciones libres e idempotentes
-  (any→READ / any→ARCHIVED; repetir = `200` no-op). Sin `/unread`; sin evicts de caché
+  (any→READ / any→ARCHIVED; repetir = `200` no-op). Sin evicts de caché
   (messages no se sirve en público).
 
 ### Profile
