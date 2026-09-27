@@ -131,4 +131,43 @@ class MailTemplateRendererTest {
                 .contains("&lt;script&gt;")
                 .doesNotContain("<script>");
     }
+
+    private Map<String, Object> resetVariables(String url) {
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("resetUrl", url);
+        return vars;
+    }
+
+    @Test
+    void resetHtmlIncluyeElEnlaceYElTextoEnEspanol() {
+        String html = renderer.renderResetHtml(resetVariables("https://pepe.dev/reset?token=abc123"),
+                Locale.forLanguageTag("es"));
+
+        assertThat(html)
+                .contains("https://pepe.dev/reset?token=abc123")
+                .contains("Restablece tu contraseña")
+                .contains("caduca en 30 minutos")
+                .doesNotContain("Reset your password");
+    }
+
+    @Test
+    void resetHtmlRenderizaEnInglesConLocaleEn() {
+        String html = renderer.renderResetHtml(resetVariables("https://pepe.dev/reset?token=abc123"),
+                Locale.forLanguageTag("en"));
+
+        assertThat(html)
+                .contains("Reset your password")
+                .contains("single-use")
+                .doesNotContain("Restablece tu contraseña");
+    }
+
+    @Test
+    void resetHtmlEscapaElEnlace() {
+        String html = renderer.renderResetHtml(resetVariables("https://x.es/reset?token=1&evil=\"><b>"),
+                Locale.forLanguageTag("es"));
+
+        assertThat(html)
+                .contains("&lt;b&gt;")
+                .doesNotContain("<b>\"");
+    }
 }

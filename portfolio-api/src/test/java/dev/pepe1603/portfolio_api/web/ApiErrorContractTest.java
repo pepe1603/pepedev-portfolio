@@ -20,7 +20,9 @@ import dev.pepe1603.portfolio_api.controller.AdminStorageController;
 import dev.pepe1603.portfolio_api.controller.AuthController;
 import dev.pepe1603.portfolio_api.controller.ContactController;
 import dev.pepe1603.portfolio_api.service.AdminCertificateService;
+import dev.pepe1603.portfolio_api.security.ResetRateLimiter;
 import dev.pepe1603.portfolio_api.service.AuditService;
+import dev.pepe1603.portfolio_api.service.PasswordResetService;
 import dev.pepe1603.portfolio_api.service.ContactService;
 import dev.pepe1603.portfolio_api.service.StorageService;
 import dev.pepe1603.portfolio_api.security.ContactRateLimiter;
@@ -39,6 +41,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -85,6 +88,12 @@ class ApiErrorContractTest {
     private AdminCertificateService adminCertificateService;
     @MockitoBean
     private AuditService auditService;
+    @MockitoBean
+    private PasswordResetService passwordResetService;
+    @MockitoBean
+    private ResetRateLimiter resetRateLimiter;
+    @MockitoBean
+    private PasswordEncoder passwordEncoder;
 
     private static final ResultMatcher NO_LEGACY_FIELDS = result -> {
         for (String legacy : new String[] {"trace", "timestamp", "path", "type"}) {

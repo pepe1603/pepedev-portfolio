@@ -6,5 +6,6 @@ public enum AuditResource {
     PROFILE,
     MESSAGE,
     STORAGE,
-    SESSION
+    SESSION,
+    USER
 }

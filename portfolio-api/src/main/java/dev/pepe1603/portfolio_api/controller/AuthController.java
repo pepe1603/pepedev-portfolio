@@ -2,6 +2,8 @@ package dev.pepe1603.portfolio_api.controller;
 
 import dev.pepe1603.portfolio_api.dto.auth.LoginRequest;
 import dev.pepe1603.portfolio_api.dto.auth.MeResponse;
+import dev.pepe1603.portfolio_api.dto.auth.PasswordResetConfirm;
+import dev.pepe1603.portfolio_api.dto.auth.PasswordResetRequest;
 import dev.pepe1603.portfolio_api.dto.auth.SessionResponse;
 import dev.pepe1603.portfolio_api.dto.auth.TokenResponse;
 import dev.pepe1603.portfolio_api.dto.common.ApiProblemDetail;
@@ -14,7 +16,9 @@ import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.AppUserDetails;
 import dev.pepe1603.portfolio_api.security.JwtProperties;
 import dev.pepe1603.portfolio_api.security.JwtTokenService;
+import dev.pepe1603.portfolio_api.security.ResetRateLimiter;
 import dev.pepe1603.portfolio_api.service.AuditService;
+import dev.pepe1603.portfolio_api.service.PasswordResetService;
 import dev.pepe1603.portfolio_api.exception.LoginRateLimitedException;
 import dev.pepe1603.portfolio_api.security.LoginRateLimiter;
 import dev.pepe1603.portfolio_api.security.RateLimitProperties;
@@ -43,6 +47,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -66,11 +71,15 @@ public class AuthController {
     private final LoginRateLimiter loginRateLimiter;
     private final TokenBlacklist tokenBlacklist;
     private final AuditService auditService;
+    private final PasswordResetService passwordResetService;
+    private final ResetRateLimiter resetRateLimiter;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository,
             AuthSessionRepository authSessionRepository, JwtTokenService jwtTokenService, JwtProperties jwtProperties,
             RateLimitProperties rateLimitProperties, LoginRateLimiter loginRateLimiter, TokenBlacklist tokenBlacklist,
-            AuditService auditService) {
+            AuditService auditService, PasswordResetService passwordResetService, ResetRateLimiter resetRateLimiter,
+            PasswordEncoder passwordEncoder) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
@@ -80,6 +89,9 @@ public class AuthController {
         this.loginRateLimiter = loginRateLimiter;
         this.tokenBlacklist = tokenBlacklist;
         this.auditService = auditService;
+        this.passwordResetService = passwordResetService;
+        this.resetRateLimiter = resetRateLimiter;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/login")
@@ -181,6 +193,45 @@ public class AuthController {
             revokeTokenQuietly(jwtTokenService::parseAccessToken, header.substring(BEARER_PREFIX.length()));
         }
         clearRefreshCookie(response);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/reset/request")
+    @Operation(summary = "Solicitar restablecimiento de contraseña",
+            description = "Genera un token de un solo uso (30 min) y lo envía por email. "
+                    + "Responde 202 siempre, exista o no la cuenta, para no filtrar qué emails están registrados.")
+    @ApiResponse(responseCode = "202", description = "Solicitud aceptada",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "400", description = "Email ausente o inválido",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "429", description = "Demasiadas solicitudes (Retry-After en segundos)",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    public ResponseEntity<Void> resetRequest(@Valid @RequestBody PasswordResetRequest request,
+            HttpServletRequest servletRequest) {
+        String ip = servletRequest.getRemoteAddr();
+        if (resetRateLimiter.isBlocked(ip)) {
+            throw new LoginRateLimitedException(rateLimitProperties.getResetWindowSeconds());
+        }
+        resetRateLimiter.record(ip);
+        passwordResetService.requestReset(request.email().strip(), servletRequest.getLocale());
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/reset/confirm")
+    @Operation(summary = "Confirmar restablecimiento de contraseña",
+            description = "Valida el token de un solo uso, actualiza la contraseña, invalida todos los tokens "
+                    + "previos (bump de token_version) y revoca las sesiones activas del usuario.")
+    @ApiResponse(responseCode = "204", description = "Contraseña actualizada")
+    @ApiResponse(responseCode = "400", description = "Email, token o contraseña inválidos",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    public ResponseEntity<Void> resetConfirm(@Valid @RequestBody PasswordResetConfirm request) {
+        User user = passwordResetService.consumeUser(request.token(), request.email())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "Token de restablecimiento inválido o caducado"));
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        userRepository.save(user);
+        revokeAllSessions(user);
+        auditService.record(AuditAction.RESET, AuditResource.USER, user.getId(), "password-reset");
         return ResponseEntity.noContent().build();
     }
 

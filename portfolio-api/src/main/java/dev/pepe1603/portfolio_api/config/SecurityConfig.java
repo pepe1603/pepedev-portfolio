@@ -35,7 +35,9 @@ public class SecurityConfig {
             "/contact",
             "/auth/login",
             "/auth/refresh",
-            "/auth/logout"
+            "/auth/logout",
+            "/auth/reset/request",
+            "/auth/reset/confirm"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

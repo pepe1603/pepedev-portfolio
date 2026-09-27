@@ -18,7 +18,9 @@ import dev.pepe1603.portfolio_api.entity.User;
 import dev.pepe1603.portfolio_api.enums.UserRole;
 import dev.pepe1603.portfolio_api.repository.AuthSessionRepository;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
+import dev.pepe1603.portfolio_api.security.ResetRateLimiter;
 import dev.pepe1603.portfolio_api.service.AuditService;
+import dev.pepe1603.portfolio_api.service.PasswordResetService;
 import dev.pepe1603.portfolio_api.security.AppUserDetails;
 import dev.pepe1603.portfolio_api.security.JwtProperties;
 import dev.pepe1603.portfolio_api.security.JwtTokenService;
@@ -38,6 +40,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -70,6 +73,12 @@ class AuthSessionFlowTest {
     private TokenBlacklist tokenBlacklist;
     @MockitoBean
     private AuditService auditService;
+    @MockitoBean
+    private PasswordResetService passwordResetService;
+    @MockitoBean
+    private ResetRateLimiter resetRateLimiter;
+    @MockitoBean
+    private PasswordEncoder passwordEncoder;
 
     private User admin() {
         User user = new User();

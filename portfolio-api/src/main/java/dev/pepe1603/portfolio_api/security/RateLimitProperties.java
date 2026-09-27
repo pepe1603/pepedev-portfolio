@@ -16,4 +16,10 @@ public class RateLimitProperties {
 
     @Value("${APP_LOGIN_RATE_WINDOW:900}")
     private long windowSeconds;
+
+    @Value("${APP_RESET_RATE_MAX_IP:5}")
+    private int resetMaxAttemptsPerIp;
+
+    @Value("${APP_RESET_RATE_WINDOW:900}")
+    private long resetWindowSeconds;
 }

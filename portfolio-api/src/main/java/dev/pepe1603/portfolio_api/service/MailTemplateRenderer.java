@@ -29,6 +29,10 @@ public class MailTemplateRenderer {
         return render("mail/ack", variables, locale);
     }
 
+    public String renderResetHtml(Map<String, Object> variables, Locale locale) {
+        return render("mail/reset", variables, locale);
+    }
+
     private String render(String template, Map<String, Object> variables, Locale locale) {
         Context context = new Context(locale);
         context.setVariables(variables);

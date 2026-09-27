@@ -28,7 +28,9 @@ import dev.pepe1603.portfolio_api.security.JwtTokenService;
 import dev.pepe1603.portfolio_api.security.LoginRateLimiter;
 import dev.pepe1603.portfolio_api.security.RateLimitProperties;
 import dev.pepe1603.portfolio_api.security.TokenBlacklist;
+import dev.pepe1603.portfolio_api.security.ResetRateLimiter;
 import dev.pepe1603.portfolio_api.service.AuditService;
+import dev.pepe1603.portfolio_api.service.PasswordResetService;
 import io.jsonwebtoken.Claims;
 import java.time.Instant;
 import java.util.List;
@@ -42,6 +44,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -77,6 +80,12 @@ class AuthSessionControlTest {
     private TokenBlacklist tokenBlacklist;
     @MockitoBean
     private AuditService auditService;
+    @MockitoBean
+    private PasswordResetService passwordResetService;
+    @MockitoBean
+    private ResetRateLimiter resetRateLimiter;
+    @MockitoBean
+    private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
