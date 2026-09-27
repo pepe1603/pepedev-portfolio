@@ -1,6 +1,9 @@
 spring:
   application:
     name: portfolio-api
+  messages:
+    basename: messages
+    encoding: UTF-8
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}

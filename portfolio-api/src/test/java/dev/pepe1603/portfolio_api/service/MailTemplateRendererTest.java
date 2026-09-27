@@ -3,12 +3,14 @@ package dev.pepe1603.portfolio_api.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.thymeleaf.spring6.SpringTemplateEngine;
-import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 import org.thymeleaf.templatemode.TemplateMode;
+import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
 
 class MailTemplateRendererTest {
 
@@ -22,8 +24,13 @@ class MailTemplateRendererTest {
         resolver.setTemplateMode(TemplateMode.HTML);
         resolver.setCacheable(true);
 
+        ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasename("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+
         SpringTemplateEngine engine = new SpringTemplateEngine();
         engine.setTemplateResolver(resolver);
+        engine.setTemplateEngineMessageSource(messageSource);
         renderer = new MailTemplateRenderer(engine);
     }
 
@@ -40,7 +47,7 @@ class MailTemplateRendererTest {
 
     @Test
     void contactHtmlContieneLosCampos() {
-        String html = renderer.renderContactHtml(variables());
+        String html = renderer.renderContactHtml(variables(), Locale.forLanguageTag("es"));
 
         assertThat(html)
                 .contains("Ana García")
@@ -59,11 +66,32 @@ class MailTemplateRendererTest {
         vars.put("subject", "<i>spam</i>");
         vars.put("body", "<script>alert('pwned')</script>");
 
-        String html = renderer.renderContactHtml(vars);
+        String html = renderer.renderContactHtml(vars, Locale.forLanguageTag("es"));
 
         assertThat(html)
                 .contains("&lt;b&gt;Pepe&lt;/b&gt;")
                 .contains("&lt;script&gt;")
                 .doesNotContain("<script>");
+    }
+
+    @Test
+    void contactHtmlRenderizaEnEspanolPorDefecto() {
+        String html = renderer.renderContactHtml(variables());
+
+        assertThat(html)
+                .contains("Nuevo mensaje de contacto")
+                .contains("Recibiste un nuevo mensaje desde tu portfolio.")
+                .doesNotContain("New contact message");
+    }
+
+    @Test
+    void contactHtmlRenderizaEnInglesConLocaleEn() {
+        String html = renderer.renderContactHtml(variables(), Locale.forLanguageTag("en"));
+
+        assertThat(html)
+                .contains("New contact message")
+                .contains("You received a new message from your portfolio.")
+                .contains("Ana García")
+                .doesNotContain("Nuevo mensaje de contacto");
     }
 }
