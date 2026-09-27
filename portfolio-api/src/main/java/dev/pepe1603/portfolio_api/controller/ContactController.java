@@ -51,7 +51,7 @@ public class ContactController {
             throw new ContactRateLimitedException(rateLimiter.getWindowSeconds());
         }
         rateLimiter.recordRequest(ip);
-        contactService.save(request, ip, servletRequest.getHeader(HttpHeaders.USER_AGENT));
+        contactService.save(request, ip, servletRequest.getHeader(HttpHeaders.USER_AGENT), servletRequest.getLocale());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 

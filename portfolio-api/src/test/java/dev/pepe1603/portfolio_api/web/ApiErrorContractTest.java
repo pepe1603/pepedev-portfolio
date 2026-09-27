@@ -191,7 +191,7 @@ class ApiErrorContractTest {
                 .andExpect(status().isCreated());
 
         verify(contactRateLimiter, never()).isBlocked(anyString());
-        verify(contactService, never()).save(any(), anyString(), anyString());
+        verify(contactService, never()).save(any(), anyString(), anyString(), any());
     }
 
     @Test
