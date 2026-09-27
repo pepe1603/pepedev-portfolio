@@ -34,8 +34,38 @@
 
 | Pieza | Tarea | Estado |
 |---|---|---|
-| P4-0 | Este documento (backlog + decisiones) | ⬜ |
-| P4-1 | i18n de la notificación: bundles `messages`/`messages_en`, `#{}` en `templates/mail/contact.html`, config `spring.messages`, renderer con `Locale` + tests (render es/en) | ⬜ |
-| P4-2 | Plantilla `templates/mail/ack.html` + `MailTemplateRenderer.renderAckHtml(vars, locale)` + tests (campos + escape + idioma) | ⬜ |
-| P4-3 | Cablear acuse en `ContactService` (`APP_CONTACT_SEND_ACK`, `MessageSource` para asunto, locale por petición) + `ContactController` pasa `Locale` + tests `MimeMessage` (énvio acuse y notificación, guard si ack=false, subject en) | ⬜ |
-| P4-4 | Docs: nota en `API.md` (acuse + property + i18n) + acta de cierre | ⬜ |
+| P4-0 | Este documento (backlog + decisiones) | ✅ |
+| P4-1 | i18n de la notificación: bundles `messages`/`messages_en`, `#{}` en `templates/mail/contact.html`, config `spring.messages`, renderer con `Locale` + tests (render es/en) | ✅ |
+| P4-2 | Plantilla `templates/mail/ack.html` + `MailTemplateRenderer.renderAckHtml(vars, locale)` + tests (campos + escape + idioma) | ✅ |
+| P4-3 | Cablear acuse en `ContactService` (`APP_CONTACT_SEND_ACK`, `MessageSource` para asunto, locale por petición) + `ContactController` pasa `Locale` + tests `MimeMessage` (énvio acuse y notificación, guard si ack=false, subject en) | ✅ |
+| P4-4 | Docs: nota en `API.md` (acuse + property + i18n) + acta de cierre | ✅ |
+
+## Acta de cierre
+
+- **Commits**: `26d7974` (P4-0 backlog) → `cb5d93c` (P4-1 i18n notificación) →
+  `bd0b40d` (P4-2 plantilla ack) → `a79a439` (P4-3 acuse + locale) → esta acta (P4-4).
+- **Tests**: suite completa **107 tests, 0 fallos** (102 → 107).
+- **Comportamiento final de `/contact`** (todo best-effort async tras persistir):
+  - Notificación al admin (`to` = `APP_CONTACT_DEST_EMAIL`): plantilla `mail/contact` **en
+    `es` fijo**, `replyTo` al remitente, subject `[Contacto] …`.
+  - Acuse al visitante (`to` = email del formulario): plantilla `mail/ack` en `es` o `en`
+    según `Accept-Language` (fallback `es`), subject resuelto vía `MessageSource`
+    (`mail.ack.subject`), texto plano resuelto igual (`mail.ack.confirm`).
+  - `APP_CONTACT_SEND_ACK=false` → solo notificación. Sin `from`/`dest` → ningún correo.
+- **Hallazgos técnicos**:
+  1. `th:text` sobre un elemento **con hijos** reemplaza su contenido (borra los `<span>`
+     internos) → para "Etiqueta: valor" usar dos `<span>` hermanos.
+  2. Thymeleaf escapa `'` como `&#39;` → en tests, no afirmar cadenas con apóstrofo (o
+     afirmar el fragmento HTML escapado).
+  3. Thymeleaf `#{}` necesita que el `SpringTemplateEngine` tenga el `MessageSource`; en el
+     **unit test** del renderer hay que crearlo a mano
+     (`engine.setTemplateEngineMessageSource(messageSource)` con basename `messages`). En
+     la app, Boot lo cablea por auto-config.
+  4. Mockito `timeout(2000)` verifica **exactamente 1** invocación; para 2 envíos usar
+     `timeout(2000).times(2)` con `captor.getAllValues()`. El orden de ejecución de dos
+     `CompletableFuture.runAsync` **no está garantizado** → identificar mensajes por
+     destinatario, no por índice.
+- **Pendiente futuro**: i18n es/en del texto plano de la **notificación** (hoy `plainText`
+  es es fijo en el código, igual que al admin); plantilla al admin en su locale; opcional:
+  `etag`/caché en ningún caso aplica. La propiedad `sendAck` no está en `.env.example`
+  todavía (se documenta en API.md).

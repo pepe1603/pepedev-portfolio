@@ -144,6 +144,10 @@ limit por IP → persistir `Message` (IP anonimizada) → notificación por emai
   escapa con `th:text` (nunca `th:utext` con datos de usuario). `replyTo` al remitente y
   asunto `[Contacto] …`. Si `APP_CONTACT_FROM_EMAIL` o `APP_CONTACT_DEST_EMAIL` están vacíos
   no se envía correo.
+- Tras persistir y lanzar la notificación, el visitante recibe un **acuse** (`mail/ack.html`,
+  `multipart/alternative`): idioma por `Accept-Language` (`en` → inglés; cualquier otro →
+  español). Se controla con `APP_CONTACT_SEND_ACK` (default `true`; `false` = solo la
+  notificación al admin). Ambos envíos son best-effort async.
 
 ---
 
