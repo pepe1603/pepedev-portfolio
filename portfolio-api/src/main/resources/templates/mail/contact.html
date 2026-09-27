@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Nuevo mensaje de contacto</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#f4f4f5;padding:24px 12px;">
+    <tr>
+        <td align="center">
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0"
+                   style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
+                <tr>
+                    <td style="background-color:#18181b;color:#ffffff;padding:24px 28px;font-family:Arial,Helvetica,sans-serif;">
+                        <h1 style="margin:0;font-size:20px;font-weight:600;">Nuevo mensaje de contacto</h1>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding:28px;font-family:Arial,Helvetica,sans-serif;color:#27272a;font-size:14px;line-height:1.6;">
+                        <p style="margin:0 0 18px;">Recibiste un nuevo mensaje desde tu portfolio.</p>
+
+                        <p style="margin:0 0 6px;font-weight:600;">De:
+                            <span style="font-weight:400;" th:text="${name}">Nombre</span>
+                        </p>
+                        <p style="margin:0 0 6px;">Email:
+                            <a th:href="|mailto:${email}|" style="color:#2563eb;" th:text="${email}">email@example.com</a>
+                        </p>
+                        <p style="margin:0 0 6px;">IP: <span th:text="${ip}">0.0.0.0</span></p>
+                        <p style="margin:0 0 6px;">Fecha: <span th:text="${fecha}">01/01/2026 00:00</span></p>
+                        <p style="margin:0 0 6px;">Asunto: <span style="font-weight:600;" th:text="${subject}">Asunto</span></p>
+
+                        <hr style="border:none;border-top:1px solid #e4e4e7;margin:18px 0;"/>
+                        <p style="margin:0 0 6px;font-weight:600;">Mensaje:</p>
+                        <div style="white-space:pre-wrap;background-color:#fafafa;border:1px solid #e4e4e7;border-radius:8px;padding:14px;"
+                             th:text="${body}">Cuerpo</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="background-color:#fafafa;border-top:1px solid #e4e4e7;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#71717a;">
+                        Notificación automática del formulario de contacto — pepedev-portfolio
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>
