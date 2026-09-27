@@ -66,6 +66,21 @@ class JwtTokenServiceTest {
     }
 
     @Test
+    void tokensLlevanElClaimTvConLaVersionDelUsuario() {
+        User user = adminUser();
+        user.setTokenVersion(3);
+
+        JwtTokenService.TokenPair pair = service.issueTokenPair(user);
+
+        assertThat(service.parseAccessToken(pair.accessToken()).get("tv", Integer.class)).isEqualTo(3);
+        assertThat(service.parseRefreshToken(pair.refreshToken()).get("tv", Integer.class)).isEqualTo(3);
+
+        user.setTokenVersion(4);
+        JwtTokenService.TokenPair pair2 = service.issueTokenPair(user);
+        assertThat(service.parseAccessToken(pair2.accessToken()).get("tv", Integer.class)).isEqualTo(4);
+    }
+
+    @Test
     void accessNoPasaComoRefreshNiViceversa() {
         JwtTokenService.TokenPair pair = service.issueTokenPair(adminUser());
 

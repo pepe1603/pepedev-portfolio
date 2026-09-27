@@ -49,6 +49,7 @@ public class JwtTokenService {
                 .id(UUID.randomUUID().toString())
                 .subject(user.getEmail())
                 .claim("role", user.getRole().name())
+                .claim("tv", user.getTokenVersion())
                 .claim("typ", type)
                 .issuedAt(issuedAt)
                 .expiration(expiration)

@@ -122,6 +122,10 @@ public class AuthController {
         }
         User user = userRepository.findByEmail(claims.getSubject())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+        Integer tokenVersion = claims.get("tv", Integer.class);
+        if (tokenVersion == null || !tokenVersion.equals(user.getTokenVersion())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sesión revocada");
+        }
         JwtTokenService.TokenPair tokens = jwtTokenService.issueTokenPair(user);
         revokeToken(claims);
         setRefreshCookie(response, tokens.refreshToken(), jwtProperties.refreshTtl());

@@ -44,4 +44,7 @@ public class User {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    @Column(name = "token_version", nullable = false)
+    private Integer tokenVersion = 0;
 }
