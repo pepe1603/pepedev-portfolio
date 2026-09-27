@@ -1,7 +1,7 @@
 package dev.pepe1603.portfolio_api.config;
 
-import dev.pepe1603.portfolio_api.security.ContactRateLimitedException;
-import dev.pepe1603.portfolio_api.security.LoginRateLimitedException;
+import dev.pepe1603.portfolio_api.exception.ContactRateLimitedException;
+import dev.pepe1603.portfolio_api.exception.LoginRateLimitedException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;

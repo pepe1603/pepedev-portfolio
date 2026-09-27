@@ -1,4 +1,4 @@
-package dev.pepe1603.portfolio_api.security;
+package dev.pepe1603.portfolio_api.exception;
 
 public class ContactRateLimitedException extends RuntimeException {
 

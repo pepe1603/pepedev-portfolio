@@ -2,7 +2,7 @@ package dev.pepe1603.portfolio_api.controller;
 
 import dev.pepe1603.portfolio_api.dto.common.ApiProblemDetail;
 import dev.pepe1603.portfolio_api.dto.contact.ContactRequest;
-import dev.pepe1603.portfolio_api.security.ContactRateLimitedException;
+import dev.pepe1603.portfolio_api.exception.ContactRateLimitedException;
 import dev.pepe1603.portfolio_api.security.ContactRateLimiter;
 import dev.pepe1603.portfolio_api.service.ContactService;
 import io.swagger.v3.oas.annotations.Operation;

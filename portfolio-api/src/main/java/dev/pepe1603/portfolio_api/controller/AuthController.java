@@ -9,7 +9,7 @@ import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.AppUserDetails;
 import dev.pepe1603.portfolio_api.security.JwtProperties;
 import dev.pepe1603.portfolio_api.security.JwtTokenService;
-import dev.pepe1603.portfolio_api.security.LoginRateLimitedException;
+import dev.pepe1603.portfolio_api.exception.LoginRateLimitedException;
 import dev.pepe1603.portfolio_api.security.LoginRateLimiter;
 import dev.pepe1603.portfolio_api.security.RateLimitProperties;
 import dev.pepe1603.portfolio_api.security.TokenBlacklist;
