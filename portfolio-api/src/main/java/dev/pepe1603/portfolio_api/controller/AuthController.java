@@ -2,15 +2,19 @@ package dev.pepe1603.portfolio_api.controller;
 
 import dev.pepe1603.portfolio_api.dto.auth.LoginRequest;
 import dev.pepe1603.portfolio_api.dto.auth.MeResponse;
+import dev.pepe1603.portfolio_api.dto.auth.SessionResponse;
 import dev.pepe1603.portfolio_api.dto.auth.TokenResponse;
 import dev.pepe1603.portfolio_api.dto.common.ApiProblemDetail;
 import dev.pepe1603.portfolio_api.entity.AuthSession;
 import dev.pepe1603.portfolio_api.entity.User;
+import dev.pepe1603.portfolio_api.enums.AuditAction;
+import dev.pepe1603.portfolio_api.enums.AuditResource;
 import dev.pepe1603.portfolio_api.repository.AuthSessionRepository;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.AppUserDetails;
 import dev.pepe1603.portfolio_api.security.JwtProperties;
 import dev.pepe1603.portfolio_api.security.JwtTokenService;
+import dev.pepe1603.portfolio_api.service.AuditService;
 import dev.pepe1603.portfolio_api.exception.LoginRateLimitedException;
 import dev.pepe1603.portfolio_api.security.LoginRateLimiter;
 import dev.pepe1603.portfolio_api.security.RateLimitProperties;
@@ -28,6 +32,7 @@ import jakarta.validation.Valid;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 import org.springframework.http.HttpHeaders;
@@ -39,6 +44,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -59,10 +65,12 @@ public class AuthController {
     private final RateLimitProperties rateLimitProperties;
     private final LoginRateLimiter loginRateLimiter;
     private final TokenBlacklist tokenBlacklist;
+    private final AuditService auditService;
 
     public AuthController(AuthenticationManager authenticationManager, UserRepository userRepository,
             AuthSessionRepository authSessionRepository, JwtTokenService jwtTokenService, JwtProperties jwtProperties,
-            RateLimitProperties rateLimitProperties, LoginRateLimiter loginRateLimiter, TokenBlacklist tokenBlacklist) {
+            RateLimitProperties rateLimitProperties, LoginRateLimiter loginRateLimiter, TokenBlacklist tokenBlacklist,
+            AuditService auditService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
@@ -71,6 +79,7 @@ public class AuthController {
         this.rateLimitProperties = rateLimitProperties;
         this.loginRateLimiter = loginRateLimiter;
         this.tokenBlacklist = tokenBlacklist;
+        this.auditService = auditService;
     }
 
     @PostMapping("/login")
@@ -164,6 +173,7 @@ public class AuthController {
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         String cookieToken = extractRefreshCookie(request);
         if (cookieToken != null && !cookieToken.isBlank()) {
+            revokeRefreshSessionQuietly(cookieToken);
             revokeTokenQuietly(jwtTokenService::parseRefreshToken, cookieToken);
         }
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
@@ -183,6 +193,56 @@ public class AuthController {
                 .findFirst()
                 .orElse(null);
         return new MeResponse(authentication.getName(), role);
+    }
+
+    @GetMapping("/sessions")
+    public List<SessionResponse> sessions(HttpServletRequest request) {
+        User user = requireUser(request);
+        authSessionRepository.prune(Instant.now());
+        String currentSid = currentSid(request);
+        return authSessionRepository.findAllByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(user.getId())
+                .stream()
+                .map(session -> toSessionResponse(session, currentSid))
+                .toList();
+    }
+
+    @PostMapping("/sessions/revoke-others")
+    public ResponseEntity<Void> revokeOthers(HttpServletRequest request) {
+        User user = requireUser(request);
+        String currentSid = currentSid(request);
+        List<AuthSession> active =
+                authSessionRepository.findAllByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(user.getId());
+        int revoked = 0;
+        for (AuthSession session : active) {
+            if (!session.getSessionId().toString().equals(currentSid)) {
+                revokeActiveSession(session);
+                revoked++;
+            }
+        }
+        if (revoked > 0) {
+            auditService.record(AuditAction.REVOKE, AuditResource.SESSION, null, "revoke-others (" + revoked + ")");
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/sessions/{sessionId}/revoke")
+    public ResponseEntity<Void> revokeSession(@PathVariable String sessionId) {
+        UUID id = parseSessionId(sessionId);
+        AuthSession session = authSessionRepository.findBySessionId(id).orElse(null);
+        if (session == null || session.getRevokedAt() != null) {
+            return ResponseEntity.noContent().build();
+        }
+        revokeActiveSession(session);
+        auditService.record(AuditAction.REVOKE, AuditResource.SESSION, id, "session:" + id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/logout-all")
+    public ResponseEntity<Void> logoutAll(HttpServletRequest request, HttpServletResponse response) {
+        revokeAllSessions(requireUser(request));
+        auditService.record(AuditAction.REVOKE, AuditResource.SESSION, null, "logout-all");
+        clearRefreshCookie(response);
+        return ResponseEntity.noContent().build();
     }
 
     private void setRefreshCookie(HttpServletResponse response, String token, Duration ttl) {
@@ -217,6 +277,19 @@ public class AuthController {
                 .map(Cookie::getValue)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private void revokeRefreshSessionQuietly(String token) {
+        try {
+            Claims claims = jwtTokenService.parseRefreshToken(token);
+            authSessionRepository.findByRefreshJti(claims.getId()).ifPresent(session -> {
+                if (session.getRevokedAt() == null) {
+                    session.setRevokedAt(Instant.now());
+                    authSessionRepository.save(session);
+                }
+            });
+        } catch (JwtException ignored) {
+        }
     }
 
     private void revokeTokenQuietly(Function<String, Claims> parser, String token) {
@@ -256,5 +329,68 @@ public class AuthController {
             return null;
         }
         return value.length() <= max ? value : value.substring(0, max);
+    }
+
+    private User requireUser(HttpServletRequest request) {
+        String email = currentSessionClaim(request, claim -> claim.getSubject());
+        if (email == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token de acceso ausente o inválido");
+        }
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+    }
+
+    private String currentSid(HttpServletRequest request) {
+        return currentSessionClaim(request, claim -> claim.get("sid", String.class));
+    }
+
+    private String currentSessionClaim(HttpServletRequest request, java.util.function.Function<Claims, String> extractor) {
+        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (header == null || !header.startsWith(BEARER_PREFIX)) {
+            return null;
+        }
+        try {
+            return extractor.apply(jwtTokenService.parseAccessToken(header.substring(BEARER_PREFIX.length())));
+        } catch (JwtException e) {
+            return null;
+        }
+    }
+
+    private UUID parseSessionId(String raw) {
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identificador de sesión inválido");
+        }
+    }
+
+    private void revokeActiveSession(AuthSession session) {
+        session.setRevokedAt(Instant.now());
+        authSessionRepository.save(session);
+        long remainingMillis = Duration.between(Instant.now(), session.getExpiresAt()).toMillis();
+        if (remainingMillis > 0) {
+            tokenBlacklist.revoke(session.getRefreshJti(), Duration.ofMillis(remainingMillis));
+        }
+    }
+
+    private void revokeAllSessions(User user) {
+        user.setTokenVersion(user.getTokenVersion() + 1);
+        userRepository.save(user);
+        List<AuthSession> active =
+                authSessionRepository.findAllByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(user.getId());
+        for (AuthSession session : active) {
+            revokeActiveSession(session);
+        }
+    }
+
+    private SessionResponse toSessionResponse(AuthSession session, String currentSid) {
+        return new SessionResponse(
+                session.getSessionId(),
+                session.getCreatedAt(),
+                session.getLastSeenAt(),
+                session.getExpiresAt(),
+                session.getIpAddress(),
+                session.getUserAgent(),
+                session.getSessionId().toString().equals(currentSid));
     }
 }

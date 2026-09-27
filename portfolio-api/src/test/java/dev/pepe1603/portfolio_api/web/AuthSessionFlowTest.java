@@ -18,6 +18,7 @@ import dev.pepe1603.portfolio_api.entity.User;
 import dev.pepe1603.portfolio_api.enums.UserRole;
 import dev.pepe1603.portfolio_api.repository.AuthSessionRepository;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
+import dev.pepe1603.portfolio_api.service.AuditService;
 import dev.pepe1603.portfolio_api.security.AppUserDetails;
 import dev.pepe1603.portfolio_api.security.JwtProperties;
 import dev.pepe1603.portfolio_api.security.JwtTokenService;
@@ -67,6 +68,8 @@ class AuthSessionFlowTest {
     private LoginRateLimiter loginRateLimiter;
     @MockitoBean
     private TokenBlacklist tokenBlacklist;
+    @MockitoBean
+    private AuditService auditService;
 
     private User admin() {
         User user = new User();

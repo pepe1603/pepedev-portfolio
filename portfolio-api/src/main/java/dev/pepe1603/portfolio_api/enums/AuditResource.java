@@ -5,5 +5,6 @@ public enum AuditResource {
     CERTIFICATE,
     PROFILE,
     MESSAGE,
-    STORAGE
+    STORAGE,
+    SESSION
 }

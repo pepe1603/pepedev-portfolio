@@ -6,5 +6,6 @@ public enum AuditAction {
     DELETE,
     READ,
     ARCHIVE,
-    UPLOAD
+    UPLOAD,
+    REVOKE
 }
