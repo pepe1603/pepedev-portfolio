@@ -4,9 +4,15 @@ import dev.pepe1603.portfolio_api.dto.contact.ContactRequest;
 import dev.pepe1603.portfolio_api.entity.Message;
 import dev.pepe1603.portfolio_api.repository.MessageRepository;
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,17 +26,21 @@ public class ContactService {
 
     private static final Logger LOG = LoggerFactory.getLogger(ContactService.class);
     private static final String FALLBACK_IP = "0.0.0.0";
+    private static final DateTimeFormatter FECHA_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final MessageRepository messageRepository;
     private final JavaMailSender mailSender;
+    private final MailTemplateRenderer templateRenderer;
     private final String destEmail;
     private final String fromEmail;
 
     public ContactService(MessageRepository messageRepository, JavaMailSender mailSender,
+            MailTemplateRenderer templateRenderer,
             @Value("${APP_CONTACT_DEST_EMAIL:}") String destEmail,
             @Value("${APP_CONTACT_FROM_EMAIL:}") String fromEmail) {
         this.messageRepository = messageRepository;
         this.mailSender = mailSender;
+        this.templateRenderer = templateRenderer;
         this.destEmail = destEmail;
         this.fromEmail = fromEmail;
     }
@@ -59,14 +69,39 @@ public class ContactService {
                 helper.setTo(destEmail);
                 helper.setReplyTo(message.getEmail());
                 helper.setSubject("[Contacto] " + message.getSubject());
-                helper.setText("De: " + message.getName() + " <" + message.getEmail() + ">\n"
-                        + "IP: " + message.getIp() + "\n\n"
-                        + message.getBody());
+                String fecha = LocalDateTime.now().format(FECHA_FORMAT);
+                MimeMultipart alternative = new MimeMultipart("alternative");
+                MimeBodyPart textPart = new MimeBodyPart();
+                textPart.setText(plainText(message, fecha), "UTF-8");
+                MimeBodyPart htmlPart = new MimeBodyPart();
+                htmlPart.setContent(htmlText(message, fecha), "text/html; charset=UTF-8");
+                alternative.addBodyPart(textPart);
+                alternative.addBodyPart(htmlPart);
+                mime.setContent(alternative);
                 mailSender.send(mime);
             } catch (MessagingException e) {
                 LOG.error("No se pudo enviar la notificación de contacto", e);
             }
         });
+    }
+
+    private String plainText(Message message, String fecha) {
+        return "De: " + message.getName() + " <" + message.getEmail() + ">\n"
+                + "IP: " + message.getIp() + "\n"
+                + "Fecha: " + fecha + "\n"
+                + "Asunto: " + message.getSubject() + "\n\n"
+                + message.getBody();
+    }
+
+    private String htmlText(Message message, String fecha) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("name", message.getName());
+        variables.put("email", message.getEmail());
+        variables.put("ip", message.getIp());
+        variables.put("fecha", fecha);
+        variables.put("subject", message.getSubject());
+        variables.put("body", message.getBody());
+        return templateRenderer.renderContactHtml(variables);
     }
 
     private String anonymizeIp(String raw) {
