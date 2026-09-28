@@ -31,7 +31,7 @@ class MailTemplateRendererTest {
         SpringTemplateEngine engine = new SpringTemplateEngine();
         engine.setTemplateResolver(resolver);
         engine.setTemplateEngineMessageSource(messageSource);
-        renderer = new MailTemplateRenderer(engine);
+        renderer = new MailTemplateRenderer(engine, new MailStyleInliner());
     }
 
     private Map<String, Object> variables() {

@@ -12,9 +12,11 @@ public class MailTemplateRenderer {
     private static final Locale ADMIN_LOCALE = Locale.forLanguageTag("es");
 
     private final SpringTemplateEngine templateEngine;
+    private final MailStyleInliner styleInliner;
 
-    public MailTemplateRenderer(SpringTemplateEngine templateEngine) {
+    public MailTemplateRenderer(SpringTemplateEngine templateEngine, MailStyleInliner styleInliner) {
         this.templateEngine = templateEngine;
+        this.styleInliner = styleInliner;
     }
 
     public String renderContactHtml(Map<String, Object> variables, Locale locale) {
@@ -40,6 +42,6 @@ public class MailTemplateRenderer {
     private String render(String template, Map<String, Object> variables, Locale locale) {
         Context context = new Context(locale);
         context.setVariables(variables);
-        return templateEngine.process(template, context);
+        return styleInliner.inline(templateEngine.process(template, context));
     }
 }
