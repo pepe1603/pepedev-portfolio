@@ -4,34 +4,45 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title th:text="#{mail.ack.title}">Hemos recibido tu mensaje</title>
+    <!--/*
+        Las clases son la fuente de verdad: MailStyleInliner las expande a style="..." al renderizar,
+        porque los clientes de correo ignoran el CSS de la cabecera. Este comentario es de parser,
+        asi que no viaja en el correo.
+    */-->
+    <style>
+        .body { margin:0; padding:0; background-color:#f4f4f5; }
+        .page { background-color:#f4f4f5; padding:24px 12px; }
+        .card { max-width:600px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e4e4e7; }
+        .card__header { background-color:#18181b; color:#ffffff; padding:24px 28px; font-family:Arial,Helvetica,sans-serif; }
+        .card__title { margin:0; font-size:20px; font-weight:600; }
+        .card__body { padding:28px; font-family:Arial,Helvetica,sans-serif; color:#27272a; font-size:14px; line-height:1.6; }
+        .card__footer { background-color:#fafafa; border-top:1px solid #e4e4e7; padding:14px 28px; font-family:Arial,Helvetica,sans-serif; font-size:12px; color:#71717a; }
+        .p { margin:0 0 12px; }
+        .strong { font-weight:600; }
+    </style>
 </head>
-<body style="margin:0;padding:0;background-color:#f4f4f5;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-       style="background-color:#f4f4f5;padding:24px 12px;">
+<body class="body">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="page">
     <tr>
         <td align="center">
-            <table role="presentation" width="600" cellpadding="0" cellspacing="0"
-                   style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;">
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="card">
                 <tr>
-                    <td style="background-color:#18181b;color:#ffffff;padding:24px 28px;font-family:Arial,Helvetica,sans-serif;">
-                        <h1 style="margin:0;font-size:20px;font-weight:600;"
-                            th:text="#{mail.ack.title}">Hemos recibido tu mensaje</h1>
+                    <td class="card__header">
+                        <h1 class="card__title" th:text="#{mail.ack.title}">Hemos recibido tu mensaje</h1>
                     </td>
                 </tr>
                 <tr>
-                    <td style="padding:28px;font-family:Arial,Helvetica,sans-serif;color:#27272a;font-size:14px;line-height:1.6;">
-                        <p style="margin:0 0 12px;">
+                    <td class="card__body">
+                        <p class="p">
                             <span th:text="#{mail.ack.hola}">Hola,</span>
-                            <span style="font-weight:600;" th:text="${name}">Nombre</span>
+                            <span class="strong" th:text="${name}">Nombre</span>
                         </p>
-                        <p style="margin:0 0 12px;" th:text="#{mail.ack.intro}">Gracias por escribirnos. Tu mensaje ha llegado correctamente.</p>
-                        <p style="margin:0 0 12px;" th:text="#{mail.ack.confirm(${subject})}">Hemos recibido tu mensaje con el asunto «…».</p>
+                        <p class="p" th:text="#{mail.ack.intro}">Gracias por escribirnos. Tu mensaje ha llegado correctamente.</p>
+                        <p class="p" th:text="#{mail.ack.confirm(${subject})}">Hemos recibido tu mensaje con el asunto «…».</p>
                     </td>
                 </tr>
                 <tr>
-                    <td style="background-color:#fafafa;border-top:1px solid #e4e4e7;padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#71717a;"
-                        th:text="#{mail.ack.footer}">Este es un correo automático — no respondas a este mensaje.
-                    </td>
+                    <td class="card__footer" th:text="#{mail.ack.footer}">Este es un correo automático — no respondas a este mensaje.</td>
                 </tr>
             </table>
         </td>
