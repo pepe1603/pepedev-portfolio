@@ -24,6 +24,7 @@ import dev.pepe1603.portfolio_api.security.ResetRateLimiter;
 import dev.pepe1603.portfolio_api.service.AuditService;
 import dev.pepe1603.portfolio_api.service.OtpService;
 import dev.pepe1603.portfolio_api.service.PasswordResetService;
+import dev.pepe1603.portfolio_api.service.SecurityNotificationService;
 import dev.pepe1603.portfolio_api.exception.LoginRateLimitedException;
 import dev.pepe1603.portfolio_api.security.LoginRateLimiter;
 import dev.pepe1603.portfolio_api.security.RateLimitProperties;
@@ -42,6 +43,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import org.springframework.http.HttpHeaders;
@@ -80,6 +83,7 @@ public class AuthController {
     private final ResetRateLimiter resetRateLimiter;
     private final OtpService otpService;
     private final OtpProperties otpProperties;
+    private final SecurityNotificationService securityNotificationService;
     private final AccessTokenReader accessTokenReader;
     private final PasswordEncoder passwordEncoder;
 
@@ -87,7 +91,8 @@ public class AuthController {
             AuthSessionRepository authSessionRepository, JwtTokenService jwtTokenService, JwtProperties jwtProperties,
             RateLimitProperties rateLimitProperties, LoginRateLimiter loginRateLimiter, TokenBlacklist tokenBlacklist,
             AuditService auditService, PasswordResetService passwordResetService, ResetRateLimiter resetRateLimiter,
-            OtpService otpService, OtpProperties otpProperties, AccessTokenReader accessTokenReader,
+            OtpService otpService, OtpProperties otpProperties,
+            SecurityNotificationService securityNotificationService, AccessTokenReader accessTokenReader,
             PasswordEncoder passwordEncoder) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
@@ -102,6 +107,7 @@ public class AuthController {
         this.resetRateLimiter = resetRateLimiter;
         this.otpService = otpService;
         this.otpProperties = otpProperties;
+        this.securityNotificationService = securityNotificationService;
         this.accessTokenReader = accessTokenReader;
         this.passwordEncoder = passwordEncoder;
     }
@@ -138,7 +144,8 @@ public class AuthController {
                 String challengeId = otpService.createChallenge(user.getEmail(), servletRequest.getLocale());
                 return ResponseEntity.accepted().body(new OtpChallengeResponse(challengeId));
             }
-            return issueSessionAndTokens(user, ip, servletRequest.getHeader(HttpHeaders.USER_AGENT), response);
+            return issueSessionAndTokens(user, ip, servletRequest.getHeader(HttpHeaders.USER_AGENT),
+                    servletRequest.getLocale(), response);
         } catch (BadCredentialsException e) {
             loginRateLimiter.recordFailure(ip, request.email());
             throw e;
@@ -161,14 +168,18 @@ public class AuthController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                         "Código de verificación inválido o caducado"));
         return issueSessionAndTokens(user, servletRequest.getRemoteAddr(),
-                servletRequest.getHeader(HttpHeaders.USER_AGENT), response);
+                servletRequest.getHeader(HttpHeaders.USER_AGENT), servletRequest.getLocale(), response);
     }
 
-    private ResponseEntity<TokenResponse> issueSessionAndTokens(User user, String ip, String userAgent,
+    private ResponseEntity<TokenResponse> issueSessionAndTokens(User user, String ip, String userAgent, Locale locale,
             HttpServletResponse response) {
         Instant loginAt = Instant.now();
         user.setLastLoginAt(loginAt);
         userRepository.save(user);
+
+        // Antes de guardar la sesión: el aviso de "acceso nuevo" compara con el histórico y
+        // encontraría la sesión que aún no existe como si ya fuera conocida.
+        securityNotificationService.notifyNewLogin(user, ip, userAgent, locale);
 
         String refreshJti = UUID.randomUUID().toString();
         UUID sessionId = UUID.randomUUID();
@@ -236,6 +247,10 @@ public class AuthController {
             revokeTokenQuietly(jwtTokenService::parseAccessToken, header.substring(BEARER_PREFIX.length()));
         }
         clearRefreshCookie(response);
+        // El logout nunca falla por el aviso: si no se puede resolver el usuario (token caducado,
+        // logout desde otra pestaña) simplemente no se notifica.
+        optionalUser(request).ifPresent(user -> securityNotificationService.notifyLogout(user,
+                request.getRemoteAddr(), request.getHeader(HttpHeaders.USER_AGENT), request.getLocale()));
         return ResponseEntity.noContent().build();
     }
 
@@ -432,6 +447,13 @@ public class AuthController {
         }
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+    }
+
+    private Optional<User> optionalUser(HttpServletRequest request) {
+        return accessTokenReader.read(request)
+                .map(Claims::getSubject)
+                .filter(email -> email != null && !email.isBlank())
+                .flatMap(userRepository::findByEmail);
     }
 
     private String currentSid(HttpServletRequest request) {

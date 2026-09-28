@@ -39,6 +39,14 @@ public class MailTemplateRenderer {
         return render("mail/otp", variables, locale);
     }
 
+    public String renderSessionLoginHtml(Map<String, Object> variables, Locale locale) {
+        return render("mail/session-login", variables, locale);
+    }
+
+    public String renderSessionLogoutHtml(Map<String, Object> variables, Locale locale) {
+        return render("mail/session-logout", variables, locale);
+    }
+
     private String render(String template, Map<String, Object> variables, Locale locale) {
         Context context = new Context(locale);
         context.setVariables(variables);

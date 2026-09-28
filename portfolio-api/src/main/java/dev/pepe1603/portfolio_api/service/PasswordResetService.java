@@ -3,6 +3,7 @@ package dev.pepe1603.portfolio_api.service;
 import dev.pepe1603.portfolio_api.entity.User;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.PasswordResetTokenStore;
+import dev.pepe1603.portfolio_api.security.SecurityMailProperties;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
@@ -31,11 +32,13 @@ public class PasswordResetService {
     private final JavaMailSender mailSender;
     private final MailTemplateRenderer templateRenderer;
     private final MessageSource messageSource;
+    private final SecurityMailProperties mailProperties;
     private final String fromEmail;
     private final String frontResetUrl;
 
     public PasswordResetService(PasswordResetTokenStore tokenStore, UserRepository userRepository,
             JavaMailSender mailSender, MailTemplateRenderer templateRenderer, MessageSource messageSource,
+            SecurityMailProperties mailProperties,
             @Value("${APP_CONTACT_FROM_EMAIL:}") String fromEmail,
             @Value("${APP_FRONT_RESET_URL:}") String frontResetUrl) {
         this.tokenStore = tokenStore;
@@ -43,12 +46,15 @@ public class PasswordResetService {
         this.mailSender = mailSender;
         this.templateRenderer = templateRenderer;
         this.messageSource = messageSource;
+        this.mailProperties = mailProperties;
         this.fromEmail = fromEmail;
         this.frontResetUrl = frontResetUrl;
     }
 
     public void requestReset(String email, Locale locale) {
-        if (fromEmail == null || fromEmail.isBlank()) {
+        // Con el interruptor apagado no se crea siquiera el token: así no quedan tokens de un solo
+        // uso huérfanos en Redis esperando que alguien los consuma.
+        if (!mailProperties.isResetEnabled() || fromEmail == null || fromEmail.isBlank()) {
             return;
         }
         if (userRepository.findByEmail(email).isEmpty()) {

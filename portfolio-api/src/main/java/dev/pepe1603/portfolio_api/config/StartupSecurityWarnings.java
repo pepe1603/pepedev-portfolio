@@ -2,6 +2,7 @@ package dev.pepe1603.portfolio_api.config;
 
 import dev.pepe1603.portfolio_api.security.JwtProperties;
 import dev.pepe1603.portfolio_api.security.OtpProperties;
+import dev.pepe1603.portfolio_api.security.SecurityMailProperties;
 import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -21,12 +22,15 @@ public class StartupSecurityWarnings {
 
     private final JwtProperties jwtProperties;
     private final OtpProperties otpProperties;
+    private final SecurityMailProperties mailProperties;
     private final String fromEmail;
 
     public StartupSecurityWarnings(JwtProperties jwtProperties, OtpProperties otpProperties,
+            SecurityMailProperties mailProperties,
             @Value("${APP_CONTACT_FROM_EMAIL:}") String fromEmail) {
         this.jwtProperties = jwtProperties;
         this.otpProperties = otpProperties;
+        this.mailProperties = mailProperties;
         this.fromEmail = fromEmail;
     }
 
@@ -51,9 +55,18 @@ public class StartupSecurityWarnings {
             warnings.add("APP_JWT_REFRESH_COOKIE_SECURE=false: la cookie de refresh viaja sin Secure. "
                     + "Ponla en true en producción (HTTPS).");
         }
-        if (otpProperties.isEnabled() && (fromEmail == null || fromEmail.isBlank())) {
+        boolean sinRemitente = fromEmail == null || fromEmail.isBlank();
+        if (otpProperties.isEnabled() && sinRemitente) {
             warnings.add("APP_AUTH_OTP_ENABLED=true pero APP_CONTACT_FROM_EMAIL está vacío: "
                     + "los códigos OTP no se podrán enviar.");
+        }
+        if (sinRemitente && mailProperties.isResetEnabled()) {
+            warnings.add("APP_MAIL_SECURITY_RESET=true pero APP_CONTACT_FROM_EMAIL está vacío: "
+                    + "nadie podrá restablecer la contraseña por correo.");
+        }
+        if (sinRemitente && (mailProperties.isLoginEnabled() || mailProperties.isLogoutEnabled())) {
+            warnings.add("APP_MAIL_SECURITY_LOGIN/LOGOUT activos pero APP_CONTACT_FROM_EMAIL está vacío: "
+                    + "los avisos de acceso nuevo y de cierre de sesión no se podrán enviar.");
         }
         return warnings;
     }

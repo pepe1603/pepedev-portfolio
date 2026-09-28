@@ -18,6 +18,15 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
 
     List<AuthSession> findAllByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(UUID userId);
 
+    /**
+     * Si el usuario ya abrió sesión desde esa IP o con ese navegador. Lo usa
+     * {@code SecurityNotificationService} para avisar solo de accesos nuevos, y se consulta antes de
+     * guardar la sesión actual: si no, la sesión recién creada se encontraría a sí misma.
+     */
+    boolean existsByUserIdAndIpAddress(UUID userId, String ipAddress);
+
+    boolean existsByUserIdAndUserAgent(UUID userId, String userAgent);
+
     @Modifying
     @Query("delete from AuthSession s where s.revokedAt is not null or s.expiresAt < :now")
     int prune(@Param("now") Instant now);
