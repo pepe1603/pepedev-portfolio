@@ -3,8 +3,11 @@ package dev.pepe1603.portfolio_api.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.support.ResourceBundleMessageSource;
@@ -198,5 +201,118 @@ class MailTemplateRendererTest {
                 .contains("expires in 5 minutes")
                 .contains("123456")
                 .doesNotContain("Tu código de acceso");
+    }
+
+    private static final String URL_RESET = "https://pepe.dev/reset?token=abc123";
+
+    private static final Locale ESPANOL = Locale.forLanguageTag("es");
+
+    private static final List<String> CLASES_COMPARTIDAS = List.of(
+            "body", "page", "card", "card__header", "card__title", "card__body", "card__footer");
+
+    /** Los cuatro correos tal y como se renderizan, en español. */
+    private List<String> correos() {
+        return List.of(
+                renderer.renderContactHtml(variables(), ESPANOL),
+                renderer.renderAckHtml(variables(), ESPANOL),
+                renderer.renderResetHtml(resetVariables(URL_RESET), ESPANOL),
+                renderer.renderOtpHtml(otpVariables("123456"), ESPANOL));
+    }
+
+    /** El correo sin el bloque {@code <style>}, que es la parte que llega al cliente de correo. */
+    private String cuerpo(String html) {
+        return html.replaceAll("(?s)<style.*?</style>", "");
+    }
+
+    @Test
+    void lasClasesDeLasPlantillasSeExpandenAEstilosEnLinea() {
+        for (String html : correos()) {
+            assertThat(cuerpo(html)).doesNotContain("class=\"");
+        }
+    }
+
+    @Test
+    void losEstilosEnLineaConservanLosValoresOriginales() {
+        for (String html : correos()) {
+            assertThat(cuerpo(html))
+                    .contains("<body style=\"margin:0;padding:0;background-color:#f4f4f5;\">")
+                    .contains("style=\"background-color:#f4f4f5;padding:24px 12px;\"")
+                    .contains("style=\"max-width:600px;width:100%;background-color:#ffffff;"
+                            + "border-radius:12px;overflow:hidden;border:1px solid #e4e4e7;\"")
+                    .contains("style=\"background-color:#18181b;color:#ffffff;padding:24px 28px;"
+                            + "font-family:Arial,Helvetica,sans-serif;\"")
+                    .contains("style=\"margin:0;font-size:20px;font-weight:600;\"")
+                    .contains("style=\"padding:28px;font-family:Arial,Helvetica,sans-serif;color:#27272a;"
+                            + "font-size:14px;line-height:1.6;")
+                    .contains("style=\"background-color:#fafafa;border-top:1px solid #e4e4e7;"
+                            + "padding:14px 28px;font-family:Arial,Helvetica,sans-serif;font-size:12px;"
+                            + "color:#71717a;\"");
+        }
+    }
+
+    @Test
+    void elBloqueStyleSeConservaParaLosClientesQueLoSoportan() {
+        for (String html : correos()) {
+            assertThat(html)
+                    .contains("<style>")
+                    .contains("</style>")
+                    .contains(".card__header {");
+        }
+    }
+
+    @Test
+    void lasClasesCompartidasCoincidenEnLasCuatroPlantillas() {
+        Map<String, String> referencia = null;
+        for (String html : correos()) {
+            Map<String, String> reglas = new LinkedHashMap<>();
+            for (String clase : CLASES_COMPARTIDAS) {
+                Matcher matcher = Pattern.compile("\\." + clase + "\\s*\\{([^}]*)}").matcher(html);
+                assertThat(matcher.find()).as("falta la clase .%s en la plantilla", clase).isTrue();
+                reglas.put(clase, matcher.group(1).replaceAll("\\s+", " ").trim());
+            }
+            if (referencia == null) {
+                referencia = reglas;
+            } else {
+                assertThat(reglas)
+                        .as("las clases compartidas han divergido entre plantillas")
+                        .isEqualTo(referencia);
+            }
+        }
+    }
+
+    @Test
+    void elEnlaceDeResetInLineaElEstiloDelBoton() {
+        String html = renderer.renderResetHtml(resetVariables(URL_RESET), ESPANOL);
+
+        assertThat(cuerpo(html))
+                .contains(URL_RESET)
+                .contains("style=\"display:inline-block;background-color:#18181b;color:#ffffff;"
+                        + "text-decoration:none;font-weight:600;padding:12px 24px;border-radius:8px;\"");
+    }
+
+    @Test
+    void elCodigoDeOtpMantieneColorYEspaciado() {
+        String html = renderer.renderOtpHtml(otpVariables("123456"), ESPANOL);
+
+        assertThat(cuerpo(html))
+                .contains("style=\"margin:0 0 16px;font-size:32px;letter-spacing:8px;font-weight:700;"
+                        + "color:#18181b;\">123456")
+                .contains("style=\"padding:28px;font-family:Arial,Helvetica,sans-serif;color:#27272a;"
+                        + "font-size:14px;line-height:1.6;text-align:center;\"");
+    }
+
+    @Test
+    void elEscapadoYElInlinerConvivenEnElCorreoDeContacto() {
+        Map<String, Object> vars = variables();
+        vars.put("subject", "<script>alert(1)</script>");
+
+        String html = renderer.renderContactHtml(vars, ESPANOL);
+
+        assertThat(cuerpo(html))
+                .contains("&lt;script&gt;alert(1)&lt;/script&gt;")
+                .doesNotContain("<script>")
+                .contains("style=\"white-space:pre-wrap;background-color:#fafafa;border:1px solid #e4e4e7;"
+                        + "border-radius:8px;padding:14px;\"")
+                .contains("style=\"color:#2563eb;\"");
     }
 }
