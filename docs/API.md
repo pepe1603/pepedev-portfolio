@@ -107,6 +107,9 @@ Público. Body: `{ "email": "...", "password": "..." }` (ambos obligatorios).
   (feature flag `APP_AUTH_OTP_ENABLED=true` **y** `users.otp_enabled`): no se emiten tokens
   todavía, hay que llamar a `/auth/login/verify`.
 - `400` validación (con `errors[]`). `401` credenciales inválidas. `429` rate limit + `Retry-After`.
+- Aviso por correo de **acceso nuevo** (opt-in, `APP_MAIL_SECURITY_LOGIN`): solo cuando la IP o el
+  `User-Agent` no se habían usado antes en ninguna sesión del usuario, y no en cada login. No
+  cambia la respuesta ni puede tumbarla: es best-effort.
 
 ### POST `/auth/login/verify`
 Público. Body: `{ "challengeId": "...", "code": "123456" }`.
@@ -123,6 +126,8 @@ Público. Usa la cookie `refresh_token`. Sin body.
 ### POST `/auth/logout`
 Público. Revoca access (Bearer) y refresh (cookie) y marca la sesión como revocada.
 Siempre `204` (revocación best-effort).
+- Aviso por correo de **cierre de sesión** (opt-in, `APP_MAIL_SECURITY_LOGOUT`). Solo se manda si el
+  access token permite resolver al usuario: sin token válido el `204` se devuelve igual, sin correo.
 
 ### GET `/auth/me`
 Requiere access token. `200` → `{ "email": "...", "role": "ADMIN" }`.
@@ -150,6 +155,8 @@ Público. Body: `{ "email": "..." }`.
   Si existe, se genera un token de un solo uso (Redis `pwreset:{token}`, 30 min) y se envía el
   correo con el enlace `{APP_FRONT_RESET_URL}?token=...`.
 - `400` email ausente o inválido. `429` rate limit por IP (`APP_RESET_RATE_MAX_IP` / `APP_RESET_RATE_WINDOW`).
+- El correo solo se manda con `APP_MAIL_SECURITY_RESET=true` (default) y `APP_CONTACT_FROM_EMAIL`
+  configurado; con el interruptor apagado ni siquiera se genera el token. El `202` se devuelve igual.
 
 ### POST `/auth/reset/confirm`
 Público. Body: `{ "email": "...", "token": "...", "password": "..." }` (mínimo 8 caracteres).
@@ -292,9 +299,29 @@ Al arrancar, la API revisa la configuración y escribe `WARN` en el log (`Startu
 - `APP_JWT_REFRESH_COOKIE_SECURE=true` en producción: la cookie de refresh solo viaja por HTTPS.
 - Si `APP_AUTH_OTP_ENABLED=true`, hace falta `APP_CONTACT_FROM_EMAIL` (remitente verificado)
   para poder entregar los códigos.
+- Lo mismo para el correo de seguridad: con `APP_MAIL_SECURITY_RESET=true` o los avisos de sesión
+  activos, sin `APP_CONTACT_FROM_EMAIL` no sale ningún correo.
 
 Variables de la sesión: `APP_FRONT_RESET_URL`, `APP_RESET_RATE_MAX_IP`, `APP_RESET_RATE_WINDOW`,
-`APP_AUTH_OTP_ENABLED`, `APP_AUTH_OTP_TTL`, `APP_AUTH_OTP_MAX_ATTEMPTS` (ver `.env.example`).
+`APP_AUTH_OTP_ENABLED`, `APP_AUTH_OTP_TTL`, `APP_AUTH_OTP_MAX_ATTEMPTS`, `APP_MAIL_SECURITY_LOGIN`,
+`APP_MAIL_SECURITY_LOGOUT`, `APP_MAIL_SECURITY_RESET` (ver `.env.example`).
+
+## Correo de seguridad (opt-in por evento)
+
+Tres interruptores independientes, todos por entorno (`SecurityMailProperties`):
+
+| Variable | Default | Qué controla |
+|---|---|---|
+| `APP_MAIL_SECURITY_LOGIN` | `false` | Aviso de acceso nuevo en `/auth/login` y `/auth/login/verify` |
+| `APP_MAIL_SECURITY_LOGOUT` | `false` | Aviso de cierre de sesión en `/auth/logout` |
+| `APP_MAIL_SECURITY_RESET` | `true` | Correo con el enlace de `/auth/reset/request` |
+
+El reset nace activado porque es funcional (sin él no hay recuperación de contraseña); los avisos de
+sesión nacen apagados porque son ruido si solo entra una persona. Los tres necesitan
+`APP_CONTACT_FROM_EMAIL`. El envío es siempre best-effort y asíncrono (`SecurityNotificationService`):
+si falla SMTP, o la consulta de "¿esto ya se conocía?", se pierde el aviso y la petición responde
+igual. Los avisos van al propio usuario, en ES o EN según `Accept-Language`, con la fecha, la IP y
+el `User-Agent`.
 
 ## Comprobación rápida
 
