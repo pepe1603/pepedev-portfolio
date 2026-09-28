@@ -13,6 +13,7 @@ import dev.pepe1603.portfolio_api.entity.User;
 import dev.pepe1603.portfolio_api.enums.UserRole;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.PasswordResetTokenStore;
+import dev.pepe1603.portfolio_api.security.SecurityMailProperties;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.util.Locale;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.MessageSource;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class PasswordResetServiceTest {
 
@@ -31,6 +33,7 @@ class PasswordResetServiceTest {
     private final JavaMailSender mailSender = mock(JavaMailSender.class);
     private final MailTemplateRenderer templateRenderer = mock(MailTemplateRenderer.class);
     private final MessageSource messageSource = mock(MessageSource.class);
+    private final SecurityMailProperties mailProperties = new SecurityMailProperties();
 
     @BeforeEach
     void setUp() {
@@ -39,8 +42,13 @@ class PasswordResetServiceTest {
     }
 
     private PasswordResetService service() {
+        return service(true);
+    }
+
+    private PasswordResetService service(boolean resetMailEnabled) {
+        ReflectionTestUtils.setField(mailProperties, "resetEnabled", resetMailEnabled);
         return new PasswordResetService(tokenStore, userRepository, mailSender, templateRenderer, messageSource,
-                "from@pepe.dev", "https://pepe.dev/reset");
+                mailProperties, "from@pepe.dev", "https://pepe.dev/reset");
     }
 
     private User admin() {
@@ -81,12 +89,23 @@ class PasswordResetServiceTest {
 
     @Test
     void sinFromEmailConfiguradoNoGeneraToken() {
+        ReflectionTestUtils.setField(mailProperties, "resetEnabled", true);
         PasswordResetService service = new PasswordResetService(tokenStore, userRepository, mailSender,
-                templateRenderer, messageSource, "", "https://pepe.dev/reset");
+                templateRenderer, messageSource, mailProperties, "", "https://pepe.dev/reset");
 
         service.requestReset("admin@pepe.dev", Locale.forLanguageTag("es"));
 
         verify(tokenStore, never()).create(anyString(), any());
+    }
+
+    @Test
+    void conElInterruptorDeResetApagadoNoGeneraTokenNiEnviaCorreo() throws Exception {
+        given(userRepository.findByEmail("admin@pepe.dev")).willReturn(Optional.of(admin()));
+
+        service(false).requestReset("admin@pepe.dev", Locale.forLanguageTag("es"));
+
+        verify(tokenStore, never()).create(anyString(), any());
+        verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
     @Test

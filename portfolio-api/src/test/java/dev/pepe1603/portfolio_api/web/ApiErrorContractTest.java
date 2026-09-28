@@ -24,6 +24,7 @@ import dev.pepe1603.portfolio_api.security.ResetRateLimiter;
 import dev.pepe1603.portfolio_api.service.AuditService;
 import dev.pepe1603.portfolio_api.service.OtpService;
 import dev.pepe1603.portfolio_api.service.PasswordResetService;
+import dev.pepe1603.portfolio_api.service.SecurityNotificationService;
 import dev.pepe1603.portfolio_api.service.ContactService;
 import dev.pepe1603.portfolio_api.service.StorageService;
 import dev.pepe1603.portfolio_api.security.ContactRateLimiter;
@@ -93,6 +94,8 @@ class ApiErrorContractTest {
     private AuditService auditService;
     @MockitoBean
     private PasswordResetService passwordResetService;
+    @MockitoBean
+    private SecurityNotificationService securityNotificationService;
     @MockitoBean
     private ResetRateLimiter resetRateLimiter;
     @MockitoBean

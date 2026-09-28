@@ -203,6 +203,67 @@ class MailTemplateRendererTest {
                 .doesNotContain("Tu código de acceso");
     }
 
+    private Map<String, Object> sesionVariables() {
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("fecha", "27/09/2026 09:00");
+        vars.put("ip", "192.168.1.42");
+        vars.put("userAgent", "Mozilla/5.0 (X11; Linux x86_64)");
+        return vars;
+    }
+
+    @Test
+    void sessionLoginHtmlMuestraLosDatosDelAccesoEnEspanol() {
+        String html = renderer.renderSessionLoginHtml(sesionVariables(), ESPANOL);
+
+        assertThat(html)
+                .contains("Nuevo inicio de sesión")
+                .contains("27/09/2026 09:00")
+                .contains("192.168.1.42")
+                .contains("Mozilla/5.0 (X11; Linux x86_64)")
+                .contains("Si no reconoces este acceso");
+    }
+
+    @Test
+    void sessionLoginHtmlMuestraLosDatosEnIngles() {
+        String html = renderer.renderSessionLoginHtml(sesionVariables(), Locale.forLanguageTag("en"));
+
+        assertThat(html)
+                .contains("New sign-in")
+                .contains("192.168.1.42")
+                .doesNotContain("Nuevo inicio de sesión");
+    }
+
+    @Test
+    void sessionLogoutHtmlMuestraLosDatosEnEspanol() {
+        String html = renderer.renderSessionLogoutHtml(sesionVariables(), ESPANOL);
+
+        assertThat(html)
+                .contains("Sesión cerrada")
+                .contains("27/09/2026 09:00")
+                .contains("192.168.1.42")
+                .contains("Si no fuiste tú");
+    }
+
+    @Test
+    void sessionLogoutHtmlMuestraLosDatosEnIngles() {
+        String html = renderer.renderSessionLogoutHtml(sesionVariables(), Locale.forLanguageTag("en"));
+
+        assertThat(html)
+                .contains("Session closed")
+                .contains("192.168.1.42")
+                .doesNotContain("Sesión cerrada");
+    }
+
+    @Test
+    void sinUserAgentLosAvisosDeSesionMuestranUnGuionLargo() {
+        Map<String, Object> vars = new LinkedHashMap<>();
+        vars.put("fecha", "27/09/2026 09:00");
+        vars.put("ip", "192.168.1.42");
+
+        assertThat(renderer.renderSessionLoginHtml(vars, ESPANOL)).contains(">—</span>");
+        assertThat(renderer.renderSessionLogoutHtml(vars, ESPANOL)).contains(">—</span>");
+    }
+
     private static final String URL_RESET = "https://pepe.dev/reset?token=abc123";
 
     private static final Locale ESPANOL = Locale.forLanguageTag("es");
@@ -216,7 +277,9 @@ class MailTemplateRendererTest {
                 renderer.renderContactHtml(variables(), ESPANOL),
                 renderer.renderAckHtml(variables(), ESPANOL),
                 renderer.renderResetHtml(resetVariables(URL_RESET), ESPANOL),
-                renderer.renderOtpHtml(otpVariables("123456"), ESPANOL));
+                renderer.renderOtpHtml(otpVariables("123456"), ESPANOL),
+                renderer.renderSessionLoginHtml(sesionVariables(), ESPANOL),
+                renderer.renderSessionLogoutHtml(sesionVariables(), ESPANOL));
     }
 
     /** El correo sin el bloque {@code <style>}, que es la parte que llega al cliente de correo. */

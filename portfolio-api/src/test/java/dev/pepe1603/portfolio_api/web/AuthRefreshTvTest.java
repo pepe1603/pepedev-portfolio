@@ -18,6 +18,7 @@ import dev.pepe1603.portfolio_api.security.ResetRateLimiter;
 import dev.pepe1603.portfolio_api.service.AuditService;
 import dev.pepe1603.portfolio_api.service.OtpService;
 import dev.pepe1603.portfolio_api.service.PasswordResetService;
+import dev.pepe1603.portfolio_api.service.SecurityNotificationService;
 import dev.pepe1603.portfolio_api.security.AccessTokenReader;
 import dev.pepe1603.portfolio_api.security.JwtProperties;
 import dev.pepe1603.portfolio_api.security.JwtTokenService;
@@ -77,6 +78,8 @@ class AuthRefreshTvTest {
     private OtpProperties otpProperties;
     @MockitoBean
     private AccessTokenReader accessTokenReader;
+    @MockitoBean
+    private SecurityNotificationService securityNotificationService;
 
     private User admin() {
         User user = new User();

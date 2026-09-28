@@ -31,6 +31,7 @@ import dev.pepe1603.portfolio_api.security.TokenBlacklist;
 import dev.pepe1603.portfolio_api.service.AuditService;
 import dev.pepe1603.portfolio_api.service.OtpService;
 import dev.pepe1603.portfolio_api.service.PasswordResetService;
+import dev.pepe1603.portfolio_api.service.SecurityNotificationService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -86,6 +87,8 @@ class AuthResetTest {
     private OtpProperties otpProperties;
     @MockitoBean
     private AccessTokenReader accessTokenReader;
+    @MockitoBean
+    private SecurityNotificationService securityNotificationService;
 
     private User admin() {
         User user = new User();

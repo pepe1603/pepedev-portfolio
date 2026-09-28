@@ -35,6 +35,7 @@ import dev.pepe1603.portfolio_api.security.TokenBlacklist;
 import dev.pepe1603.portfolio_api.service.AuditService;
 import dev.pepe1603.portfolio_api.service.OtpService;
 import dev.pepe1603.portfolio_api.service.PasswordResetService;
+import dev.pepe1603.portfolio_api.service.SecurityNotificationService;
 import io.jsonwebtoken.Claims;
 import java.time.Instant;
 import java.util.List;
@@ -93,6 +94,8 @@ class AuthOtpLoginTest {
     private OtpProperties otpProperties;
     @MockitoBean
     private AccessTokenReader accessTokenReader;
+    @MockitoBean
+    private SecurityNotificationService securityNotificationService;
 
     private User admin(boolean otpEnabled) {
         User user = new User();
