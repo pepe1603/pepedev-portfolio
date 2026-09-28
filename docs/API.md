@@ -273,7 +273,9 @@ ambos** (si Spring recibe el mismo parámetro duplicado los une con coma → `40
   `415`. Tamaño `413`: 5 MB imágenes / 10 MB CV (y globales multipart 15/20 MB del contenedor).
 - `400`: fichero vacío ("Se requiere un fichero no vacío"), `use` inválido, parte `file` ausente o
   request no multipart ("Petición no codificada como multipart/form-data").
-- No muta entidades ni hace evicts; sin borrado de orfanatos por ahora.
+- No muta entidades ni hace evicts por sí mismo. El borrado de huérfanos sí existe: al borrar o
+  editar un proyecto, certificado o el profile, `OrphanFileCleaner` elimina los ficheros que
+  dejan de estar referenciados (última referencia perdida y nombre con patrón `UUID.(jpg|png|webp|pdf)`).
 
 ### OTP (`PATCH /admin/otp`)
 - Body `{ "enabled": true | false }` → `204`. Activa/desactiva el segundo factor por email del
