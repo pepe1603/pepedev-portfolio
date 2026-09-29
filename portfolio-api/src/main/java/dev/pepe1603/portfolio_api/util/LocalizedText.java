@@ -1,5 +1,6 @@
 package dev.pepe1603.portfolio_api.util;
 
+import java.util.Locale;
 import java.util.Map;
 
 public final class LocalizedText {
@@ -7,6 +8,14 @@ public final class LocalizedText {
     public static final String DEFAULT_LANG = "es";
 
     private LocalizedText() {
+    }
+
+    /**
+     * El proyecto solo tiene español e inglés, así que cualquier otro idioma cae en español en vez
+     * de dejar la cadena vacía.
+     */
+    public static Locale toLocale(Locale locale) {
+        return Locale.forLanguageTag(normalizeLang(locale != null ? locale.getLanguage() : null));
     }
 
     public static String resolve(Map<String, String> text, String lang) {

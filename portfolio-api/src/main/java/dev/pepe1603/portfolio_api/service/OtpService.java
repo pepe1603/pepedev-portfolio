@@ -4,9 +4,7 @@ import dev.pepe1603.portfolio_api.entity.User;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.OtpChallengeStore;
 import dev.pepe1603.portfolio_api.security.OtpProperties;
-import jakarta.mail.internet.MimeBodyPart;
-import jakarta.mail.internet.MimeMessage;
-import jakarta.mail.internet.MimeMultipart;
+import dev.pepe1603.portfolio_api.util.LocalizedText;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -17,40 +15,30 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Service
 public class OtpService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OtpService.class);
     private static final int CODE_DIGITS = 6;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final OtpChallengeStore otpChallengeStore;
     private final OtpProperties otpProperties;
     private final UserRepository userRepository;
-    private final JavaMailSender mailSender;
+    private final MailService mailService;
     private final MailTemplateRenderer templateRenderer;
     private final MessageSource messageSource;
-    private final String fromEmail;
 
     public OtpService(OtpChallengeStore otpChallengeStore, OtpProperties otpProperties, UserRepository userRepository,
-            JavaMailSender mailSender, MailTemplateRenderer templateRenderer, MessageSource messageSource,
-            @Value("${APP_CONTACT_FROM_EMAIL:}") String fromEmail) {
+            MailService mailService, MailTemplateRenderer templateRenderer, MessageSource messageSource) {
         this.otpChallengeStore = otpChallengeStore;
         this.otpProperties = otpProperties;
         this.userRepository = userRepository;
-        this.mailSender = mailSender;
+        this.mailService = mailService;
         this.templateRenderer = templateRenderer;
         this.messageSource = messageSource;
-        this.fromEmail = fromEmail;
     }
 
     public String createChallenge(String email, Locale locale) {
@@ -93,41 +81,16 @@ public class OtpService {
     }
 
     private void sendOtpEmail(String email, String code, Locale locale) {
-        if (fromEmail == null || fromEmail.isBlank()) {
+        if (!mailService.canSend()) {
             return;
         }
-        CompletableFuture.runAsync(() -> {
-            try {
-                Locale lang = normalizeLocale(locale);
-                String subject = messageSource.getMessage("mail.otp.subject", null, lang);
-                Map<String, Object> variables = new LinkedHashMap<>();
-                variables.put("code", code);
-                variables.put("minutes", otpProperties.getTtlSeconds() / 60);
-                String html = templateRenderer.renderOtpHtml(variables, lang);
-
-                MimeMessage mime = mailSender.createMimeMessage();
-                MimeMessageHelper helper = new MimeMessageHelper(mime, "UTF-8");
-                helper.setFrom(fromEmail);
-                helper.setTo(email);
-                helper.setSubject(subject);
-                MimeMultipart alternative = new MimeMultipart("alternative");
-                MimeBodyPart textPart = new MimeBodyPart();
-                textPart.setText("Tu código de acceso es: " + code, "UTF-8");
-                MimeBodyPart htmlPart = new MimeBodyPart();
-                htmlPart.setContent(html, "text/html; charset=UTF-8");
-                alternative.addBodyPart(textPart);
-                alternative.addBodyPart(htmlPart);
-                mime.setContent(alternative);
-                mailSender.send(mime);
-            } catch (Exception e) {
-                // El fallo de transporte llega como MailSendException (unchecked), no como
-                // MessagingException: sin este catch se pierde en el pool sin dejar rastro.
-                LOG.error("No se pudo enviar el código OTP", e);
-            }
-        });
+        Locale lang = LocalizedText.toLocale(locale);
+        String subject = messageSource.getMessage("mail.otp.subject", null, lang);
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("code", code);
+        variables.put("minutes", otpProperties.getTtlSeconds() / 60);
+        mailService.sendAsync(email, subject, "Tu código de acceso es: " + code,
+                templateRenderer.renderOtpHtml(variables, lang));
     }
 
-    private Locale normalizeLocale(Locale locale) {
-        return locale != null && "en".equals(locale.getLanguage()) ? Locale.ENGLISH : Locale.forLanguageTag("es");
-    }
 }

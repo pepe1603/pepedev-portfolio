@@ -3,22 +3,16 @@ package dev.pepe1603.portfolio_api.service;
 import dev.pepe1603.portfolio_api.entity.User;
 import dev.pepe1603.portfolio_api.repository.AuthSessionRepository;
 import dev.pepe1603.portfolio_api.security.SecurityMailProperties;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeBodyPart;
-import jakarta.mail.internet.MimeMessage;
-import jakarta.mail.internet.MimeMultipart;
+import dev.pepe1603.portfolio_api.util.LocalizedText;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 /**
@@ -38,29 +32,25 @@ import org.springframework.stereotype.Service;
 public class SecurityNotificationService {
 
     private static final Logger LOG = LoggerFactory.getLogger(SecurityNotificationService.class);
-    private static final Locale ADMIN_LOCALE = Locale.forLanguageTag("es");
     private static final DateTimeFormatter FECHA_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     private final AuthSessionRepository authSessionRepository;
-    private final JavaMailSender mailSender;
+    private final MailService mailService;
     private final MailTemplateRenderer templateRenderer;
     private final MessageSource messageSource;
     private final SecurityMailProperties properties;
-    private final String fromEmail;
 
-    public SecurityNotificationService(AuthSessionRepository authSessionRepository, JavaMailSender mailSender,
-            MailTemplateRenderer templateRenderer, MessageSource messageSource, SecurityMailProperties properties,
-            @Value("${APP_CONTACT_FROM_EMAIL:}") String fromEmail) {
+    public SecurityNotificationService(AuthSessionRepository authSessionRepository, MailService mailService,
+            MailTemplateRenderer templateRenderer, MessageSource messageSource, SecurityMailProperties properties) {
         this.authSessionRepository = authSessionRepository;
-        this.mailSender = mailSender;
+        this.mailService = mailService;
         this.templateRenderer = templateRenderer;
         this.messageSource = messageSource;
         this.properties = properties;
-        this.fromEmail = fromEmail;
     }
 
     public void notifyNewLogin(User user, String ip, String userAgent, Locale locale) {
-        if (!properties.isLoginEnabled() || !canSend()) {
+        if (!properties.isLoginEnabled() || !mailService.canSend()) {
             return;
         }
         try {
@@ -80,7 +70,7 @@ public class SecurityNotificationService {
     }
 
     public void notifyLogout(User user, String ip, String userAgent, Locale locale) {
-        if (!properties.isLogoutEnabled() || !canSend()) {
+        if (!properties.isLogoutEnabled() || !mailService.canSend()) {
             return;
         }
         try {
@@ -93,41 +83,15 @@ public class SecurityNotificationService {
 
     private void send(String to, String keyPrefix, String ip, String userAgent, Locale locale,
             HtmlRenderer renderer) {
-        Locale lang = normalizeLocale(locale);
+        Locale lang = LocalizedText.toLocale(locale);
         String fecha = LocalDateTime.now().format(FECHA_FORMAT);
-        CompletableFuture.runAsync(() -> {
-            try {
-                Map<String, Object> variables = new LinkedHashMap<>();
-                variables.put("fecha", fecha);
-                variables.put("ip", ip);
-                variables.put("userAgent", userAgent);
-                String subject = messageSource.getMessage(keyPrefix + ".subject", null, lang);
-                sendMime(to, subject, plainText(keyPrefix, fecha, ip, userAgent, lang),
-                        renderer.render(lang, variables));
-            } catch (Exception e) {
-                // Cubre las dos fuentes de fallo: las checked al construir el MimeMessage y la
-                // MailSendException (unchecked) que lanza mailSender.send() si el SMTP falla. Sin
-                // este catch la excepción se perdería en el pool sin dejar rastro.
-                LOG.error("No se pudo enviar el aviso de seguridad {}", keyPrefix, e);
-            }
-        });
-    }
-
-    private void sendMime(String to, String subject, String plain, String html) throws MessagingException {
-        MimeMessage mime = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(mime, "UTF-8");
-        helper.setFrom(fromEmail);
-        helper.setTo(to);
-        helper.setSubject(subject);
-        MimeMultipart alternative = new MimeMultipart("alternative");
-        MimeBodyPart textPart = new MimeBodyPart();
-        textPart.setText(plain, "UTF-8");
-        MimeBodyPart htmlPart = new MimeBodyPart();
-        htmlPart.setContent(html, "text/html; charset=UTF-8");
-        alternative.addBodyPart(textPart);
-        alternative.addBodyPart(htmlPart);
-        mime.setContent(alternative);
-        mailSender.send(mime);
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("fecha", fecha);
+        variables.put("ip", ip);
+        variables.put("userAgent", userAgent);
+        String subject = messageSource.getMessage(keyPrefix + ".subject", null, lang);
+        mailService.sendAsync(to, subject, plainText(keyPrefix, fecha, ip, userAgent, lang),
+                renderer.render(lang, variables));
     }
 
     /** La parte de texto plano se compone con las mismas claves que la plantilla, también i18n. */
@@ -145,15 +109,11 @@ public class SecurityNotificationService {
     }
 
     private boolean canSend() {
-        if (fromEmail != null && !fromEmail.isBlank()) {
+        if (mailService.canSend()) {
             return true;
         }
         LOG.warn("Aviso de seguridad omitido: falta APP_CONTACT_FROM_EMAIL");
         return false;
-    }
-
-    private Locale normalizeLocale(Locale locale) {
-        return locale != null && "en".equals(locale.getLanguage()) ? Locale.ENGLISH : ADMIN_LOCALE;
     }
 
     @FunctionalInterface
