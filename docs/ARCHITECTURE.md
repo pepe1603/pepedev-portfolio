@@ -56,6 +56,7 @@ Principios:
 | Frontend | Nuxt 3 + TailwindCSS | SSR/SSG → SEO obligatorio para portafolio; i18n integrado |
 | DB | PostgreSQL | Relacional, encaja con el modelo |
 | Caché | Redis | Rate limiting, caché de listados, refresh tokens revocados |
+| Correo | **JavaMailSender + `ThreadPoolExecutor` propio, sin broker** | Best-effort: un SMTP caído nunca tumba una petición, así que el envío sale de la petición a un hilo dedicado con cola acotada. Sin RabbitMQ, reintentos ni outbox: a esta escala el correo perdido se recupera con un reenvío. Detalle y alternativas descartadas en [CORREO.md](CORREO.md) |
 | Modelo de datos | **Mínimo: 4 tablas + JSONB** | Un solo dueño y volumen pequeño; lista de presentación embebida, tabla solo si hay página/filtro propio. Detalle en [REQUIREMENTS §6](REQUIREMENTS.md#6-modelo-de-datos) |
 
 Nota: al ser Java ↔ TypeScript no se comparten tipos; el contrato único es el OpenAPI

@@ -47,6 +47,7 @@ Docker y la migración al VPS de producción llegan solo cuando todo funcione en
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Decisiones técnicas, arquitectura, infraestructura, entornos, seguridad, despliegue |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Fases del desarrollo con checklists |
 | [docs/SETUP-FASE0-API.md](docs/SETUP-FASE0-API.md) | Guía paso a paso: Initializr, dependencias, secretos y primer arranque |
+| [docs/CORREO.md](docs/CORREO.md) | Por qué el envío es asíncrono y en un hilo propio, y qué alternativas se descartaron |
 
 ## Estructura
 
