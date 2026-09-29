@@ -50,8 +50,12 @@ class OtpServiceTest {
     }
 
     private OtpService service() {
-        return new OtpService(otpChallengeStore, otpProperties, userRepository, mailSender, templateRenderer,
-                messageSource, "from@pepe.dev");
+        return new OtpService(otpChallengeStore, otpProperties, userRepository, mailService("from@pepe.dev"),
+                templateRenderer, messageSource);
+    }
+
+    private MailService mailService(String fromEmail) {
+        return new MailService(mailSender, fromEmail);
     }
 
     private User admin() {
@@ -144,8 +148,8 @@ class OtpServiceTest {
     @Test
     void sinFromEmailNoEnviaCorreoPeroGuardaElChallenge() {
         given(otpChallengeStore.create(anyString(), anyString(), any())).willReturn("challenge-1");
-        OtpService service = new OtpService(otpChallengeStore, otpProperties, userRepository, mailSender,
-                templateRenderer, messageSource, "");
+        OtpService service = new OtpService(otpChallengeStore, otpProperties, userRepository, mailService(""),
+                templateRenderer, messageSource);
 
         service.createChallenge("admin@pepe.dev", Locale.forLanguageTag("es"));
 
@@ -164,7 +168,7 @@ class OtpServiceTest {
         // El envio va en un CompletableFuture: con el catch viejo la excepcion se perdia en el pool
         // sin dejar ni una linea de log, y el usuario recibia un 202 con un challenge que jamas le
         // llego por correo. Ahora el fallo queda registrado.
-        try (LogCapture log = LogCapture.de(OtpService.class)) {
+        try (LogCapture log = LogCapture.de(MailService.class)) {
             String challengeId = service().createChallenge("admin@pepe.dev", Locale.forLanguageTag("es"));
             assertThat(challengeId).isEqualTo("challenge-1");
             assertThat(log.eventuallyErrorWith(new MailSendException("Mail server connection failed"))).isTrue();

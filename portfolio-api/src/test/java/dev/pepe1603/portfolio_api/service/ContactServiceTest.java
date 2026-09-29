@@ -34,8 +34,8 @@ class ContactServiceTest {
     private final MessageSource messageSource = mock(MessageSource.class);
 
     private ContactService service(boolean sendAck) {
-        return new ContactService(messageRepository, mailSender, templateRenderer, messageSource,
-                "to@pepe.dev", "from@pepe.dev", sendAck);
+        return new ContactService(messageRepository, new MailService(mailSender, "from@pepe.dev"),
+                templateRenderer, messageSource, "to@pepe.dev", sendAck);
     }
 
     private ContactRequest request() {
@@ -108,11 +108,11 @@ class ContactServiceTest {
     @Test
     void noEnviaSiFaltanLasDireccionesDeConfiguracion() {
         ContactService sinDestino =
-                new ContactService(messageRepository, mailSender, templateRenderer, messageSource,
-                        "", "from@pepe.dev", true);
+                new ContactService(messageRepository, new MailService(mailSender, "from@pepe.dev"),
+                        templateRenderer, messageSource, "", true);
         ContactService sinRemitente =
-                new ContactService(messageRepository, mailSender, templateRenderer, messageSource,
-                        "to@pepe.dev", "", true);
+                new ContactService(messageRepository, new MailService(mailSender, ""),
+                        templateRenderer, messageSource, "to@pepe.dev", true);
 
         sinDestino.save(request(), "192.168.1.1", "curl-test", Locale.forLanguageTag("es"));
         sinRemitente.save(request(), "192.168.1.1", "curl-test", Locale.forLanguageTag("es"));
@@ -147,7 +147,7 @@ class ContactServiceTest {
                 .when(mailSender).send(any(MimeMessage.class));
 
         // Ni la notificacion al admin ni el acuse al visitante pueden fallar en silencio.
-        try (LogCapture log = LogCapture.de(ContactService.class)) {
+        try (LogCapture log = LogCapture.de(MailService.class)) {
             service(true).save(request(), "192.168.1.1", "curl-test", Locale.forLanguageTag("es"));
             verify(messageRepository).save(any());
             assertThat(log.eventuallyErrorWith(new MailSendException("Mail server connection failed"))).isTrue();

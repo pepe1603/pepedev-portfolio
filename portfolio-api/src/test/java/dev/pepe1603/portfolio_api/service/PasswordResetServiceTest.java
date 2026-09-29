@@ -50,8 +50,8 @@ class PasswordResetServiceTest {
 
     private PasswordResetService service(boolean resetMailEnabled) {
         ReflectionTestUtils.setField(mailProperties, "resetEnabled", resetMailEnabled);
-        return new PasswordResetService(tokenStore, userRepository, mailSender, templateRenderer, messageSource,
-                mailProperties, "from@pepe.dev", "https://pepe.dev/reset");
+        return new PasswordResetService(tokenStore, userRepository, new MailService(mailSender, "from@pepe.dev"),
+                templateRenderer, messageSource, mailProperties, "https://pepe.dev/reset");
     }
 
     private User admin() {
@@ -93,8 +93,9 @@ class PasswordResetServiceTest {
     @Test
     void sinFromEmailConfiguradoNoGeneraToken() {
         ReflectionTestUtils.setField(mailProperties, "resetEnabled", true);
-        PasswordResetService service = new PasswordResetService(tokenStore, userRepository, mailSender,
-                templateRenderer, messageSource, mailProperties, "", "https://pepe.dev/reset");
+        PasswordResetService service = new PasswordResetService(tokenStore, userRepository,
+                new MailService(mailSender, ""), templateRenderer, messageSource, mailProperties,
+                "https://pepe.dev/reset");
 
         service.requestReset("admin@pepe.dev", Locale.forLanguageTag("es"));
 

@@ -66,8 +66,8 @@ class SecurityNotificationServiceTest {
     private SecurityNotificationService service(boolean loginMail, boolean logoutMail, String fromEmail) {
         ReflectionTestUtils.setField(properties, "loginEnabled", loginMail);
         ReflectionTestUtils.setField(properties, "logoutEnabled", logoutMail);
-        return new SecurityNotificationService(authSessionRepository, mailSender, templateRenderer, messageSource,
-                properties, fromEmail);
+        return new SecurityNotificationService(authSessionRepository, new MailService(mailSender, fromEmail),
+                templateRenderer, messageSource, properties);
     }
 
     private User admin() {
