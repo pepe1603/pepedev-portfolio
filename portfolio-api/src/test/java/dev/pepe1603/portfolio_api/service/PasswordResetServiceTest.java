@@ -1,11 +1,13 @@
 package dev.pepe1603.portfolio_api.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.MessageSource;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -129,4 +132,20 @@ class PasswordResetServiceTest {
 
         verify(tokenStore, never()).consume(anyString(), anyString());
     }
+    @Test
+    void smtpCaidoNoDevuelve500YElTokenQuedaCreado() throws Exception {
+        given(userRepository.findByEmail("admin@pepe.dev")).willReturn(Optional.of(admin()));
+        given(tokenStore.create(anyString(), org.mockito.ArgumentMatchers.any())).willReturn("token-1");
+        given(mailSender.createMimeMessage()).willReturn(new MimeMessage(Session.getInstance(new Properties())));
+        // Lo que lanza JavaMailSenderImpl cuando no puede hablar con el servidor SMTP.
+        doThrow(new MailSendException("Mail server connection failed"))
+                .when(mailSender).send(any(MimeMessage.class));
+
+        // Antes esto escapaba como MailSendException y /auth/reset/request devolvía 500 en vez del
+        // 202 documentado. El token se crea igualmente: el correo es best-effort, no la operación.
+        assertThatCode(() -> service().requestReset("admin@pepe.dev", Locale.forLanguageTag("es")))
+                .doesNotThrowAnyException();
+        verify(tokenStore).create(anyString(), org.mockito.ArgumentMatchers.any());
+    }
+
 }

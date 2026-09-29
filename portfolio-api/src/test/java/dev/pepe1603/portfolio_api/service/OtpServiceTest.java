@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.MessageSource;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -150,5 +152,22 @@ class OtpServiceTest {
         verify(otpChallengeStore).create(anyString(), anyString(), any());
         verify(mailSender, never()).send(any(MimeMessage.class));
         verify(mailSender, times(0)).createMimeMessage();
+    }
+
+    @Test
+    void smtpCaidoNoTiraElChallengeNiSePierdeEnSilencio() throws Exception {
+        given(otpChallengeStore.create(anyString(), anyString(), any())).willReturn("challenge-1");
+        given(mailSender.createMimeMessage()).willReturn(new MimeMessage(Session.getInstance(new Properties())));
+        doThrow(new MailSendException("Mail server connection failed"))
+                .when(mailSender).send(any(MimeMessage.class));
+
+        // El envio va en un CompletableFuture: con el catch viejo la excepcion se perdia en el pool
+        // sin dejar ni una linea de log, y el usuario recibia un 202 con un challenge que jamas le
+        // llego por correo. Ahora el fallo queda registrado.
+        try (LogCapture log = LogCapture.de(OtpService.class)) {
+            String challengeId = service().createChallenge("admin@pepe.dev", Locale.forLanguageTag("es"));
+            assertThat(challengeId).isEqualTo("challenge-1");
+            assertThat(log.eventuallyErrorWith(new MailSendException("Mail server connection failed"))).isTrue();
+        }
     }
 }

@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
@@ -22,6 +23,7 @@ import java.util.Properties;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.context.MessageSource;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 
 class ContactServiceTest {
@@ -134,5 +136,21 @@ class ContactServiceTest {
     private String recipient(MimeMessage mime) throws Exception {
         InternetAddress[] to = (InternetAddress[]) mime.getRecipients(MimeMessage.RecipientType.TO);
         return to[0].getAddress();
+    }
+
+    @Test
+    void smtpCaidoDejaRastroEnElLogYElMensajeQuedaGuardado() throws Exception {
+        stubRenderer();
+        given(mailSender.createMimeMessage())
+                .willAnswer(inv -> createMime());
+        doThrow(new MailSendException("Mail server connection failed"))
+                .when(mailSender).send(any(MimeMessage.class));
+
+        // Ni la notificacion al admin ni el acuse al visitante pueden fallar en silencio.
+        try (LogCapture log = LogCapture.de(ContactService.class)) {
+            service(true).save(request(), "192.168.1.1", "curl-test", Locale.forLanguageTag("es"));
+            verify(messageRepository).save(any());
+            assertThat(log.eventuallyErrorWith(new MailSendException("Mail server connection failed"))).isTrue();
+        }
     }
 }
