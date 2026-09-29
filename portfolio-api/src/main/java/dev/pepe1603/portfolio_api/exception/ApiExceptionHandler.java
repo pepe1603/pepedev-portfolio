@@ -54,21 +54,14 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, body, new HttpHeaders(), HttpStatus.UNAUTHORIZED, request);
     }
 
-    @ExceptionHandler({LoginRateLimitedException.class, ContactRateLimitedException.class})
+    @ExceptionHandler({LoginRateLimitedException.class, ContactRateLimitedException.class,
+            OtpResendTooSoonException.class})
     protected ResponseEntity<Object> handleRateLimited(RuntimeException ex, WebRequest request) {
-        long retryAfter;
-        String message;
-        if (ex instanceof LoginRateLimitedException loginEx) {
-            retryAfter = loginEx.getRetryAfterSeconds();
-            message = "Demasiados intentos de login. Inténtalo de nuevo más tarde";
-        } else {
-            ContactRateLimitedException contactEx = (ContactRateLimitedException) ex;
-            retryAfter = contactEx.getRetryAfterSeconds();
-            message = "Demasiados envíos de contacto. Inténtalo de nuevo más tarde";
-        }
+        RateLimitedException limited = (RateLimitedException) ex;
         HttpHeaders headers = new HttpHeaders();
-        headers.set(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfter));
-        ProblemDetail body = createProblemDetail(ex, HttpStatus.TOO_MANY_REQUESTS, message, null, null, request);
+        headers.set(HttpHeaders.RETRY_AFTER, String.valueOf(limited.getRetryAfterSeconds()));
+        ProblemDetail body = createProblemDetail(ex, HttpStatus.TOO_MANY_REQUESTS, limited.getUserMessage(), null,
+                null, request);
         return handleExceptionInternal(ex, body, headers, HttpStatus.TOO_MANY_REQUESTS, request);
     }
 

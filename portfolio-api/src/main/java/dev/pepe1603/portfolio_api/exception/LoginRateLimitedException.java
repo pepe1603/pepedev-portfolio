@@ -1,6 +1,6 @@
 package dev.pepe1603.portfolio_api.exception;
 
-public class LoginRateLimitedException extends RuntimeException {
+public class LoginRateLimitedException extends RuntimeException implements RateLimitedException {
 
     private final long retryAfterSeconds;
 
@@ -9,7 +9,13 @@ public class LoginRateLimitedException extends RuntimeException {
         this.retryAfterSeconds = retryAfterSeconds;
     }
 
+    @Override
     public long getRetryAfterSeconds() {
         return retryAfterSeconds;
+    }
+
+    @Override
+    public String getUserMessage() {
+        return "Demasiados intentos de login. Inténtalo de nuevo más tarde";
     }
 }

@@ -4,6 +4,7 @@ import dev.pepe1603.portfolio_api.dto.auth.LoginRequest;
 import dev.pepe1603.portfolio_api.dto.auth.MeResponse;
 import dev.pepe1603.portfolio_api.dto.auth.OtpChallengeResponse;
 import dev.pepe1603.portfolio_api.dto.auth.OtpLoginVerifyRequest;
+import dev.pepe1603.portfolio_api.dto.auth.OtpResendRequest;
 import dev.pepe1603.portfolio_api.dto.auth.PasswordResetConfirm;
 import dev.pepe1603.portfolio_api.dto.auth.PasswordResetRequest;
 import dev.pepe1603.portfolio_api.dto.auth.SessionResponse;
@@ -26,6 +27,7 @@ import dev.pepe1603.portfolio_api.service.OtpService;
 import dev.pepe1603.portfolio_api.service.PasswordResetService;
 import dev.pepe1603.portfolio_api.service.SecurityNotificationService;
 import dev.pepe1603.portfolio_api.exception.LoginRateLimitedException;
+import dev.pepe1603.portfolio_api.exception.OtpResendTooSoonException;
 import dev.pepe1603.portfolio_api.security.LoginRateLimiter;
 import dev.pepe1603.portfolio_api.security.RateLimitProperties;
 import dev.pepe1603.portfolio_api.security.TokenBlacklist;
@@ -198,6 +200,32 @@ public class AuthController {
         setRefreshCookie(response, tokens.refreshToken(), jwtProperties.refreshTtl());
         return ResponseEntity.ok(new TokenResponse(tokens.accessToken(), "Bearer",
                 jwtProperties.accessTtl().toSeconds()));
+    }
+
+    @PostMapping("/login/resend")
+    @Operation(summary = "Reenviar el código OTP del login",
+            description = "Genera un código nuevo para el challenge indicado y lo vuelve a enviar por email. "
+                    + "El código anterior deja de valer y el challenge no se alarga: el login sigue teniendo "
+                    + "5 min en total (APP_AUTH_OTP_TTL), no 5 min por reenvío. Responde 202 siempre que el "
+                    + "correo se haya encolado; el envío es best-effort, sin reintentos ni cola.")
+    @ApiResponse(responseCode = "202", description = "Reenvío encolado",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "400", description = "challengeId ausente",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "401", description = "Challenge inválido o caducado: hay que empezar el login otra vez",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "429", description = "Reenviado hace poco (Retry-After en segundos)",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    public ResponseEntity<Void> loginResend(@Valid @RequestBody OtpResendRequest request,
+            HttpServletRequest servletRequest) {
+        OtpService.OtpResendResult result = otpService.resend(request.challengeId(), servletRequest.getLocale());
+        if (result.status() == OtpService.OtpResendResult.Status.NOT_FOUND) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Challenge inválido o caducado");
+        }
+        if (result.status() == OtpService.OtpResendResult.Status.TOO_SOON) {
+            throw new OtpResendTooSoonException(result.retryAfterSeconds());
+        }
+        return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/refresh")

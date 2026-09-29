@@ -12,9 +12,11 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
@@ -47,6 +49,38 @@ public class OtpService {
                 Duration.ofSeconds(otpProperties.getTtlSeconds()));
         sendOtpEmail(email, code, locale);
         return challengeId;
+    }
+
+    /**
+     * Reenvía el código de un login a medio terminar, para cuando el correo no llegó o llegó a la
+     * carpeta de spam.
+     *
+     * <p>Se genera un código nuevo y el anterior deja de valer: el store solo guarda el hash, así
+     * que repetir el mismo no es opción, y es además lo que espera cualquiera que haya pedido un
+     * reenvío. El challenge tampoco se alarga, así que un login sigue teniendo una ventana de
+     * cinco minutos en total y no cinco minutos por cada reenvío.
+     *
+     * <p>No se filtra el email de nadie: se entra con el challengeId, que es el UUID que el
+     * cliente ya tiene, y no con una dirección. Lo único que podría hacer quien tuviera ese UUID
+     * es escribirle a esa misma persona, con un enfriamiento de 30 segundos y hasta que el challenge
+     * caduque, mientras que el propio cliente tiene el UUID en el mismo sitio que su código.
+     */
+    public OtpResendResult resend(String challengeId, Locale locale) {
+        if (challengeId == null || challengeId.isBlank()) {
+            return OtpResendResult.notFound();
+        }
+        OptionalLong espera = otpChallengeStore.claimResendWindow(challengeId,
+                Duration.ofSeconds(otpProperties.getResendCooldownSeconds()));
+        if (espera.isPresent()) {
+            return OtpResendResult.tooSoon(espera.getAsLong());
+        }
+        String code = generateCode();
+        Optional<String> email = otpChallengeStore.recode(challengeId, hash(code));
+        if (email.isEmpty()) {
+            return OtpResendResult.notFound();
+        }
+        sendOtpEmail(email.get(), code, locale);
+        return OtpResendResult.sent();
     }
 
     public Optional<User> verify(String challengeId, String code) {
@@ -93,4 +127,29 @@ public class OtpService {
                 templateRenderer.renderOtpHtml(variables, lang));
     }
 
+
+    /** Lo que el cliente necesita para pintar el botón de reenviar. */
+    public record OtpResendResult(Status status, long retryAfterSeconds) {
+
+        public enum Status {
+            /** Correo encolado. */
+            RESENT,
+            /** Hace poco que se reenvió: reintentar en retryAfterSeconds. */
+            TOO_SOON,
+            /** El challenge no existe o ya caducó: hay que empezar el login otra vez. */
+            NOT_FOUND
+        }
+
+        static OtpResendResult sent() {
+            return new OtpResendResult(Status.RESENT, 0);
+        }
+
+        static OtpResendResult tooSoon(long retryAfterSeconds) {
+            return new OtpResendResult(Status.TOO_SOON, retryAfterSeconds);
+        }
+
+        static OtpResendResult notFound() {
+            return new OtpResendResult(Status.NOT_FOUND, 0);
+        }
+    }
 }

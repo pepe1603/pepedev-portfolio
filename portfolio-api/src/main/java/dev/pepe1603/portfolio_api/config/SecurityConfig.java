@@ -35,6 +35,7 @@ public class SecurityConfig {
             "/contact",
             "/auth/login",
             "/auth/login/verify",
+            "/auth/login/resend",
             "/auth/refresh",
             "/auth/logout",
             "/auth/reset/request",
