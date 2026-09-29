@@ -67,7 +67,7 @@ public class PasswordResetService {
         String resetUrl = frontResetUrl + (frontResetUrl.contains("?") ? "&" : "?") + "token=" + token;
         Map<String, Object> variables = new LinkedHashMap<>();
         variables.put("resetUrl", resetUrl);
-        mailService.send(email, subject, "Restablece tu contraseña\n\nAbre este enlace: " + resetUrl,
+        mailService.sendAsync(email, subject, "Restablece tu contraseña\n\nAbre este enlace: " + resetUrl,
                 templateRenderer.renderResetHtml(variables, lang));
     }
 }
