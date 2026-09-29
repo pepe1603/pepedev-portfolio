@@ -25,6 +25,12 @@ spring:
           auth: true
           starttls:
             enable: true
+          # Sin esto, un SMTP que acepta la conexión y no contesta deja el hilo colgado para
+          # siempre (los defaults de Jakarta Mail son espera indefinida). Con un corte de red
+          # que blackholea los paquetes, el login (que envía el aviso) se queda esperando.
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST}

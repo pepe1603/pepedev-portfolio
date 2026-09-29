@@ -4,7 +4,6 @@ import dev.pepe1603.portfolio_api.entity.User;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.PasswordResetTokenStore;
 import dev.pepe1603.portfolio_api.security.SecurityMailProperties;
-import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
@@ -95,7 +94,9 @@ public class PasswordResetService {
             alternative.addBodyPart(htmlPart);
             mime.setContent(alternative);
             mailSender.send(mime);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
+            // Best-effort: un SMTP caído devolvía un 500 en /auth/reset/request en vez del 202
+            // documentado, porque el fallo de transporte es MailSendException (unchecked).
             LOG.error("No se pudo enviar el correo de restablecimiento de contraseña", e);
         }
     }

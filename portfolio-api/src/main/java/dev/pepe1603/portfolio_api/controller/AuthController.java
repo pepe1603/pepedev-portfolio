@@ -256,8 +256,9 @@ public class AuthController {
 
     @PostMapping("/reset/request")
     @Operation(summary = "Solicitar restablecimiento de contraseña",
-            description = "Genera un token de un solo uso (30 min) y lo envía por email. "
-                    + "Responde 202 siempre, exista o no la cuenta, para no filtrar qué emails están registrados.")
+            description = "Genera un token de un solo uso (30 min) y lo envía por email. Responde 202 siempre: "
+                    + "exista o no la cuenta (para no filtrar qué emails están registrados) y también si el "
+                    + "correo no se pudo entregar. El envío es best-effort, sin reintentos ni cola.")
     @ApiResponse(responseCode = "202", description = "Solicitud aceptada",
             content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
     @ApiResponse(responseCode = "400", description = "Email ausente o inválido",

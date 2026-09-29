@@ -76,7 +76,9 @@ public class ContactService {
                 String html = templateRenderer.renderContactHtml(notificationVariables(message, fecha), ADMIN_LOCALE);
                 sendMime(destEmail, message.getEmail(), "[Contacto] " + message.getSubject(),
                         plainText(message, fecha), html);
-            } catch (MessagingException e) {
+            } catch (Exception e) {
+                // El fallo de transporte llega como MailSendException (unchecked), no como
+                // MessagingException: sin este catch se pierde en el pool sin dejar rastro.
                 LOG.error("No se pudo enviar la notificación de contacto", e);
             }
         });
@@ -95,7 +97,7 @@ public class ContactService {
                 String plain = "Hola, " + message.getName() + "\n\n" + confirm;
                 String html = templateRenderer.renderAckHtml(ackVariables(message), lang);
                 sendMime(message.getEmail(), null, subject, plain, html);
-            } catch (MessagingException e) {
+            } catch (Exception e) {
                 LOG.error("No se pudo enviar el acuse de contacto", e);
             }
         });

@@ -104,14 +104,12 @@ public class SecurityNotificationService {
                 String subject = messageSource.getMessage(keyPrefix + ".subject", null, lang);
                 sendMime(to, subject, plainText(keyPrefix, fecha, ip, userAgent, lang),
                         renderer.render(lang, variables));
-            } catch (MessagingException e) {
+            } catch (Exception e) {
+                // Cubre las dos fuentes de fallo: las checked al construir el MimeMessage y la
+                // MailSendException (unchecked) que lanza mailSender.send() si el SMTP falla. Sin
+                // este catch la excepción se perdería en el pool sin dejar rastro.
                 LOG.error("No se pudo enviar el aviso de seguridad {}", keyPrefix, e);
             }
-        // Sin esto, cualquier excepción inesperada (una dirección inválida, por ejemplo) se perdería
-        // en el pool sin dejar rastro.
-        }).exceptionally(error -> {
-            LOG.error("Fallo inesperado preparando el aviso de seguridad {}", keyPrefix, error);
-            return null;
         });
     }
 

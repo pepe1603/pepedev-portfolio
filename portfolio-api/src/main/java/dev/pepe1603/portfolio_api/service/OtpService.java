@@ -4,7 +4,6 @@ import dev.pepe1603.portfolio_api.entity.User;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.OtpChallengeStore;
 import dev.pepe1603.portfolio_api.security.OtpProperties;
-import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
@@ -120,7 +119,9 @@ public class OtpService {
                 alternative.addBodyPart(htmlPart);
                 mime.setContent(alternative);
                 mailSender.send(mime);
-            } catch (MessagingException e) {
+            } catch (Exception e) {
+                // El fallo de transporte llega como MailSendException (unchecked), no como
+                // MessagingException: sin este catch se pierde en el pool sin dejar rastro.
                 LOG.error("No se pudo enviar el código OTP", e);
             }
         });
