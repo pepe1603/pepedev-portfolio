@@ -156,7 +156,9 @@ Público. Body: `{ "email": "..." }`.
   correo con el enlace `{APP_FRONT_RESET_URL}?token=...`.
 - `400` email ausente o inválido. `429` rate limit por IP (`APP_RESET_RATE_MAX_IP` / `APP_RESET_RATE_WINDOW`).
 - El correo solo se manda con `APP_MAIL_SECURITY_RESET=true` (default) y `APP_CONTACT_FROM_EMAIL`
-  configurado; con el interruptor apagado ni siquiera se genera el token. El `202` se devuelve igual.
+  configurado; con el interruptor apagado ni siquiera se genera el token.
+- El envío es **best-effort**: si el SMTP falla, se registra en el log y el `202` se devuelve
+  igual. El token queda creado en Redis, pero nadie recibe el correo (30 min de validez).
 
 ### POST `/auth/reset/confirm`
 Público. Body: `{ "email": "...", "token": "...", "password": "..." }` (mínimo 8 caracteres).
@@ -318,10 +320,28 @@ Tres interruptores independientes, todos por entorno (`SecurityMailProperties`):
 
 El reset nace activado porque es funcional (sin él no hay recuperación de contraseña); los avisos de
 sesión nacen apagados porque son ruido si solo entra una persona. Los tres necesitan
-`APP_CONTACT_FROM_EMAIL`. El envío es siempre best-effort y asíncrono (`SecurityNotificationService`):
-si falla SMTP, o la consulta de "¿esto ya se conocía?", se pierde el aviso y la petición responde
-igual. Los avisos van al propio usuario, en ES o EN según `Accept-Language`, con la fecha, la IP y
-el `User-Agent`.
+`APP_CONTACT_FROM_EMAIL`. Los avisos van al propio usuario, en ES o EN según `Accept-Language`, con
+la fecha, la IP y el `User-Agent`.
+
+### Cuando el correo no llega
+
+Todos los correos de la API (contacto, acuse, OTP, reset y avisos de sesión) son **best-effort**:
+el fallo se registra en el log y la petición responde con normalidad. No hay reintentos, ni cola, ni
+bandeja de salida, ni aviso al usuario de que su correo no salió. Concretamente:
+
+| Situación | Resultado |
+|---|---|
+| `SPRING_MAIL_HOST` sin definir | La aplicación no arranca: el placeholder no resuelve |
+| `APP_CONTACT_FROM_EMAIL` vacío | No se envía nada (solo en el log) y el arranque avisa |
+| Credenciales SMTP wrong / servidor rechaza | `MailSendException` al log; la respuesta HTTP no cambia |
+| Servidor caído (conexión rechazada) | Igual que el caso anterior, falla rápido |
+| Servidor que acepta y no contesta | Corta a los 10 s (`mail.smtp.connectiontimeout` / `timeout` / `writetimeout`) |
+| Destinatario inexistente o buzón lleno | El SMTP lo acepta y el rebote vuelve por email al remitente; el código no lo lee |
+| `APP_MAIL_SECURITY_RESET=false` | No se genera ni el token |
+
+Los timeouts SMTP están en `application.yaml` a propósito: los valores por defecto de Jakarta Mail
+son **espera indefinida**, así que un corte de red que blackholea los paquetes dejaría el hilo
+colgado indefinidamente. En el reset, que se envía de forma síncrona, eso era el hilo del request.
 
 ## Comprobación rápida
 
