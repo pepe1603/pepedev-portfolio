@@ -117,6 +117,23 @@ Público. Body: `{ "challengeId": "...", "code": "123456" }`.
 - `400` validación. `401` challenge caducado (5 min por defecto), código incorrecto o
   intentos agotados (5 por defecto, `APP_AUTH_OTP_MAX_ATTEMPTS`).
 
+### POST `/auth/login/resend`
+Público. Body: `{ "challengeId": "..." }`. Sin `code`: no hace falta, el código sigue vivo.
+Para cuando el correo no llegó o fue a spam. El idioma sale de `Accept-Language`.
+- `202` → correo reencolado. No dice si el correo llegó, solo que se ha intentado.
+- `400` sin `challengeId`. `401` challenge inválido o caducado: hay que empezar el login otra vez.
+- `429` reenviado hace poco, con `Retry-After` en segundos (30 por defecto,
+  `APP_AUTH_OTP_RESEND_COOLDOWN`).
+- El reenvío genera un **código nuevo** y el anterior deja de valer: el store solo guarda el hash,
+  y es lo que espera cualquiera que acaba de pedir un reenvío. El `challengeId` no cambia y el
+  challenge **no se alarga**: el login sigue teniendo `APP_AUTH_OTP_TTL` (5 min) en total, no 5 min
+  por cada reenvío. Un reenvío a los 4:59 no sirve de nada, y por eso devuelve `401` en lugar de
+  mandar un código que muere nada más llegar.
+- Los reenvíos no renuevan los intentos: el contador de `APP_AUTH_OTP_MAX_ATTEMPTS` sigue siendo el
+  del challenge original, así que reenviar no es una forma de tener más de 5 intentos.
+- No filtra direcciones: se entra con el `challengeId`, no con un email. Quien tuviera ese UUID solo
+  puede escribirle a esa misma persona, con 30 s de enfriamiento y hasta que caduque.
+
 ### POST `/auth/refresh`
 Público. Usa la cookie `refresh_token`. Sin body.
 - `200` → mismo cuerpo que login y nueva cookie (rotación).
@@ -159,6 +176,11 @@ Público. Body: `{ "email": "..." }`.
   configurado; con el interruptor apagado ni siquiera se genera el token.
 - El envío es **best-effort**: si el SMTP falla, se registra en el log y el `202` se devuelve
   igual. El token queda creado en Redis, pero nadie recibe el correo (30 min de validez).
+- **Este endpoint es también el reenvío**: un botón de "reenviar" en el frontend llama aquí otra
+  vez, no hace falta nada nuevo en la API. Cada llamada genera un token nuevo, y como la clave de
+  Redis es el propio token, los enlaces anteriores siguen valiendo hasta que caduquen; el rate limit
+  por IP es lo que impide abusar del botón. En el OTP el reenvío sí necesitó endpoint propio
+  (`POST /auth/login/resend`), porque el challenge va por `challengeId` y no por email.
 
 ### POST `/auth/reset/confirm`
 Público. Body: `{ "email": "...", "token": "...", "password": "..." }` (mínimo 8 caracteres).
@@ -305,7 +327,8 @@ Al arrancar, la API revisa la configuración y escribe `WARN` en el log (`Startu
   activos, sin `APP_CONTACT_FROM_EMAIL` no sale ningún correo.
 
 Variables de la sesión: `APP_FRONT_RESET_URL`, `APP_RESET_RATE_MAX_IP`, `APP_RESET_RATE_WINDOW`,
-`APP_AUTH_OTP_ENABLED`, `APP_AUTH_OTP_TTL`, `APP_AUTH_OTP_MAX_ATTEMPTS`, `APP_MAIL_SECURITY_LOGIN`,
+`APP_AUTH_OTP_ENABLED`, `APP_AUTH_OTP_TTL`, `APP_AUTH_OTP_MAX_ATTEMPTS`, `APP_AUTH_OTP_RESEND_COOLDOWN`,
+`APP_MAIL_SECURITY_LOGIN`,
 `APP_MAIL_SECURITY_LOGOUT`, `APP_MAIL_SECURITY_RESET` (ver `.env.example`).
 
 ## Correo de seguridad (opt-in por evento)
