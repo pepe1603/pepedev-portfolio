@@ -47,6 +47,22 @@ final class LogCapture implements AutoCloseable {
         return false;
     }
 
+    /**
+     * Para avisos que no son excepciones, como el correo descartado por cola llena.
+     */
+    boolean eventuallyWarn(String fragmento) {
+        long limite = System.nanoTime() + ESPERA.toNanos();
+        while (System.nanoTime() < limite) {
+            for (ILoggingEvent evento : appender.list) {
+                if (evento.getLevel() == Level.WARN && evento.getFormattedMessage().contains(fragmento)) {
+                    return true;
+                }
+            }
+            dormir();
+        }
+        return false;
+    }
+
     private boolean causaEn(ILoggingEvent evento, Throwable causa) {
         Throwable registrado = evento.getThrowableProxy() instanceof ThrowableProxy proxy
                 ? proxy.getThrowable()

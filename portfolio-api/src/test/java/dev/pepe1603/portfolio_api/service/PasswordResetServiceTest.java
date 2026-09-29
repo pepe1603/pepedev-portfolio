@@ -1,14 +1,15 @@
 package dev.pepe1603.portfolio_api.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 import dev.pepe1603.portfolio_api.entity.User;
@@ -20,6 +21,9 @@ import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.Properties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,8 +75,9 @@ class PasswordResetServiceTest {
 
         verify(tokenStore).create("admin@pepe.dev", java.time.Duration.ofMinutes(30));
 
+        // El envío va a segundo plano, así que la aserción tiene que esperar a que llegue.
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
-        verify(mailSender).send(captor.capture());
+        verify(mailSender, timeout(2000).atLeastOnce()).send(captor.capture());
         MimeMessage sent = captor.getValue();
         sent.saveChanges();
         assertThat(sent.getSubject()).isEqualTo("Restablece tu contraseña");
@@ -139,14 +144,42 @@ class PasswordResetServiceTest {
         given(tokenStore.create(anyString(), org.mockito.ArgumentMatchers.any())).willReturn("token-1");
         given(mailSender.createMimeMessage()).willReturn(new MimeMessage(Session.getInstance(new Properties())));
         // Lo que lanza JavaMailSenderImpl cuando no puede hablar con el servidor SMTP.
-        doThrow(new MailSendException("Mail server connection failed"))
-                .when(mailSender).send(any(MimeMessage.class));
+        MailSendException fallo = new MailSendException("Mail server connection failed");
+        doThrow(fallo).when(mailSender).send(any(MimeMessage.class));
 
-        // Antes esto escapaba como MailSendException y /auth/reset/request devolvía 500 en vez del
-        // 202 documentado. El token se crea igualmente: el correo es best-effort, no la operación.
-        assertThatCode(() -> service().requestReset("admin@pepe.dev", Locale.forLanguageTag("es")))
-                .doesNotThrowAnyException();
-        verify(tokenStore).create(anyString(), org.mockito.ArgumentMatchers.any());
+        // El token se crea igualmente: el correo es best-effort, no la operación. Y como el envío
+        // ya no está en línea, que la petición no lance excepción no prueba nada por sí solo: lo
+        // que prueba que el fallo no se pierde es que quede la línea de log.
+        try (LogCapture log = LogCapture.de(MailService.class)) {
+            service().requestReset("admin@pepe.dev", Locale.forLanguageTag("es"));
+            verify(tokenStore).create(anyString(), org.mockito.ArgumentMatchers.any());
+            assertThat(log.eventuallyErrorWith(fallo)).isTrue();
+        }
+    }
+
+    @Test
+    void smtpAtasgadoNoAlargaLaRespuestaDelReset() throws Exception {
+        given(userRepository.findByEmail("admin@pepe.dev")).willReturn(Optional.of(admin()));
+        given(tokenStore.create(anyString(), org.mockito.ArgumentMatchers.any())).willReturn("token-1");
+        given(mailSender.createMimeMessage()).willReturn(new MimeMessage(Session.getInstance(new Properties())));
+        // SMTP que no contesta nunca: el peor caso realista.
+        CountDownLatch atascado = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            atascado.await(5, TimeUnit.SECONDS);
+            return null;
+        }).when(mailSender).send(any(MimeMessage.class));
+
+        // El motivo de que el envío no vaya en línea: un SMTP lento no puede alargar la respuesta.
+        // Con el envío síncrono esta llamada tardaría los 5 s del latch; el get() de abajo es el
+        // que falla, con TimeoutException, si algún día alguien vuelve a ponerlo en línea.
+        try {
+            CompletableFuture<Void> peticion = CompletableFuture.runAsync(
+                    () -> service().requestReset("admin@pepe.dev", Locale.forLanguageTag("es")));
+            peticion.get(2, TimeUnit.SECONDS);
+            verify(tokenStore).create(anyString(), org.mockito.ArgumentMatchers.any());
+        } finally {
+            atascado.countDown();
+        }
     }
 
 }
