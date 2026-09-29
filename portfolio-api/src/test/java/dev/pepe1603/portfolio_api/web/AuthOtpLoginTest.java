@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -39,6 +40,7 @@ import dev.pepe1603.portfolio_api.service.SecurityNotificationService;
 import io.jsonwebtoken.Claims;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -249,5 +251,60 @@ class AuthOtpLoginTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void loginResendDevuelve202CuandoElCorreoQuedaEncolado() throws Exception {
+        given(otpService.resend(eq("c1"), any(Locale.class)))
+                .willReturn(new OtpService.OtpResendResult(OtpService.OtpResendResult.Status.RESENT, 0));
+
+        mockMvc.perform(post("/auth/login/resend").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"challengeId\":\"c1\"}").accept("es-ES"))
+                .andExpect(status().isAccepted());
+    }
+
+    @Test
+    void loginResendDemasiadoProntoDevuelve429ConRetryAfter() throws Exception {
+        given(otpService.resend(eq("c1"), any(Locale.class)))
+                .willReturn(new OtpService.OtpResendResult(OtpService.OtpResendResult.Status.TOO_SOON, 18));
+
+        mockMvc.perform(post("/auth/login/resend").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"challengeId\":\"c1\"}"))
+                .andExpect(status().isTooManyRequests())
+                // El boton del navegador tiene que saber cuanto queda, no inventarselo.
+                .andExpect(header().string("Retry-After", "18"))
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("hace poco")));
+    }
+
+    @Test
+    void loginResendConChallengeCaducadoDevuelve401() throws Exception {
+        given(otpService.resend(eq("c1"), any(Locale.class)))
+                .willReturn(new OtpService.OtpResendResult(OtpService.OtpResendResult.Status.NOT_FOUND, 0));
+
+        mockMvc.perform(post("/auth/login/resend").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"challengeId\":\"c1\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void loginResendSinChallengeIdDevuelve400() throws Exception {
+        mockMvc.perform(post("/auth/login/resend").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"challengeId\":\"  \"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void loginResendPasaElIdiomaDeLaCabecera() throws Exception {
+        given(otpService.resend(eq("c1"), any(Locale.class)))
+                .willReturn(new OtpService.OtpResendResult(OtpService.OtpResendResult.Status.RESENT, 0));
+        ArgumentCaptor<Locale> locale = ArgumentCaptor.forClass(Locale.class);
+
+        mockMvc.perform(post("/auth/login/resend").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"challengeId\":\"c1\"}").header("Accept-Language", "en-GB"))
+                .andExpect(status().isAccepted());
+
+        // El reenvio en ingles tiene que salir en ingles, no en el idioma por defecto del servidor.
+        verify(otpService).resend(eq("c1"), locale.capture());
+        assertThat(locale.getValue()).isEqualTo(new Locale("en", "GB"));
     }
 }

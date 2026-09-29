@@ -3,6 +3,7 @@ package dev.pepe1603.portfolio_api.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.BDDMockito.given;
@@ -18,10 +19,14 @@ import dev.pepe1603.portfolio_api.enums.UserRole;
 import dev.pepe1603.portfolio_api.repository.UserRepository;
 import dev.pepe1603.portfolio_api.security.OtpChallengeStore;
 import dev.pepe1603.portfolio_api.security.OtpProperties;
+import jakarta.mail.BodyPart;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Properties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +50,7 @@ class OtpServiceTest {
         ReflectionTestUtils.setField(otpProperties, "enabled", true);
         ReflectionTestUtils.setField(otpProperties, "ttlSeconds", 300L);
         ReflectionTestUtils.setField(otpProperties, "maxAttempts", 5);
+        ReflectionTestUtils.setField(otpProperties, "resendCooldownSeconds", 30L);
         given(messageSource.getMessage(anyString(), isNull(), any())).willReturn("Tu código de acceso");
         given(templateRenderer.renderOtpHtml(any(), any())).willReturn("<html>OTP</html>");
     }
@@ -173,5 +179,117 @@ class OtpServiceTest {
             assertThat(challengeId).isEqualTo("challenge-1");
             assertThat(log.eventuallyErrorWith(new MailSendException("Mail server connection failed"))).isTrue();
         }
+    }
+
+    @Test
+    void elReenvioMandaUnCodigoNuevoYElAnteriorDejaDeValer() throws Exception {
+        dadoQueSePuedenCrearMensajes();
+        String emailNuevo = "admin@pepe.dev";
+        CaptorHash captorDelHash = new CaptorHash();
+        given(otpChallengeStore.claimResendWindow("c1", Duration.ofSeconds(30))).willReturn(OptionalLong.empty());
+        // El store solo guarda el hash, así que el reenvío genera un código distinto.
+        given(otpChallengeStore.recode(anyString(), anyString())).willAnswer(invocation -> {
+            captorDelHash.value = invocation.getArgument(1);
+            return Optional.of(emailNuevo);
+        });
+        given(userRepository.findByEmail("admin@pepe.dev")).willReturn(Optional.of(admin()));
+
+        OtpService.OtpResendResult result = service().resend("c1", Locale.forLanguageTag("es"));
+
+        assertThat(result.status()).isEqualTo(OtpService.OtpResendResult.Status.RESENT);
+        String codigoNuevo = codigoDelCorreoEnviado();
+        // Lo que el store guardó es el hash del código que se mandó, no otro: eso es lo que
+        // verificará el cliente al introducir el código.
+        assertThat(captorDelHash.value).isEqualTo(hash(codigoNuevo));
+
+        given(otpChallengeStore.peek("c1"))
+                .willReturn(Optional.of(new OtpChallengeStore.OtpChallenge(emailNuevo, hash(codigoNuevo))));
+        assertThat(service().verify("c1", codigoNuevo)).isPresent();
+        // El código del primer correo, el que el usuario sigue teniendo abierto, ya no vale.
+        assertThat(service().verify("c1", "000000")).isEmpty();
+    }
+
+    @Test
+    void elReenvioDemasiadoProntoDiceCuantoEsperar() throws Exception {
+        dadoQueSePuedenCrearMensajes();
+        given(otpChallengeStore.claimResendWindow("c1", Duration.ofSeconds(30))).willReturn(OptionalLong.of(18));
+
+        OtpService.OtpResendResult result = service().resend("c1", Locale.forLanguageTag("es"));
+
+        assertThat(result.status()).isEqualTo(OtpService.OtpResendResult.Status.TOO_SOON);
+        // Ni se cambia el código ni se manda correo: el botón solo tiene que esperar.
+        verify(otpChallengeStore, never()).recode(anyString(), anyString());
+        verify(mailSender, never()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void elReenvioDeUnChallengeCaducadoNoMandaCorreoNiRespondeQueNo() throws Exception {
+        dadoQueSePuedenCrearMensajes();
+        given(otpChallengeStore.claimResendWindow("c1", Duration.ofSeconds(30))).willReturn(OptionalLong.empty());
+        given(otpChallengeStore.recode(eq("c1"), anyString())).willReturn(Optional.empty());
+
+        OtpService.OtpResendResult result = service().resend("c1", Locale.forLanguageTag("es"));
+
+        assertThat(result.status()).isEqualTo(OtpService.OtpResendResult.Status.NOT_FOUND);
+        verify(mailSender, never()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void elReenvioSinChallengeIdNoTocaRedisNiCorreo() throws Exception {
+        dadoQueSePuedenCrearMensajes();
+
+        assertThat(service().resend("  ", Locale.forLanguageTag("es")).status())
+                .isEqualTo(OtpService.OtpResendResult.Status.NOT_FOUND);
+        verify(otpChallengeStore, never()).claimResendWindow(anyString(), any(Duration.class));
+        verify(mailSender, never()).send(any(MimeMessage.class));
+    }
+
+    @Test
+    void elReenvioRespetaElIdiomaDeLaPeticion() throws Exception {
+        dadoQueSePuedenCrearMensajes();
+        given(otpChallengeStore.claimResendWindow("c1", Duration.ofSeconds(30))).willReturn(OptionalLong.empty());
+        given(otpChallengeStore.recode(eq("c1"), anyString())).willReturn(Optional.of("admin@pepe.dev"));
+        given(messageSource.getMessage("mail.otp.subject", null, new Locale("en"))).willReturn("Your access code");
+
+        service().resend("c1", Locale.ENGLISH);
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender, timeout(2000)).send(captor.capture());
+        assertThat(captor.getValue().getSubject()).isEqualTo("Your access code");
+    }
+
+    /** Saca el código del texto plano del correo, que es lo que el usuario copia y pega. */
+    private String codigoDelCorreoEnviado() throws Exception {
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender, timeout(2000).atLeastOnce()).send(captor.capture());
+        MimeMessage sent = captor.getValue();
+        sent.saveChanges();
+        MimeMultipart multipart = (MimeMultipart) sent.getContent();
+        for (int i = 0; i < multipart.getCount(); i++) {
+            BodyPart part = multipart.getBodyPart(i);
+            if (part.getContentType().startsWith("text/plain")) {
+                java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d{6})")
+                        .matcher(part.getContent().toString());
+                if (matcher.find()) {
+                    return matcher.group(1);
+                }
+            }
+        }
+        throw new AssertionError("El correo no lleva un codigo de 6 digitos en la parte de texto");
+    }
+
+    private void dadoQueSePuedenCrearMensajes() {
+        try {
+            given(mailSender.createMimeMessage())
+                    .willAnswer(invocation -> new MimeMessage(Session.getInstance(new Properties())));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Sencillo captor de un solo valor, para el hash que le pide el store al servicio. */
+    private static final class CaptorHash {
+
+        private String value;
     }
 }
