@@ -2,16 +2,27 @@ package dev.pepe1603.portfolio_api.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doAnswer;
 
+import dev.pepe1603.portfolio_api.config.S3Properties;
 import dev.pepe1603.portfolio_api.config.StorageProperties;
 import dev.pepe1603.portfolio_api.enums.StorageUse;
+import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -30,17 +41,40 @@ class StorageServiceTest {
     private static final Pattern UUID_EXT =
             Pattern.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.\\w+");
 
-    @TempDir
-    Path tempDir;
+    private static final String BUCKET = "portfolio";
 
+    private MinioClient minioClient;
     private StorageService service;
 
+    /** Bytes que el SDK recibió de verdad, para no conformarse solo con la URL devuelta. */
+    private final AtomicReference<byte[]> uploaded = new AtomicReference<>();
+    private final List<PutObjectArgs> putArgs = new ArrayList<>();
+
     @BeforeEach
-    void setUp() {
-        StorageProperties properties = new StorageProperties();
-        ReflectionTestUtils.setField(properties, "dir", tempDir.toString());
-        ReflectionTestUtils.setField(properties, "publicUrl", "http://localhost:8080/files/");
-        service = new StorageService(properties);
+    @SuppressWarnings("unchecked")
+    void setUp() throws Exception {
+        minioClient = mock(MinioClient.class);
+        putArgs.clear();
+        doAnswer(invocacion -> {
+            PutObjectArgs args = invocacion.getArgument(0);
+            putArgs.add(args);
+            try (InputStream in = args.stream()) {
+                uploaded.set(in.readAllBytes());
+            }
+            return null;
+        }).when(minioClient).putObject(any(PutObjectArgs.class));
+
+        StorageProperties storage = new StorageProperties();
+        ReflectionTestUtils.setField(storage, "publicUrl", "http://localhost:8080/files/");
+
+        S3Properties s3 = new S3Properties();
+        ReflectionTestUtils.setField(s3, "endpoint", "http://localhost:9000");
+        ReflectionTestUtils.setField(s3, "accessKey", "minioadmin");
+        ReflectionTestUtils.setField(s3, "secretKey", "minioadmin");
+        ReflectionTestUtils.setField(s3, "bucket", BUCKET);
+        ReflectionTestUtils.setField(s3, "region", "us-east-1");
+
+        service = new StorageService(minioClient, s3, storage);
     }
 
     private MultipartFile file(String name, String contentType, byte[] content) {
@@ -59,9 +93,13 @@ class StorageServiceTest {
         assertThat(url).doesNotContain("//files//");
         String name = url.substring(url.lastIndexOf('/') + 1);
         assertThat(name).matches(UUID_EXT.pattern());
-        Path saved = tempDir.resolve(name);
-        assertThat(saved).exists();
-        assertThat(Files.readAllBytes(saved)).containsExactly(PNG);
+
+        assertThat(putArgs).hasSize(1);
+        PutObjectArgs args = putArgs.get(0);
+        assertThat(args.bucket()).isEqualTo(BUCKET);
+        assertThat(args.object()).isEqualTo(name).doesNotContain("/");
+        assertThat(args.contentType()).isEqualTo("image/png");
+        assertThat(uploaded.get()).containsExactly(PNG);
     }
 
     @Test
@@ -145,32 +183,35 @@ class StorageServiceTest {
     }
 
     @Test
-    void deleteByUrlBorraElFicheroDelDisco() throws Exception {
+    void deleteByUrlBorraElObjetoDelBucket() throws Exception {
         String url = service.store(StorageUse.AVATAR, file("foto.png", "image/png", PNG));
-        Path saved = tempDir.resolve(url.substring(url.lastIndexOf('/') + 1));
-        assertThat(saved).exists();
+        String name = url.substring(url.lastIndexOf('/') + 1);
 
         service.deleteByUrl(url);
 
-        assertThat(saved).doesNotExist();
+        ArgumentCaptor<RemoveObjectArgs> captor = ArgumentCaptor.forClass(RemoveObjectArgs.class);
+        verify(minioClient).removeObject(captor.capture());
+        assertThat(captor.getValue().bucket()).isEqualTo(BUCKET);
+        assertThat(captor.getValue().object()).isEqualTo(name);
     }
 
     @Test
-    void deleteByUrlIgnoraUrlsAjenasYNoRompe() {
+    void deleteByUrlIgnoraUrlsAjenasYNoRompe() throws Exception {
         service.deleteByUrl("http://localhost:8080/files/avatar.png");
         service.deleteByUrl("https://cdn.example.com/logo.svg");
         service.deleteByUrl(null);
-        assertThat(tempDir.toFile().list()).isEmpty();
+
+        verify(minioClient, never()).removeObject(any());
     }
 
     @Test
-    void deleteByUrlBorraSoloDentroDelDirectorioDeAlmacenamiento() throws Exception {
-        Path fuera = Path.of(tempDir.toString(), "..", "fuera.txt");
-        Files.writeString(fuera, "x");
-
+    void deleteByUrlNoMandaAlBucketUnaClaveQueNoEsDelStorage() throws Exception {
+        // Antes esto era defensa contra traversales de directorio. En S3 la clave se valida
+        // con el mismo patrón, así que un "../" ni siquiera llega a formulizarse.
         service.deleteByUrl("http://localhost:8080/files/../fuera.txt");
+        service.deleteByUrl("http://localhost:8080/files/carpeta/foto.png");
 
-        assertThat(fuera).exists();
+        verify(minioClient, never()).removeObject(any());
     }
 
     @Test
