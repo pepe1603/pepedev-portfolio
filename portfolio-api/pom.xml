@@ -75,6 +75,15 @@
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>3.1.0</version>
 		</dependency>
+		<!-- Cliente S3 para hablar con el bucket de MinIO. Sustituye al disco local:
+		     el SDK de MinIO es una dependencia única y sus transitivas (okhttp, jackson)
+		     ya están gestionadas por el BOM de Spring Boot, así que no hay que alinear
+		     versiones a mano. Ver docs/STORAGE.md -->
+		<dependency>
+			<groupId>io.minio</groupId>
+			<artifactId>minio</artifactId>
+			<version>8.5.17</version>
+		</dependency>
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
