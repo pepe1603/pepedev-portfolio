@@ -258,7 +258,7 @@ La auditoría es write-only (sin endpoint de lectura) de momento.
 - `PUT /admin/projects/order` → body `[uuid, ...]` ordenado (posición = índice); `404` si alguno
   no existe.
 - `DELETE /admin/projects/{id}` → `204`. Al borrar (`DELETE`) o cambiar
-  `thumbnailUrl`/`gallery[]` (`PUT`), las URLs que ya no use nadie se borran de `uploads/`
+  `thumbnailUrl`/`gallery[]` (`PUT`), las URLs que ya no use nadie se borran del bucket
   (limpieza de orfanatos).
 
 ### Certificates
@@ -269,7 +269,7 @@ La auditoría es write-only (sin endpoint de lectura) de momento.
   `certificate`/`course` → `400`; en público se publica en minúsculas), `issueDate`, `expiryDate`,
   `credentialUrl`, `imageUrl`, `featured`, `sortOrder`.
 - `PUT /{id}` edición completa · `PATCH /{id}/publish` / `unpublish` · `PUT /order` · `DELETE` `204`.
-- Al borrar (`DELETE`) o cambiar `imageUrl` (`PUT`), el fichero antiguo de `uploads/` se
+- Al borrar (`DELETE`) o cambiar `imageUrl` (`PUT`), el objeto antiguo del bucket se
   elimina **si y solo si** ningún otro registro lo referencia (limpieza de orfanatos).
 
 ### Messages
@@ -293,13 +293,14 @@ La auditoría es write-only (sin endpoint de lectura) de momento.
   `experiences[]`. `views_count` y timestamps se ignoran. Cada PUT → evict de `pub:profile:*`.
   `404` si la fila id=1 no existe (no debería ocurrir).
 - Al cambiar `avatarUrl`/`cvUrlEs`/`cvUrlEn`, las URLs antiguas que ya no use nadie se borran
-  de `uploads/` (limpieza de orfanatos).
+  del bucket (limpieza de orfanatos).
 
 ### Storage (`POST /admin/storage?use={avatar|thumbnail|gallery|image|cv}`)
 Multipart: parte `file` **obligatoria** (`@RequestPart`) + `use` por **query o form field, nunca
 ambos** (si Spring recibe el mismo parámetro duplicado los une con coma → `400` "Uso no permitido").
 - `200` → `{ "url": "https://.../files/<uuid>.<ext>" }` (montado con `APP_STORAGE_PUBLIC_URL`);
-  URL servida por `GET /files/**` (público, estático).
+  la URL la sirve `GET /files/**`, que es **público** y hace de proxy del bucket S3 (MinIO no
+  se expone). El bucket lo crea la API al arrancar; la configuración, en [STORAGE.md](STORAGE.md).
 - Validación por **magic bytes** (no extensión): `jpeg/png/webp`; `pdf` **solo para `cv`** → sino
   `415`. Tamaño `413`: 5 MB imágenes / 10 MB CV (y globales multipart 15/20 MB del contenedor).
 - `400`: fichero vacío ("Se requiere un fichero no vacío"), `use` inválido, parte `file` ausente o
@@ -307,6 +308,17 @@ ambos** (si Spring recibe el mismo parámetro duplicado los une con coma → `40
 - No muta entidades ni hace evicts por sí mismo. El borrado de huérfanos sí existe: al borrar o
   editar un proyecto, certificado o el profile, `OrphanFileCleaner` elimina los ficheros que
   dejan de estar referenciados (última referencia perdida y nombre con patrón `UUID.(jpg|png|webp|pdf)`).
+
+### Ficheros (`GET /files/{name}`)
+Público, sin autenticación. Proxy en streaming del objeto del bucket; no existe resource handler
+sobre disco desde que el almacenamiento es S3.
+- `200` → los bytes con el content type deducido de la extensión (`image/jpeg`, `image/png`,
+  `image/webp`, `application/pdf`), `Content-Length` y `ETag`; responde `304` si vuelve con
+  `If-None-Match` igual.
+- `404` si el nombre no es `UUID.(jpg|png|webp|pdf)` (no se busca en el bucket) **o** si el objeto
+  no está. Un MinIO que no responde es `500`, para no confundirse con un fichero que no existe.
+- La forma de la URL es contrato: es la que está guardada en `avatarUrl`, `cvUrlEs/En`,
+  `thumbnailUrl`, `gallery[].url` e `imageUrl`. Cambiarla obliga a migrar esas filas.
 
 ### OTP (`PATCH /admin/otp`)
 - Body `{ "enabled": true | false }` → `204`. Activa/desactiva el segundo factor por email del
