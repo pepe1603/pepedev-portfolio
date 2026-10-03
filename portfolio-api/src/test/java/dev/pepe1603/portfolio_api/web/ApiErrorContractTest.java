@@ -59,7 +59,6 @@ import org.springframework.web.server.ResponseStatusException;
 @AutoConfigureMockMvc(addFilters = false)
 @Import({ApiExceptionHandler.class, StorageProperties.class})
 @TestPropertySource(properties = {
-        "APP_STORAGE_DIR=target/test-uploads",
         "APP_STORAGE_PUBLIC_URL=http://localhost:8080/files"})
 class ApiErrorContractTest {
 
