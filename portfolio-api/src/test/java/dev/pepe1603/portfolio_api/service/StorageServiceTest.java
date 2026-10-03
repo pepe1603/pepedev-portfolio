@@ -229,4 +229,30 @@ class StorageServiceTest {
     void deleteByUrlDeUnFicheroInexistenteNoLanza() {
         service.deleteByUrl("http://localhost:8080/files/123e4567-e89b-12d3-a456-426614174000.png");
     }
+
+    @Test
+    void isManagedNameEsLaFronteraDelBucket() {
+        assertThat(StorageService.isManagedName("123e4567-e89b-12d3-a456-426614174000.png")).isTrue();
+        assertThat(StorageService.isManagedName("123e4567-e89b-12d3-a456-426614174000.pdf")).isTrue();
+
+        // Nada de esto es una clave de objeto: ni existe en el bucket y no se acepta ni
+        // para leer ni para borrar.
+        assertThat(StorageService.isManagedName("../application.yaml")).isFalse();
+        assertThat(StorageService.isManagedName("carpeta/foto.png")).isFalse();
+        assertThat(StorageService.isManagedName("carpeta")).isFalse();
+        assertThat(StorageService.isManagedName("123E4567-E89B-12D3-A456-426614174000.png")).isFalse();
+        assertThat(StorageService.isManagedName("123e4567-e89b-12d3-a456-426614174000.exe")).isFalse();
+        assertThat(StorageService.isManagedName("")).isFalse();
+        assertThat(StorageService.isManagedName(null)).isFalse();
+    }
+
+    @Test
+    void elContentTypeSaltaDeLaExtensionYNoDelNombreOriginal() {
+        assertThat(StorageService.contentTypeFor("a.png")).isEqualTo("image/png");
+        assertThat(StorageService.contentTypeFor("a.jpg")).isEqualTo("image/jpeg");
+        assertThat(StorageService.contentTypeFor("a.webp")).isEqualTo("image/webp");
+        assertThat(StorageService.contentTypeFor("a.pdf")).isEqualTo("application/pdf");
+        assertThat(StorageService.contentTypeFor("a.exe")).isNull();
+        assertThat(StorageService.contentTypeFor("sin-extension")).isNull();
+    }
 }
