@@ -72,7 +72,11 @@ const period = computed(() => {
 
 useSeoMeta({
   title: () => (project.value ? `${project.value.title} — pepedev` : 'Proyecto — pepedev'),
-  description: () => project.value?.summary ?? 'Detalle del proyecto.'
+  description: () => project.value?.summary ?? 'Detalle del proyecto.',
+  ogType: 'article',
+  // La miniatura del propio proyecto como imagen social; sin ella se
+  // queda con el og:url global, sin imagen inventada.
+  ogImage: () => project.value?.thumbnailUrl ?? undefined
 })
 </script>
 

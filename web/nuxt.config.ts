@@ -59,7 +59,11 @@ export default defineNuxtConfig({
   // PUBLIC_API_BASE) y le pone el prefijo NUXT_.
   runtimeConfig: {
     public: {
-      apiBase: 'http://localhost:8080'
+      apiBase: 'http://localhost:8080',
+      // Dominio del sitio para canonical, Open Graph, sitemap y robots.
+      // El nombre de la variable que lo sobreescribe es NUXT_PUBLIC_SITE_URL
+      // (siteUrl → SITE_URL), ya alineada en .env.example.
+      siteUrl: 'http://localhost:3000'
     }
   },
 

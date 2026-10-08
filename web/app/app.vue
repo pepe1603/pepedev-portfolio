@@ -5,9 +5,20 @@
 // se omiten a proposito: anade la tuya en public/ y descomenta abajo.
 // ======================================================================
 
+const route = useRoute()
+const config = useRuntimeConfig()
+
+// Canonical y og:url globales por ruta. Sin query a propósito: los
+// parámetros de filtro (/certificados?kind=...) no son páginas nuevas
+// y no deben duplicar la URL canónica.
+const pageUrl = computed(() => `${config.public.siteUrl.replace(/\/$/, '')}${route.path}`)
+
 useSeoMeta({
   title: 'pepedev — Portfolio',
-  description: 'Proyectos, certificados y contacto.'
+  description: 'Proyectos, certificados y contacto.',
+  ogSiteName: 'pepedev',
+  ogType: 'website',
+  ogUrl: () => pageUrl.value
 })
 
 // El lang del <html> sigue al idioma activo del contenido de la API; sin
@@ -18,7 +29,10 @@ const lang = useLang()
 useHead({
   htmlAttrs: {
     lang
-  }
+  },
+  link: [
+    { rel: 'canonical', href: () => pageUrl.value }
+  ]
 })
 
 // ======================================================================
