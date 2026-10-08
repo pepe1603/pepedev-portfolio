@@ -1,0 +1,295 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/* ==========================================================================
+   TIPOGRAFIA
+   Para cambiar la fuente: declara la familia en nuxt.config.ts (fonts.families)
+   y actualiza el nombre de aqui. Sin esta variable, @nuxt/fonts no detecta
+   que la familia se usa y no la descarga.
+   ========================================================================== */
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+}
+
+/* ==========================================================================
+   TEMA
+   Una sola capa semantica: los tokens --ui-* de Nuxt UI.
+   Nuxt UI genera --ui-primary como --ui-color-primary-500 en light y
+   --ui-color-primary-400 en dark, asi que el switch 500/400 es automatico.
+   Aqui solo se sobreescriben los neutros y superficies.
+
+   PARA USAR OTRA MARCA:
+   1. Color de marca -> app.config.ts, campo ui.colors.primary
+   2. Neutros, superficies y bordes -> los bloques :root y .dark de abajo
+   ========================================================================== */
+
+:root {
+  /* Superficies: de la pagina hacia el elemento mas elevado */
+  --ui-bg: #ffffff;
+  --ui-bg-muted: #fafafa;
+  --ui-bg-elevated: #f4f4f5;
+  --ui-bg-accented: #e4e4e7;
+  --ui-bg-inverted: #18181b;
+
+  /* Texto: de mayor a menor enfasis */
+  --ui-text: #3f3f46;
+  --ui-text-muted: #71717a;
+  --ui-text-dimmed: #a1a1aa;
+  --ui-text-toned: #52525b;
+  --ui-text-highlighted: #18181b;
+  --ui-text-inverted: #ffffff;
+
+  /* Bordes */
+  --ui-border: #e4e4e7;
+  --ui-border-muted: #f4f4f5;
+  --ui-border-accented: #d4d4d8;
+  --ui-border-inverted: #18181b;
+
+  /* Ancho del contenido. Es el unico sitio donde se decide: el header, el
+     contenido y el footer lo leen de aqui, asi que cambiar este numero los
+     mueve a los tres.
+
+     Nuxt UI lo pone a 80rem, y con el font-size por defecto de 16px eso ya
+     son 1280px. O sea, este valor es el que ya venia, escrito aqui para que
+     el ancho sea una decision del proyecto y no un default que nadie ha
+     mirado. En px, no en rem, a proposito: si el usuario cambia el tamano
+     de fuente base, el ancho del contenido no deberia moverse con el. */
+  --ui-container: 1280px;
+}
+
+/* Negro apurado, no puro: la escalera de grises permite elevar superficies
+   y evita halation en el texto. Mantener este orden de luminosidad. */
+.dark {
+  --ui-bg: #0a0a0a;
+  --ui-bg-muted: #121212;
+  --ui-bg-elevated: #171717;
+  --ui-bg-accented: #262626;
+  --ui-bg-inverted: #fafafa;
+
+  --ui-text: #e4e4e7;
+  --ui-text-muted: #a1a1aa;
+  --ui-text-dimmed: #71717a;
+  --ui-text-toned: #d4d4d8;
+  --ui-text-highlighted: #fafafa;
+  --ui-text-inverted: #18181b;
+
+  --ui-border: #262626;
+  --ui-border-muted: #1c1c1c;
+  --ui-border-accented: #333333;
+  --ui-border-inverted: #fafafa;
+}
+
+/* Nuxt UI no cubre texto con gradiente, asi que se expone como utilidad.
+
+   Aqui hay una trampa que ya se pago dos veces, asi que queda escrita:
+
+   1. NO uses los shades crudos. --ui-color-primary-500 y -400 son valores
+      FIJOS de la paleta: son los mismos en light y en dark, asi que un
+      degradado armado con ellos no se adapta nunca. Lo que cambia con el
+      tema es el alias --ui-primary (500 en light, 400 en dark), y lo cambia
+      plugins/colors.js del propio @nuxt/ui.
+
+   2. De una sola variable. El segundo extremo se deriva con color-mix en vez
+      de declarar un token por tema: menos superficie que mantener, y el
+      degradado se invierte solo porque parte de --ui-primary, que ya es mas
+      claro en dark.
+
+   3. El recorte y el color van DENTRO de la utilidad. Una que se llama
+      text-gradient tiene que verse sola, y no depender de que otro se acuerde
+      de anadir text-transparent y bg-clip-text: si se olvida, el color del
+      texto tapa el fondo y el degradado no se ve.
+
+   4. AVISO DEL EDITOR ESPERADO. El LSP de Tailwind marca "Cannot resolve
+      --ui-primary custom property" mas abajo, y no es un fallo: @nuxt/ui
+      genera esos tokens en un <style> inyectado por JS con useHead, no en el
+      CSS del proyecto, asi que el editor no puede indexarlos. En el navegador
+      la variable esta definida y el degradado se pinta. Si alguna vez no se
+      viera, el fallo no seria de esta utilidad, sino que el token no llego a
+      definirse. */
+@utility text-gradient {
+  background-image: linear-gradient(
+    to right,
+    var(--ui-primary),
+    color-mix(in oklab, var(--ui-primary) 55%, white)
+  );
+  background-clip: text;
+  color: transparent;
+}
+
+html {
+  background-color: var(--ui-bg);
+  color: var(--ui-text);
+
+  /* El UA stylesheet ya le pone view-transition-name: root al elemento raiz,
+     pero se declara aqui para que el reveal circular no dependa de ese
+     default: si alguien resetea la propiedad, el nombre se pierde y la
+     animacion deja de aplicarse sin ningun error visible. */
+  view-transition-name: root;
+}
+
+/* ==========================================================================
+   VIEW TRANSITIONS: CAMBIO DE TEMA
+   Lo que se ve al pulsar el boton de tema no es una transicion de color: es
+   el tema nuevo entrando por un recorte circular que se abre desde el punto
+   del click. La pagina real no se anima, se congela en dos capturas y el
+   navegador interpola entre ellas.
+
+   --------------------------------------------------------------------------
+   POR QUE LA GEOMETRIA VIENE DE JS Y LA ANIMACION NO
+   Las tres medidas dependen del raton, asi que no pueden estar escritas aqui:
+   --theme-x, --theme-y y --theme-radius las pone ColorModeToggle.vue en el
+   elemento raiz antes de llamar a startViewTransition. La animacion si esta
+   aqui, porque no se puede animar un pseudo-elemento desde JS: no es un
+   elemento y no tiene instancia de Element.
+
+   Los valores por defecto del var() son un centro y un radio de 150vmax, que
+   es mas que la diagonal de cualquier pantalla. Sirven para que la
+   animacion siga siendo valida aunque falten las variables, en lugar de
+   degradar a un circle(0px) que no revela nada.
+   ========================================================================== */
+
+::view-transition-old(root) {
+  /* Sin el fade-out del UA, para que la imagen vieja se quede fija debajo y
+     sea el reveal del nuevo lo unico que se mueve. */
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  /* El UA pone plus-lighter, pensado para que el cross-fade de dos capturas
+     a media opacidad sume luz correctamente. Aqui no hay cross-fade: la
+     vieja esta opaca y la nueva encima recortada. Con plus-lighter la zona
+     de solape se va a blanco y el reveal se ve como un fogonazo. */
+  mix-blend-mode: normal;
+  animation: theme-clip-reveal 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes theme-clip-reveal {
+  from {
+    clip-path: circle(0px at var(--theme-x, 50%) var(--theme-y, 50%));
+  }
+
+  to {
+    clip-path: circle(var(--theme-radius, 150vmax) at var(--theme-x, 50%) var(--theme-y, 50%));
+  }
+}
+
+/* ==========================================================================
+   TRANSICION lightbox-fade DE VUE
+   La usa GalleryCarousel con `<Transition name="lightbox-fade">`.
+
+   Vue no trae estas clases: hay que declararlas, y las cuatro hacen falta.
+   Falta la -enter-from y la animacion se ve como un fogonazo; falta la
+   -enter-active y la opacidad no interpola.
+
+   El nombre lleva el prefijo a proposito. Las clases de <Transition> son
+   GLOBALES aunque el .vue tenga scope, asi que un nombre corto como `fade` se
+   pisa con cualquier otro Transition del mismo nombre en la pagina. Ver el
+   aviso 7 del bloque de avisos de mas abajo.
+   ========================================================================== */
+
+.lightbox-fade-enter-active {
+  transition: opacity 0.2s ease;
+}
+
+.lightbox-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.lightbox-fade-enter-from,
+.lightbox-fade-leave-to {
+  opacity: 0;
+}
+
+/* ==========================================================================
+   AVISOS
+   Errores que ya se han pagado en este archivo o en RevealOnScroll. No son
+   notas de estilo: son fallos reales que se leen bien y aun asi hacen que la
+   pagina parezca lenta o rota. Si tocas estos ficheros, leelos antes.
+
+   --------------------------------------------------------------------------
+   1. LOS AVISOS DEL LSP EN text-gradient SON ESPERADOS
+   @nuxt/ui no emite --ui-color-primary-* ni --ui-primary en el CSS del
+   proyecto: los inyecta en un <style> desde runtime (plugins/colors.js, con
+   useHead). El LSP de Tailwind solo indexa el CSS compilado, asi que marca
+   "Cannot resolve" en cualquier token --ui-*. No lo toques para callarlo:
+   devolveria el problema de verdad, que es que la variable no existe.
+
+   --------------------------------------------------------------------------
+   2. NO CONSTRUYAS EL DEGRADADO CON SHADES CRUDOS
+   --ui-color-primary-400 y -500 valen lo mismo en light y en dark. Un
+   degradado con ellos parece que se adapta al tema y no se adapta. Solo
+   --ui-primary cambia de shade segun el tema. La utilidad sale de ahi y
+   deriva el segundo extremo con color-mix, con lo que el degradado se
+   invierte solo en dark y queda una sola variable de Nuxt UI.
+
+   --------------------------------------------------------------------------
+   3. UNA DURACION ANIMADA NO ES LO QUE DICE EL NUMERO SI LA SUMAS
+   Los escalonamientos se suman a la duracion. Una entrada de 700ms cuyo
+   ultimo paso espera un 36% dura 952ms, no 700. En RevealOnScroll esto esta
+   resuelto: `duration` es la duracion de la entrada completa y no se suma
+   la secuencia encima. Los numeros de README y del componente son los
+   reales.
+
+   --------------------------------------------------------------------------
+   4. NO ANULES transition-duration DE FORMA GLOBAL
+   Un `@media (prefers-reduced-motion: reduce)` con `* { transition-duration:
+   0.01ms !important }` parece la solucion universal, y no lo es: mataria
+   tambien las animaciones de Nuxt UI, que traen su propia transicion y su
+   propia logica de reduced motion, y lo haria sin avisar. Nada falla,
+   simplemente desaparece el movimiento de menus, tooltips y dialogos.
+
+   Lo correcto son las utilidades `motion-reduce` de Tailwind, aplicadas en
+   la clase del propio elemento. RevealOnScroll las trae en sus estados, y
+   por eso su bloque de reduced motion esta junto a ellos. Si anades una
+   animacion fuera de ese componente, ponle su `motion-reduce` en la misma
+   clase.
+
+   --------------------------------------------------------------------------
+   5. filter: blur() NO ES GRATIS Y ESTA FUERA DEL COMPOSITOR
+   El navegador rasteriza y vuelve a filtrar toda el area del elemento en
+   cada frame. En una tarjeta pequena no se nota; sobre una seccion con
+   veinte imagenes el frame rate se desploma. Si algo va lento, mira primero
+   si hay un blur animandose sobre algo grande.
+
+   Ademas: blur(0px) sigue siendo un filter, distinto de none. Deja bloque
+   contenedor para descendientes position:fixed y contexto de apilamiento,
+   asi que un tooltip o un modal dentro de un reveal con blur se posiciona
+   mal. Por eso ImagesSection anima fade-up y no blur.
+
+   --------------------------------------------------------------------------
+   6. UNA TRANSITION CSS DURANTE UN VIEW TRANSITION ROMPE EL COLOR
+   Las dos cosas viven a la vez y el navegador no las coordina. Al cambiar de
+   tema con las transiciones CSS activas, Nuxt UI pone su fondo en marcha
+   hacia el color nuevo y la API captura el estado nuevo en ese mismo frame,
+   con el color a medio camino: la instantanea sale mezclada entre los dos
+   temas y el reveal circular descubre el tema viejo encima del viejo. El
+   tema no cambia hasta que la transicion acaba, y de golpe.
+
+   Por eso colorMode.disableTransition va en true en nuxt.config.ts, aunque
+   el default sea false. Con true, @nuxtjs/color-mode inyecta
+   `* { transition: none !important }` al cambiar de tema y lo retira al
+   siguiente frame: el intercambio es instantaneo y el recorte se encarga de
+   la unica animacion. Ese asterisco no alcanza a los pseudo-elementos de la
+   transicion, asi que el reveal sigue teniendo sus 500ms.
+
+   --------------------------------------------------------------------------
+   7. <Transition name="fade"> USA CLASES GLOBALES, Y "fade" ES UN NOMBRE
+   QUE CHOCA FACILMENTE
+   Las clases .fade-enter-active y .fade-enter-from las escribe Vue en el
+   documento, no dentro del componente: son globales, aunque el
+   <Transition> este en un .vue con scope. Dos Transition con name="fade" en
+   la pagina comparten animacion, y eso incluye uno que se abra encima de
+   otro: los dos salen y entran a la vez, y si uno se cierra mientras el otro
+   se abre se pisan el opacity.
+
+   Por eso hay dos reglas al añadir uno:
+
+   1. Preferir el nombre de Nuxt UI (`<Transition name="fade">` ya viene con
+      su CSS si se usa el componente UModal con transition="fade") antes que
+      declarar un nombre propio global.
+
+   2. Si el nombre es propio, que sea especifico (`lightbox-fade`, no `fade`)
+      y sus clases esten en main.css con un comentario que diga quien las usa.
+   ========================================================================== */
