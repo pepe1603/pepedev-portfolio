@@ -39,18 +39,13 @@ useHead({
 // TOASTER
 // <UApp> es quien monta el <UToaster> que pinta los toasts, y sin el los
 // avisos se encolan pero no se ven. No hace falta pasarle nada: todo tiene
-// valores por defecto.
-//
-// Aqui se le pasa un estado solo para que la seccion de documentacion de
-// los toasts pueda cambiar posicion, duracion o limite en caliente. Si
-// quitas esa seccion, quita estas dos lineas: el binding es opcional.
+// valores por defecto. (El binding opcional de posicion/duracion se fue
+// con la seccion de documentacion de toasts.)
 // ======================================================================
-
-const toaster = useToasterOptions()
 </script>
 
 <template>
-  <UApp :toaster="toaster">
+  <UApp>
     <!--
       El shell (cabecera, contenido, pie) vive en layouts/default.vue, no
       aqui. Nuxt elige layout por pagina, asi que una pagina puede salirse del

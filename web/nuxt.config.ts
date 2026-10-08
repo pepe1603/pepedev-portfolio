@@ -37,20 +37,10 @@ export default defineNuxtConfig({
     disableTransition: true
   },
 
-  ui: {
-    experimental: {
-      // componentDetection activa el recorte de temas: Nuxt UI escanea que
-      // componentes se usan de verdad y solo genera el CSS de esos. Con
-      // `true` no haria falta la lista; el array la completa con los que
-      // se usan de forma dinamica y el escaner no puede ver.
-      //
-      // 'Modal' y 'Drawer' van aqui porque AppModal.vue y AppDrawer.vue los
-      // envuelven, pero envuelto no cuenta como dinamico: es una referencia
-      // estatica y el escaner la ve. Se dejan de forma explicita para que sus
-      // temas no dependan de que las secciones que los usan sigan en la pagina.
-      componentDetection: ['Modal', 'Drawer']
-    }
-  },
+  // El experimental.componentDetection de la plantilla (['Modal', 'Drawer'],
+  // para que los temas no dependieran de las secciones demo) se va con esas
+  // secciones: UModal se sigue usando en AppCommandPalette como referencia
+  // estática, y el escáner lo ve sin ayuda.
 
   // El host de la API nunca se escribe a mano en un componente: sale de aqui
   // y se lee con useRuntimeConfig().public.apiBase (ver composables/useApi.ts).
