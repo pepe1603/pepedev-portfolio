@@ -1,6 +1,6 @@
 spring:
   application:
-    name: portfolio-api
+    name: api
   messages:
     basename: messages
     encoding: UTF-8
