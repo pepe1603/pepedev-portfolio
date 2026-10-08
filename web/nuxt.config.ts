@@ -52,6 +52,17 @@ export default defineNuxtConfig({
     }
   },
 
+  // El host de la API nunca se escribe a mano en un componente: sale de aqui
+  // y se lee con useRuntimeConfig().public.apiBase (ver composables/useApi.ts).
+  // El nombre de la variable que lo sobreescribe es NUXT_PUBLIC_API_BASE: nuxt
+  // convierte la ruta del config a SCREAMING_SNAKE_CASE (public.apiBase →
+  // PUBLIC_API_BASE) y le pone el prefijo NUXT_.
+  runtimeConfig: {
+    public: {
+      apiBase: 'http://localhost:8080'
+    }
+  },
+
   // A proposito no hay routeRules con prerender: prerenderear '/' hace que
   // nitro emita solo output estatico, y en estatico no hay runtime que sirva
   // las variantes de ipx, asi que /_ipx daba 404. Con SSR el handler de ipx
@@ -84,6 +95,8 @@ export default defineNuxtConfig({
     // ningun aviso en consola. El host tiene que ir aqui, no la URL entera.
     // picsum.photos responde 302 a fastly.picsum.photos e ipx valida el host
     // despues del redirect, asi que van los dos.
-    domains: ['4kwallpapers.com', 'picsum.photos', 'fastly.picsum.photos']
+    // localhost:8080 va porque las URLs que la API devuelve (avatar, miniatura,
+    // galeria) apuntan a su propio host via APP_STORAGE_PUBLIC_URL.
+    domains: ['4kwallpapers.com', 'picsum.photos', 'fastly.picsum.photos', 'localhost:8080']
   }
 })
