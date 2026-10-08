@@ -68,7 +68,7 @@ docker run -d \
   -p 9000:9000 \
   -p 9001:9001 \
   -e MINIO_ROOT_USER=minioadmin \
-  -e MINIO_ROOT_PASSWORD=miniosecret123 \
+  -e MINIO_ROOT_PASSWORD=cambia_esto \
   -v ~/minio-data:/data \
   minio/minio:latest server /data
 
@@ -91,14 +91,14 @@ docker ps | grep minio
 ```bash
 # Acceder a MinIO console
 # En navegador: http://terramount-ip:9001
-# Login: minioadmin / miniosecret123
+# Login: minioadmin / cambia_esto
 
 # O por CLI (instalar minio-mc):
 wget https://dl.min.io/client/mc/release/linux-amd64/mc
 chmod +x mc
 
 # Configurar conexión
-./mc alias set minio http://localhost:9000 minioadmin miniosecret123
+./mc alias set minio http://localhost:9000 minioadmin cambia_esto
 
 # Crear bucket
 ./mc mb minio/portfolio
