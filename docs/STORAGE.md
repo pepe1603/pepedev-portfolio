@@ -107,7 +107,7 @@ sigue en el repo por si hay que repetirla (un bucket nuevo, otro entorno, un fic
 había quedado fuera):
 
 ```bash
-cd portfolio-api
+cd api
 ./mvnw -o test -Dtest=UploadsToBucketMigrationIT
 ```
 
@@ -127,7 +127,7 @@ retirarlo, cuando toca:
 
 ## 6. Cómo se comprueban estas decisiones
 
-255 tests en total. `./mvnw -o clean test` desde `portfolio-api/`, sin MinIO levantado: el SDK va
+255 tests en total. `./mvnw -o clean test` desde `api/`, sin MinIO levantado: el SDK va
 mockeado. El único que toca el servidor es el de la migración, y no lo recoge la suite.
 
 | Decisión | Test |

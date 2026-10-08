@@ -47,7 +47,7 @@ Notas:
 ## 3. Build y arranque
 
 ```bash
-cd portfolio-api
+cd api
 ./mvnw -q -DskipTests package            # genera target/portfolio-api-*.jar
 APP_...=/etc/portfolio-api.env           # conjunto de vars de producción
 
@@ -68,9 +68,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=portfolio
-WorkingDirectory=/srv/portfolio/portfolio-api
+WorkingDirectory=/srv/portfolio/api
 EnvironmentFile=/etc/portfolio-api.env
-ExecStart=/usr/bin/java -jar /srv/portfolio/portfolio-api/target/portfolio-api-*.jar
+ExecStart=/usr/bin/java -jar /srv/portfolio/api/target/portfolio-api-*.jar
 SuccessExitStatus=143
 Restart=on-failure
 RestartSec=5
