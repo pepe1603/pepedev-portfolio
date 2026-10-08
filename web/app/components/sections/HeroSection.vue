@@ -1,48 +1,66 @@
 <script setup lang="ts">
+// ======================================================================
+// HERO DE LA LANDING
+//
+// Es la adaptación del HeroSection de la plantilla: mismo UPageHero y
+// mismo GradientTitle, pero con los datos del profile público en vez del
+// texto de ejemplo del sistema de diseño.
+//
+// El headline va arriba (kicker) y el nombre grande en el slot title
+// porque UPageHero envuelve ese slot en un <h1>: GradientTitle va como
+// span para no meter un <h1> dentro de otro <h1>.
+// ======================================================================
+import type { ProfilePublicDTO } from '~/utils/types'
+
+defineProps<{
+  profile: ProfilePublicDTO
+}>()
+
+// Los tres CTA de la navegación pública. Contacto es un ancla de esta
+// misma página (id="contacto" en ContactSection), no una ruta: no existe
+// /contacto en el portfolio.
 const links = [
   {
-    label: 'Ver secciones',
-    to: '#texto',
+    label: 'Ver proyectos',
+    to: '/proyectos',
     size: 'lg' as const,
-    icon: 'i-lucide-arrow-down'
+    icon: 'i-lucide-folder-kanban'
   },
   {
-    label: 'Documentación',
-    to: 'https://ui.nuxt.com',
-    target: '_blank' as const,
+    label: 'Certificados',
+    to: '/certificados',
     size: 'lg' as const,
     color: 'neutral' as const,
     variant: 'outline' as const,
-    icon: 'i-lucide-book-open'
+    icon: 'i-lucide-award'
+  },
+  {
+    label: 'Contacto',
+    to: '/#contacto',
+    size: 'lg' as const,
+    color: 'neutral' as const,
+    variant: 'outline' as const,
+    icon: 'i-lucide-mail'
   }
 ]
 </script>
 
 <template>
   <UPageHero
-    headline="Nuxt UI Template"
+    :headline="profile.headline"
     :links="links"
   >
-    <!--
-      UPageHero ya envuelve el slot title en un <h1>, asi que aqui el
-      componente va como span: un <h1> dentro de un <h1> seria HTML
-      invalido y ademas duplicaria el rol de encabezado.
-    -->
     <template #title>
       <GradientTitle
         as="span"
         size="xl"
       >
-        Sistema de diseño
+        {{ profile.fullName }}
       </GradientTitle>
     </template>
 
     <template #description>
-      <p>
-        Todos los valores de esta página salen de los tokens
-        <code class="text-toned">--ui-*</code>. Cambia el tema con el botón
-        superior: nada del CSS de la página cambia, solo las variables.
-      </p>
+      <p>{{ profile.location }}</p>
     </template>
   </UPageHero>
 </template>

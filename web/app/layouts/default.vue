@@ -20,47 +20,79 @@
 // contenedor de la cabecera y el del pie los pone cada componente. Tres
 // contenedores, tres regiones, ninguno dentro de otro.
 //
+// ======================================================================
+// NAVEGACION PUBLICA
+//
+// Inicio, Proyectos y Certificados son rutas reales. Contacto NO: es una
+// seccion anclada dentro de la landing (pages/index.vue, id="contacto"),
+// asi que se navega como hash a la raiz. La lista es la del portfolio, no
+// la de la plantilla original: /formulario y /carrusel eran demos.
+//
+// ======================================================================
+// EL SELECTOR DE IDIOMA
+//
+// Cambia useLang, que es lo que lee useApi para montar ?lang= en cada
+// peticion publica. Solo afecta al CONTENIDO de la API: la interfaz
+// (etiquetas, toasts) se queda en español hasta la Fase 4 del roadmap.
+// ======================================================================
+
 // El ancho sale de --ui-container, declarado en assets/css/main.css. Cambiar
 // ese token mueve cabecera, contenido y pie a la vez.
-// ======================================================================
 
 // El boton de buscar y la paleta comparten este estado. Lo consume el
 // header de este layout y el componente AppCommandPalette.
 const isCommandPaletteOpen = useCommandPalette()
+const lang = useLang()
 </script>
 
 <template>
   <div class="flex min-h-svh flex-col">
     <UHeader class="w-full">
       <template #left>
-        <!-- Icono del proyecto. Reemplaza por tu logo. -->
+        <!-- Marca del portfolio. -->
         <NuxtLink
           to="/"
           class="flex items-center gap-2 rounded-md p-1.5 -ms-1 hover:outline-1 outline-primary/25"
         >
           <UIcon
-            name="i-simple-icons-nuxtdotjs"
+            name="i-lucide-code-xml"
             class="text-primary size-5"
           />
 
           <span class="font-semibold">
-            Template
+            pepedev
           </span>
         </NuxtLink>
 
-        <!-- Paginas de ejemplo del template. Quitalas al empezar un
-             proyecto de verdad: no aportan nada a la aplicacion. -->
+        <!-- Navegación pública. Contacto no es ruta: es un ancla de la
+             landing (#contacto), asi que va como hash a la raiz. -->
         <UButton
-          to="/formulario"
-          label="Formulario"
+          to="/"
+          label="Inicio"
           size="xs"
           color="neutral"
           variant="ghost"
         />
 
         <UButton
-          to="/carrusel"
-          label="Carrusel"
+          to="/proyectos"
+          label="Proyectos"
+          size="xs"
+          color="neutral"
+          variant="ghost"
+        />
+
+        <UButton
+          to="/certificados"
+          label="Certificados"
+          size="xs"
+          color="neutral"
+          variant="ghost"
+        />
+
+        <UButton
+          to="/#contacto"
+          label="Contacto"
           size="xs"
           color="neutral"
           variant="ghost"
@@ -78,10 +110,30 @@ const isCommandPaletteOpen = useCommandPalette()
           @click="isCommandPaletteOpen = true"
         />
 
+        <!-- Selector de idioma del contenido de la API. `soft` en el activo
+             para que se vea cual esta elegido sin inventar un estilo nuevo. -->
+        <UButton
+          label="ES"
+          size="xs"
+          color="neutral"
+          :variant="lang === 'es' ? 'soft' : 'ghost'"
+          :aria-pressed="lang === 'es'"
+          @click="lang = 'es'"
+        />
+
+        <UButton
+          label="EN"
+          size="xs"
+          color="neutral"
+          :variant="lang === 'en' ? 'soft' : 'ghost'"
+          :aria-pressed="lang === 'en'"
+          @click="lang = 'en'"
+        />
+
         <ColorModeToggle />
 
         <UButton
-          to="https://github.com"
+          to="https://github.com/pepe1603"
           target="_blank"
           icon="i-simple-icons-github"
           aria-label="GitHub"
@@ -106,12 +158,6 @@ const isCommandPaletteOpen = useCommandPalette()
       <template #left>
         <p class="text-muted text-sm">
           © {{ new Date().getFullYear() }}
-        </p>
-      </template>
-
-      <template #right>
-        <p class="text-dimmed text-sm">
-          Nuxt 4 · Nuxt UI · Tailwind v4
         </p>
       </template>
     </UFooter>

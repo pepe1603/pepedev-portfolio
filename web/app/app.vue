@@ -5,33 +5,47 @@
 // se omiten a proposito: anade la tuya en public/ y descomenta abajo.
 // ======================================================================
 
+const route = useRoute()
+const config = useRuntimeConfig()
+
+// Canonical y og:url globales por ruta. Sin query a propósito: los
+// parámetros de filtro (/certificados?kind=...) no son páginas nuevas
+// y no deben duplicar la URL canónica.
+const pageUrl = computed(() => `${config.public.siteUrl.replace(/\/$/, '')}${route.path}`)
+
 useSeoMeta({
-  title: 'Nuxt UI Template',
-  description: 'Plantilla de Nuxt 4 con Nuxt UI, Tailwind CSS v4 y tema claro/oscuro basado en tokens.'
+  title: 'pepedev — Portfolio',
+  description: 'Proyectos, certificados y contacto.',
+  ogSiteName: 'pepedev',
+  ogType: 'website',
+  ogUrl: () => pageUrl.value
 })
+
+// El lang del <html> sigue al idioma activo del contenido de la API; sin
+// este binding, el atributo quedaria congelado en 'es' aunque el visitante
+// cambiara a EN desde la cabecera.
+const lang = useLang()
 
 useHead({
   htmlAttrs: {
-    lang: 'es'
-  }
+    lang
+  },
+  link: [
+    { rel: 'canonical', href: () => pageUrl.value }
+  ]
 })
 
 // ======================================================================
 // TOASTER
 // <UApp> es quien monta el <UToaster> que pinta los toasts, y sin el los
 // avisos se encolan pero no se ven. No hace falta pasarle nada: todo tiene
-// valores por defecto.
-//
-// Aqui se le pasa un estado solo para que la seccion de documentacion de
-// los toasts pueda cambiar posicion, duracion o limite en caliente. Si
-// quitas esa seccion, quita estas dos lineas: el binding es opcional.
+// valores por defecto. (El binding opcional de posicion/duracion se fue
+// con la seccion de documentacion de toasts.)
 // ======================================================================
-
-const toaster = useToasterOptions()
 </script>
 
 <template>
-  <UApp :toaster="toaster">
+  <UApp>
     <!--
       El shell (cabecera, contenido, pie) vive en layouts/default.vue, no
       aqui. Nuxt elige layout por pagina, asi que una pagina puede salirse del
