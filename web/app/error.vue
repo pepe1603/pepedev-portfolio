@@ -22,6 +22,11 @@ const title = computed(() => (props.error.statusCode === 404 ? 'Página no encon
 // puro): se resuelve aquí una vez.
 const isDev = import.meta.dev
 
+// error.vue sustituye a app.vue entero, así que sin esto la pestaña se
+// quedaría sin título; se repite la marca aquí a mano porque en este
+// momento no hay layout ni head global que lo aporte.
+useHead({ title: () => `${title.value} — pepedev` })
+
 function backHome() {
   clearError({ redirect: '/' })
 }
