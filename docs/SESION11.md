@@ -80,7 +80,7 @@ Contexto cerrado (lee en orden docs/SESION11.md, docs/API.md, docs/PLAN-API.md):
   rate limits, multipart storage, 409 slug, featured obligatorio por FAIL_ON_NULL_FOR_PRIMITIVES).
 - Swagger verificado: /v3/api-docs (OpenAPI 3.1.0, bearer-auth global) y /swagger-ui/index.html.
 - Operación dev: tunnel ssh para PG/Redis; app en :8080 con devtools (auto-restart al compilar);
-  log en portfolio-api/boot7-run.log (ahora gitignored con *.log). Redes/infra pendientes como en
+  log en api/boot7-run.log (ahora gitignored con *.log). Redes/infra pendientes como en
   desarrollo: front Nuxt consumiría la API (CORS APP_CORS_ALLOWED_ORIGINS).
 
 Sesiones y metodología: docs/SESION1..11, un commit por pieza, código lo escribo yo (IA) solo

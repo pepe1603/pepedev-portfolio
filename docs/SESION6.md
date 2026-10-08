@@ -52,7 +52,7 @@ explícitamente) y se avanzó commit por commit:
 
 ## Notas de operación
 
-- `./mvnw spring-boot:run` desde `portfolio-api/` (no desde la raíz del monorepo).
+- `./mvnw spring-boot:run` desde `api/` (no desde la raíz del monorepo).
 - Para arrancar en background sin que el shell la mate: `setsid nohup bash -c 'MANAGEMENT_HEALTH_MAIL_ENABLED=false ./mvnw spring-boot:run' &`; detener con `pkill -f spring-boot:run`.
 - `source <(head -46 .env)` solo carga las vars que usa la app y evita el carácter corrupto de la línea 47 (`SPRING_MAIL_PASSWORD`). Sigue pendiente arreglar el quoting del `.env`.
 - Insert/delete de prueba vía `ssh teramont-dev "docker exec -i -e PGPASSWORD=... -e PGUSER=... postgres psql"` y Redis con `docker exec -e REDISCLI_AUTH=... redis redis-cli`.
@@ -70,7 +70,7 @@ explícitamente) y se avanzó commit por commit:
 Retomamos el proyecto pepedev-portfolio (docs en /home/pepe-dev/Projects/pepedev-portfolio).
 
 Contexto cerrado (lee en orden docs/SESION6.md, docs/PLAN-API.md, docs/MODELO-DATOS.md y docs/REQUIREMENTS.md §6):
-- Monorepo: portfolio-api/ (Spring Boot 4.1.1, Java 21, Maven, dev.pepe1603.portfolio_api) compilando;
+- Monorepo: api/ (Spring Boot 4.1.1, Java 21, Maven, dev.pepe1603.api) compilando;
   web/ (Nuxt, futuro); docs/. Bloques 0-3, 4 (auth JWT) y 5.1 COMPLETADOS, y 5.2 certificates ✔
   (5 commits bc103ea→2b62369, verificado por curl, sesión 6).
 - API pública (Bloques 5.1+5.2): /public/profile, /public/projects[{/slug}], /public/certificates
@@ -100,7 +100,7 @@ Notas de operación importantes:
   nullsFirst()/nullsLast()/nullsNative(). devtools auto-reinicia al recompilar y en dev pone
   trace/message en los bodies de error (no en prod).
 - background: `setsid nohup bash -c 'MANAGEMENT_HEALTH_MAIL_ENABLED=false ./mvnw spring-boot:run'`
-  desde portfolio-api/; detener con pkill -f spring-boot:run.
+  desde api/; detener con pkill -f spring-boot:run.
 - Túnel: ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev (puede persistir).
 - El formato unificado de errores (401/403/404/429/400) se hará en el Bloque 7; hoy los errores
   públicos salen con el body del BasicErrorController.

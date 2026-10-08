@@ -77,7 +77,7 @@ Spring no lo convierte a UUID y responde 400).
 
 - Túnel: `ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev`.
 - Arranque dev: `setsid nohup bash -c 'MANAGEMENT_HEALTH_MAIL_ENABLED=false ./mvnw spring-boot:run'`
-  desde `portfolio-api/`; detener con `pkill -f spring-boot:run`.
+  desde `api/`; detener con `pkill -f spring-boot:run`.
 - Health SMTP puede bajar a DOWN en dev; el contacto no depende de él para persistir.
 - El rate limit de contacto (5/IP por 15 min) aplica al crear mensajes de prueba.
 

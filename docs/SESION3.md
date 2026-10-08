@@ -4,8 +4,8 @@
 
 ## Qué se hizo en esta sesión
 
-1. **Paso 0.5 — Proyecto Spring Boot generado**: se extrajo `portfolio-api.zip` (generado por el usuario en
-   start.spring.io) a `portfolio-api/`. Ajustes en `pom.xml`: quitado Thymeleaf (starter y test) y añadidos
+1. **Paso 0.5 — Proyecto Spring Boot generado**: se extrajo `api.zip` (generado por el usuario en
+   start.spring.io) a `api/`. Ajustes en `pom.xml`: quitado Thymeleaf (starter y test) y añadidos
    `springdoc-openapi-starter-webmvc-ui` **3.1.0** y `jjwt` **0.12.7** (api/impl/jackson). Compila.
    Commit `chore: proyecto spring boot 4.1.1 generado en spring.io`.
 2. **Bloque 1.1 — Modelo de datos**: creado y aprobado `docs/MODELO-DATOS.md` (fuente de verdad): 5 tablas,
@@ -49,7 +49,7 @@
 
 ## Decisiones cerradas en la sesión
 
-- Paquete Java: `dev.pepe1603.portfolio_api` (guion bajo), tal como generó Initializr; se mantiene (en vez de `portfolioapi`).
+- Paquete Java: `dev.pepe1603.api` (guion bajo), tal como generó Initializr; se mantiene (en vez de `portfolioapi`).
 - IDs de contenido: **UUID v7** vía `@UuidGenerator(style = VERSION_7)`; `profile.id` SMALLINT fijo = 1 sin generador.
 - Enums: valores en BD en **MAYÚSCULAS** (CHECK) para cuadrar con `@Enumerated(STRING)`.
 - Spring Boot 4 usa **Jackson 3** (`tools.jackson`) como default; para Redis se usa `GenericJacksonJsonRedisSerializer`
@@ -75,7 +75,7 @@
 Retomamos el proyecto pepedev-portfolio (docs en /home/pepe-dev/Projects/pepedev-portfolio).
 
 Contexto cerrado (lee en orden docs/SESION3.md, docs/PLAN-API.md, docs/MODELO-DATOS.md y docs/REQUIREMENTS.md §6):
-- Monorepo: portfolio-api/ (Spring Boot 4.1.1, Java 21, Maven, paquete dev.pepe1603.portfolio_api) ya enlazado y
+- Monorepo: api/ (Spring Boot 4.1.1, Java 21, Maven, paquete dev.pepe1603.api) ya enlazado y
   compilando; web/ (Nuxt, futuro); docs/. Bloques 0, 0.5, 1.1, 1.2, 2, 2.1 y 3 del PLAN-API COMPLETADOS y commiteados.
 - BD/Redis remotos en Terramount POR TÚNEL SSH (ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev);
   corren como contenedores Docker. Flyway aplicó V1 sobre PostgreSQL 18.6 y ddl-auto:validate cuadra.

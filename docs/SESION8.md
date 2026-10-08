@@ -79,7 +79,7 @@ curl -s -X POST http://localhost:8080/auth/login -H 'Content-Type: application/j
 
 - Túnel: `ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev`.
 - Arranque dev: `setsid nohup bash -c 'MANAGEMENT_HEALTH_MAIL_ENABLED=false ./mvnw spring-boot:run'`
-  desde `portfolio-api/`; detener con `pkill -f spring-boot:run`.
+  desde `api/`; detener con `pkill -f spring-boot:run`.
 - El rate limit de login (5/IP) aplica también al probar el CRUD: usa pocos intentos fallidos.
 - Boot 4: recordatorio de las APIs rotas — ya absorbidas en bloques 5.x y 6.1.
 

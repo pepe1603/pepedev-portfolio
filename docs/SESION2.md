@@ -7,7 +7,7 @@
 1. **Estructura corregida a monorepo de raíz simple** (se descarta la estructura `apps/`):
    ```
    pepedev-portfolio/            ← raíz del monorepo
-   ├── portfolio-api/            ← Spring Boot, generado por el usuario en start.spring.io
+   ├── api/            ← Spring Boot, generado por el usuario en start.spring.io
    ├── web/                      ← Nuxt (futuro)
    ├── docs/                     ← documentación + PLAN-API.md
    ├── .env.example
@@ -22,8 +22,8 @@
 
 ## Decisiones cerradas (se aplican en su paso)
 
-- El proyecto `portfolio-api/` lo genera **el usuario** en start.spring.io y lo coloca en la raíz.
-- Metadata: Group `dev.pepe1603` · Artifact/Name `portfolio-api` · Package `dev.pepe1603.portfolio_api`
+- El proyecto `api/` lo genera **el usuario** en start.spring.io y lo coloca en la raíz.
+- Metadata: Group `dev.pepe1603` · Artifact/Name `api` · Package `dev.pepe1603.api`
   · Java 21 · Maven · Jar · Spring Boot `4.1.1`.
 - Dependencias: Web, Data JPA, Flyway, PostgreSQL, Security, Redis, Mail, Validation, Actuator,
   Lombok, DevTools (Paso 3 de SETUP-FASE0).
@@ -44,7 +44,7 @@ siguiendo `docs/PLAN-API.md`, sin adelantarse ni crear cosas por cuenta propia.
 ## Hoja de ruta viva (detalle en docs/PLAN-API.md)
 
 0. Cimientos ✔ (commit `chore: base del monorepo`)
-0.5. Generar `portfolio-api/` en start.spring.io y colocarlo en la raíz → commit
+0.5. Generar `api/` en start.spring.io y colocarlo en la raíz → commit
 1.1 Modelo de datos (revisión) → 1.2 Migración V1__init → 2 JPA → 2.1 Conexión Terramount (env)
 → 3 Config/seguridad base → 4 Auth JWT → 5 API pública → 6 API CRM → 7 Contrato OpenAPI verificado.
 
@@ -56,7 +56,7 @@ siguiendo `docs/PLAN-API.md`, sin adelantarse ni crear cosas por cuenta propia.
 Retomamos el proyecto pepedev-portfolio (docs en /home/pepe-dev/Projects/pepedev-portfolio).
 
 Contexto cerrado (lee docs/SESION1.md, docs/SESION2.md, docs/PLAN-API.md y docs/REQUIREMENTS.md §6):
-- Monorepo con estructura en la raíz: `portfolio-api/` (Spring Boot 4.1.1 generado por mí en
+- Monorepo con estructura en la raíz: `api/` (Spring Boot 4.1.1 generado por mí en
   start.spring.io), `web/` (Nuxt, futuro), `docs/`. Ya existe el commit "chore: base del monorepo".
 - Modelo de datos MÍNIMO (REQUIREMENTS §6): 5 tablas users/profile/projects/certificates/messages;
   JSONB bilingüe ES/EN {es,en}; enums como varchar+CHECK; sin FKs entre tablas de contenido.
