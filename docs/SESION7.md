@@ -66,7 +66,7 @@ la "línea 47" de sesiones anteriores desapareció.
 
 - Túnel: `ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev`.
 - Arranque dev: `setsid nohup bash -c 'MANAGEMENT_HEALTH_MAIL_ENABLED=false ./mvnw spring-boot:run'`
-  desde `portfolio-api/`; detener con `pkill -f spring-boot:run`.
+  desde `api/`; detener con `pkill -f spring-boot:run`.
 - El health de SMTP puede bajar a DOWN en dev; el contacto no depende de él para persistir.
 - Boot 4: recordatorio de las APIs rotas (`Sort.Order`, `redis.delete(Collection)`, `CacheControl`,
   `nullsFirst/last`) — ya absorbidas en bloques 5.x.
@@ -83,7 +83,7 @@ la "línea 47" de sesiones anteriores desapareció.
 Retomamos el proyecto pepedev-portfolio (docs en /home/pepe-dev/Projects/pepedev-portfolio).
 
 Contexto cerrado (lee en orden docs/SESION7.md, docs/PLAN-API.md, docs/MODELO-DATOS.md y docs/REQUIREMENTS.md §6):
-- Monorepo: portfolio-api/ (Spring Boot 4.1.1, Java 21, Maven, dev.pepe1603.portfolio_api) compilando;
+- Monorepo: api/ (Spring Boot 4.1.1, Java 21, Maven, dev.pepe1603.api) compilando;
   web/ (Nuxt, futuro); docs/. Bloques 0-3, 4 (auth JWT), 5.1 y 5.2 COMPLETADOS. Bloque 5.3
   (contacto+CV) IMPLEMENTADO en 6 commits 62ce705→3136418; DoD PENDIENTE de verificación manual
   (guía Postman en SESION7).
@@ -104,7 +104,7 @@ Notas de operación importantes:
   desapareció). APP_CONTACT_DEST_EMAIL presente; APP_CONTACT_FROM_EMAIL y rate por defecto (5/900).
 - Health SMTP puede bajar a DOWN en dev → arrancar con MANAGEMENT_HEALTH_MAIL_ENABLED=false.
 - background: `setsid nohup bash -c 'MANAGEMENT_HEALTH_MAIL_ENABLED=false ./mvnw spring-boot:run'`
-  desde portfolio-api/; detener con pkill -f spring-boot:run.
+  desde api/; detener con pkill -f spring-boot:run.
 - Túnel: ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev.
 - Boot 4 rompe APIs de Boot 3 (Sort.Order, redis.delete(Collection), CacheControl no estático,
   nullsFirst/Last). devtools re-reinicia al recompilar; en dev los errores salen con trace.

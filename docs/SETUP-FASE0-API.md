@@ -17,9 +17,9 @@ Abre <https://start.spring.io> y configura:
 | Language | **Java** |
 | Spring Boot | Versión estable por defecto (la que sugiere el sitio, nunca SNAPSHOT) |
 | Group | `dev.pepe1603` |
-| Artifact | `portfolio-api` |
-| Name | `portfolio-api` |
-| Package name | `dev.pepe1603.portfolio_api` |
+| Artifact | `api` |
+| Name | `api` |
+| Package name | `dev.pepe1603.api` |
 | Packaging | **Jar** |
 | Java | **21** |
 
@@ -74,11 +74,11 @@ Se agregan DESPUÉS a mano en el `pom.xml` (Initializr no las tiene):
 
 ## Paso 4 · Ubicar el proyecto
 
-1. GENERATE → descarga `portfolio-api.zip`.
+1. GENERATE → descarga `api.zip`.
 2. Extrae el contenido en la RAÍZ del monorepo (`pepedev-portfolio/`), de modo que la carpeta
-   `portfolio-api/` quede junto a `docs/` (el `pom.xml` debe quedar directamente en
-   `portfolio-api/pom.xml`, no en `portfolio-api/portfolio-api/`).
-3. En IntelliJ: **Open** → selecciona la carpeta `portfolio-api` → espera a que indexe Maven.
+   `api/` quede junto a `docs/` (el `pom.xml` debe quedar directamente en
+   `api/pom.xml`, no en `api/api/`).
+3. En IntelliJ: **Open** → selecciona la carpeta `api` → espera a que indexe Maven.
 
 ## Paso 5 · Secretos y tokens (IMPORTANTE, hazlo ANTES del primer commit)
 
@@ -150,7 +150,7 @@ En `src/main/resources/application.yml` deja solo esto (los secretos llegan por 
 ```yaml
 spring:
   application:
-    name: portfolio-api
+    name: api
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
@@ -188,7 +188,7 @@ Desde IntelliJ: Run Configuration → Environment Variables → pega las de `.en
 Por terminal equivalente:
 
 ```bash
-cd portfolio-api
+cd api
 set -a; source .env; set +a
 ./mvnw spring-boot:run
 ```

@@ -72,7 +72,7 @@ Se construyó el Bloque 4 **commit por commit** (decisión del usuario: granular
 Retomamos el proyecto pepedev-portfolio (docs en /home/pepe-dev/Projects/pepedev-portfolio).
 
 Contexto cerrado (lee en orden docs/SESION4.md, docs/PLAN-API.md, docs/MODELO-DATOS.md y docs/REQUIREMENTS.md §6):
-- Monorepo: portfolio-api/ (Spring Boot 4.1.1, Java 21, Maven, dev.pepe1603.portfolio_api) compilando;
+- Monorepo: api/ (Spring Boot 4.1.1, Java 21, Maven, dev.pepe1603.api) compilando;
   web/ (Nuxt, futuro); docs/. Bloques 0-3 y **4 (auth JWT) COMPLETADOS** y commiteados.
 - BD/Redis remotos en Terramount POR TÚNEL SSH (ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev)
   como contenedores Docker (postgres:18, redis:7-alpine).

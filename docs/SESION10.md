@@ -133,7 +133,7 @@ de negocio (5/10 MB) se evaluan antes, así que el comportamiento es consistente
 
 - Túnel: `ssh -L 5432:localhost:5432 -L 6379:localhost:6379 teramont-dev`.
 - Arranque dev: `setsid nohup bash -c 'MANAGEMENT_HEALTH_MAIL_ENABLED=false ./mvnw spring-boot:run'`
-  desde `portfolio-api/`; detener con `pkill -f spring-boot:run`.
+  desde `api/`; detener con `pkill -f spring-boot:run`.
 - El directorio de uploads (`APP_STORAGE_DIR`) se crea solo al arrancar la app; los ficheros
   quedan en `uploads/` junto al repo (gitignored). Sin borrado de orfanatos por ahora.
 - Recordatorio Boot 4/Jackson 3: las respuestas `Map` de `{ "url": ... }` se serializan con el

@@ -3,7 +3,7 @@
 > ## ⚠️ Documento superado — no lo ejecutes
 >
 > Este era el plan original: montar MinIO **en el VPS de Terramount**, con su usuario
-> `portfolio-api` y un timeline de cuatro semanas. **Ya no es el plan** y casi nada de lo que
+> `api` y un timeline de cuatro semanas. **Ya no es el plan** y casi nada de lo que
 > hay aquí describe lo que se hizo.
 >
 > Lo que pasó de verdad está en **[STORAGE.md](STORAGE.md)**: MinIO corre **en local** primero
@@ -18,7 +18,7 @@
 > Se conserva sin editar a propósito, para que quede constancia del punto de partida: qué
 > habría que instalar y configurar si se hubiera seguido el camino del VPS.
 
-**Objetivo**: Integrar MinIO en portfolio-api de forma limpia, testeada y documentada.
+**Objetivo**: Integrar MinIO en api de forma limpia, testeada y documentada.
 
 **Timeline**: 4 semanas (semanas 1-4 del roadmap)  
 **Branch**: `feat/minio-storage-integration`  
@@ -105,7 +105,7 @@ chmod +x mc
 
 # Crear access key (usuario específico para API)
 # En console web: Admin → Users → Add User
-# Username: portfolio-api
+# Username: api
 # Password: generar fuerte
 # Perms: Read/Write en bucket "portfolio"
 ```
@@ -113,14 +113,14 @@ chmod +x mc
 **Resultado esperado**:
 ```
 MINIO_ENDPOINT=http://terramount-ip:9000
-MINIO_ACCESS_KEY=portfolio-api
+MINIO_ACCESS_KEY=api
 MINIO_SECRET_KEY=<generated-secret>
 MINIO_BUCKET_NAME=portfolio
 ```
 
 **Checklist**:
 - [ ] Bucket "portfolio" creado
-- [ ] Usuario "portfolio-api" creado
+- [ ] Usuario "api" creado
 - [ ] Access key + secret generadas
 - [ ] Permisos Read/Write validados
 - [ ] Credenciales guardadas en papel/password manager
@@ -134,7 +134,7 @@ MINIO_BUCKET_NAME=portfolio
 ```bash
 # En laptop, conectar a MinIO Terramount
 export MINIO_ENDPOINT=http://terramount-ip:9000
-export MINIO_ACCESS_KEY=portfolio-api
+export MINIO_ACCESS_KEY=api
 export MINIO_SECRET_KEY=<secret>
 
 # Test upload
@@ -658,7 +658,7 @@ git push origin feat/minio-storage-integration
 # Storage
 STORAGE_TYPE=local  # o "minio" para producción
 MINIO_ENDPOINT=http://terramount-ip:9000
-MINIO_ACCESS_KEY=portfolio-api
+MINIO_ACCESS_KEY=api
 MINIO_SECRET_KEY=<generated-secret>
 ```
 
@@ -947,7 +947,7 @@ git branch -d feat/minio-storage-integration
 ```bash
 STORAGE_TYPE=minio
 MINIO_ENDPOINT=http://terramount-ip:9000
-MINIO_ACCESS_KEY=portfolio-api
+MINIO_ACCESS_KEY=api
 MINIO_SECRET_KEY=<secret>
 ```
 
