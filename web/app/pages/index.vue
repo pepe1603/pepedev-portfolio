@@ -1,97 +1,69 @@
 <script setup lang="ts">
-// Esta pagina documenta el sistema de diseno y sirve de ejemplo de
-// RevealOnScroll. Eliminala al iniciar un proyecto.
+// ======================================================================
+// LANDING (raíz)
+//
+// Concentra la presentación del portfolio: hero, perfil, skills,
+// experiencia y contacto. A propósito no hay una ruta por sección: el
+// portfolio público son cuatro rutas (/, /proyectos, /proyectos/[slug],
+// /certificados) y lo demás vive aquí dentro.
+//
+// Los datos salen de GET /public/profile con el idioma activo. La key de
+// useAsyncData no cambia al cambiar de idioma, así que lang va en `watch`:
+// sin eso, pulsar EN en la cabecera no re-lanzaría la petición y el
+// contenido seguiría en el idioma anterior.
+//
+// Si la API no responde no se monta NINGUNA sección: una landing con el
+// nombre vacío y huecos por todos lados es peor que un aviso claro.
+// ======================================================================
+const api = useApi()
+const lang = useLang()
+
+const { data: profile, error } = await useAsyncData(
+  'landing-profile',
+  () => api.getPublic<ProfilePublicDTO>('/public/profile'),
+  { watch: [lang] }
+)
+
 useSeoMeta({
-  title: 'Design System',
-  description: 'Referencia de tokens y componentes del tema.'
+  title: () => profile.value
+    ? `${profile.value.fullName} — ${profile.value.headline}`
+    : 'pepedev — Portfolio',
+  description: () => profile.value?.headline ?? 'Proyectos, certificados y contacto.'
 })
 </script>
 
 <template>
   <UPage>
-    <!--
-      El hero va sin retardo porque esta por encima del fold: el observer
-      dispara en el primer frame y la entrada se ve como una carga, no como
-      un scroll. once=true para que no desaparezca al bajar.
-    -->
-    <RevealOnScroll
-      animation="fade"
-      :duration="900"
-      once
-    >
-      <HeroSection />
-    </RevealOnScroll>
+    <UAlert
+      v-if="error"
+      color="error"
+      variant="subtle"
+      icon="i-lucide-cloud-off"
+      title="No se pudo cargar el perfil"
+      description="La API no está respondiendo. Inténtalo de nuevo en unos segundos."
+      class="my-8"
+    />
 
-    <RevealOnScroll animation="fade-up">
-      <TypographySection />
-    </RevealOnScroll>
+    <template v-else-if="profile">
+      <RevealOnScroll animation="fade-up">
+        <HeroSection :profile="profile" />
+      </RevealOnScroll>
 
-    <RevealOnScroll
-      animation="fade-up"
-      :delay="100"
-    >
-      <SurfacesSection />
-    </RevealOnScroll>
+      <RevealOnScroll animation="fade-up">
+        <ProfileSection :profile="profile" />
+      </RevealOnScroll>
 
-    <RevealOnScroll animation="from-left">
-      <ComponentsSection />
-    </RevealOnScroll>
+      <RevealOnScroll animation="fade-up">
+        <SkillsSection :skills="profile.skills" />
+      </RevealOnScroll>
 
-    <RevealOnScroll animation="fade-up">
-      <RevealSection />
-    </RevealOnScroll>
+      <RevealOnScroll animation="fade-up">
+        <ExperienceSection :experiences="profile.experiences" />
+      </RevealOnScroll>
 
-    <RevealOnScroll animation="fade-down">
-      <AnimationsSection />
-    </RevealOnScroll>
-
-    <RevealOnScroll animation="zoom-in">
-      <SequencesSection />
-    </RevealOnScroll>
-
-    <RevealOnScroll animation="zoom-in">
-      <RepeatSection />
-    </RevealOnScroll>
-
-    <RevealOnScroll animation="fade-up">
-      <FirstScreenSection />
-    </RevealOnScroll>
-
-    <RevealOnScroll animation="blur">
-      <ImagesSection />
-    </RevealOnScroll>
-
-    <RevealOnScroll animation="fade-up">
-      <MotionSection />
-    </RevealOnScroll>
-
-    <RevealOnScroll animation="from-right">
-      <ToastSection />
-    </RevealOnScroll>
-
-    <RevealOnScroll animation="zoom-in">
-      <ModalSection />
-    </RevealOnScroll>
-
-    <RevealOnScroll animation="from-left">
-      <DrawerSection />
-    </RevealOnScroll>
-
-    <RevealOnScroll animation="fade-up">
-      <TooltipSection />
-    </RevealOnScroll>
-
-    <RevealOnScroll animation="from-right">
-      <AlertSection />
-    </RevealOnScroll>
-
-    <!--
-      MarqueeSection NO va envuelta en RevealOnScroll. Las cintas ya se
-      mueven solas, y una de ellas mas el wrapper del observer serializan dos
-      animaciones sobre el mismo bloque: la entrada se ve lenta y el reveal no
-      aporta nada. El problema real de esta seccion es el overflow horizontal
-      de los degradados, y lo lleva resuelto en su propio contenedor.
-    -->
-    <MarqueeSection />
+      <RevealOnScroll animation="fade-up">
+        <ContactSection />
+      </RevealOnScroll>
+    </template>
   </UPage>
 </template>
