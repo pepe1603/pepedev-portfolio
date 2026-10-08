@@ -1,15 +1,16 @@
 // ======================================================================
 // GET /api/search?q=...
-// Endpoint de ejemplo para la busqueda asincrona del command palette.
+// Busqueda asincrona del command palette sobre las secciones del portfolio.
 //
 // --------------------------------------------------------------------------
-// POR QUE ESTE ARCHIVO DEVUELVE DATOS QUE SON DEL PROPIO TEMPLATE
+// POR QUE EL CATALOGO ES UN ARRAY ESTATICO
 //
 // Una busqueda asincrona tiene que responder a ALGO. Hardcodear un
 // directorio de productos inventado seria mas realista, pero entonces el
 // endpoint mentiria: buscaria cosas que no existen en esta pagina. Con las
-// paginas reales del template, lo que aparece al buscar es verdad, y el
-// paleta se puede probar de verdad.
+// secciones reales del portfolio, lo que aparece al buscar es verdad. En la
+// Fase B (CMS), cuando proyectos y certificados sean datos de la API, aqui
+// se consultara el listado publico en vez de este array.
 //
 // --------------------------------------------------------------------------
 // POR QUE NO HAY CACHE NI INDICE
@@ -45,85 +46,35 @@ interface SearchEntry {
   keywords: string[]
 }
 
-// El catalogo. En un proyecto de verdad vendria de la base de datos, y este
-// array seria una consulta.
+// El catalogo de secciones. En la Fase B (CMS) vendria de la API publica.
 const catalog: SearchEntry[] = [
   {
-    label: 'Texto',
-    suffix: 'Escala de emphasis y tokens',
-    icon: 'i-lucide-type',
-    to: '/#texto',
-    keywords: ['tipografia', 'typography', 'tokens', 'fuente', 'color']
+    label: 'Inicio',
+    suffix: 'Perfil, skills y experiencia',
+    icon: 'i-lucide-house',
+    to: '/',
+    keywords: ['inicio', 'home', 'perfil', 'profile', 'sobre mi', 'skills', 'experiencia', 'cv']
   },
   {
-    label: 'Superficies',
-    suffix: 'Fondos, bordes y sombras',
-    icon: 'i-lucide-layers',
-    to: '/#superficies',
-    keywords: ['surface', 'fondo', 'border', 'sombra', 'shadow']
+    label: 'Proyectos',
+    suffix: 'Listado y detalle por slug',
+    icon: 'i-lucide-folder-kanban',
+    to: '/proyectos',
+    keywords: ['proyectos', 'projects', 'stack', 'repositorio', 'demo']
   },
   {
-    label: 'Componentes',
-    suffix: 'Botones, badges, inputs',
-    icon: 'i-lucide-blocks',
-    to: '/#componentes',
-    keywords: ['button', 'badge', 'input', 'formulario']
+    label: 'Certificados',
+    suffix: 'Certificados y cursos',
+    icon: 'i-lucide-award',
+    to: '/certificados',
+    keywords: ['certificados', 'certificates', 'cursos', 'courses', 'emisor']
   },
   {
-    label: 'Animaciones',
-    suffix: 'Entradas y secuencias',
-    icon: 'i-lucide-clapperboard',
-    to: '/#animaciones',
-    keywords: ['motion', 'animacion', 'entrada', 'sequence']
-  },
-  {
-    label: 'Imágenes',
-    suffix: 'ipx, formatos y srcset',
-    icon: 'i-lucide-image',
-    to: '/#imagenes',
-    keywords: ['image', 'img', 'ipx', 'avif', 'webp', 'foto']
-  },
-  {
-    label: 'Avisos',
-    suffix: 'useToast y la cola global',
-    icon: 'i-lucide-bell',
-    to: '/#avisos',
-    keywords: ['toast', 'alert', 'notificacion', 'notify']
-  },
-  {
-    label: 'Modales',
-    suffix: 'AppModal sobre UModal',
-    icon: 'i-lucide-maximize-2',
-    to: '/#modales',
-    keywords: ['modal', 'dialogo', 'overlay']
-  },
-  {
-    label: 'Cajones',
-    suffix: 'AppDrawer sobre UDrawer',
-    icon: 'i-lucide-panel-right',
-    to: '/#cajones',
-    keywords: ['drawer', 'cajon', 'panel', 'lateral']
-  },
-  {
-    label: 'Tooltips',
-    suffix: 'Retardo, lado y contenido',
-    icon: 'i-lucide-message-square',
-    to: '/#tooltips',
-    keywords: ['tooltip', 'hover', 'globo']
-  },
-  {
-    label: 'Formulario',
-    suffix: 'UForm con validación de Zod',
-    icon: 'i-lucide-text-cursor-input',
-    to: '/formulario',
-    keywords: ['form', 'formulario', 'zod', 'validacion', 'schema', 'input']
-  },
-  {
-    label: 'Carrusel',
-    suffix: 'Tarjetas visibles por breakpoint',
-    icon: 'i-lucide-gallery-horizontal-end',
-    to: '/carrusel',
-    keywords: ['carousel', 'carrusel', 'slide', 'embla']
+    label: 'Contacto',
+    suffix: 'Formulario en la landing',
+    icon: 'i-lucide-mail',
+    to: '/#contacto',
+    keywords: ['contacto', 'contact', 'email', 'mensaje']
   }
 ]
 

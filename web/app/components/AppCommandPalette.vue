@@ -126,23 +126,30 @@ const navigationGroup = {
   items: [
     {
       label: 'Inicio',
-      suffix: 'Design system completo',
+      suffix: 'Perfil, skills y experiencia',
       icon: 'i-lucide-house',
       to: '/',
       onSelect: close
     },
     {
-      label: 'Formulario',
-      suffix: 'UForm validado con Zod',
-      icon: 'i-lucide-text-cursor-input',
-      to: '/formulario',
+      label: 'Proyectos',
+      suffix: 'Listado y detalle por slug',
+      icon: 'i-lucide-folder-kanban',
+      to: '/proyectos',
       onSelect: close
     },
     {
-      label: 'Carrusel',
-      suffix: 'Tarjetas visibles por breakpoint',
-      icon: 'i-lucide-gallery-horizontal-end',
-      to: '/carrusel',
+      label: 'Certificados',
+      suffix: 'Certificados y cursos',
+      icon: 'i-lucide-award',
+      to: '/certificados',
+      onSelect: close
+    },
+    {
+      label: 'Contacto',
+      suffix: 'Formulario en la landing',
+      icon: 'i-lucide-mail',
+      to: '/#contacto',
       onSelect: close
     }
   ]

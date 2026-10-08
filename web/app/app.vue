@@ -6,13 +6,18 @@
 // ======================================================================
 
 useSeoMeta({
-  title: 'Nuxt UI Template',
-  description: 'Plantilla de Nuxt 4 con Nuxt UI, Tailwind CSS v4 y tema claro/oscuro basado en tokens.'
+  title: 'pepedev — Portfolio',
+  description: 'Proyectos, certificados y contacto.'
 })
+
+// El lang del <html> sigue al idioma activo del contenido de la API; sin
+// este binding, el atributo quedaria congelado en 'es' aunque el visitante
+// cambiara a EN desde la cabecera.
+const lang = useLang()
 
 useHead({
   htmlAttrs: {
-    lang: 'es'
+    lang
   }
 })
 
