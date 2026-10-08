@@ -36,8 +36,10 @@ const { data: project, error: fetchError } = await useAsyncData(
 )
 
 // Solo el 404 del backend saca a error.vue. El resto (red caída, status 0)
-// se enseña dentro de la propia página sin salir de la ruta.
-if (fetchError.value instanceof ApiError && fetchError.value.status === 404) {
+// se enseña dentro de la propia página sin salir de la ruta. El desenvuelvo
+// con unwrapApiError es porque useAsyncData envuelve el ApiError en un
+// H3Error; comprobar `instanceof` directamente no llega nunca.
+if (unwrapApiError(fetchError.value)?.status === 404) {
   throw createError({
     statusCode: 404,
     statusMessage: 'Este proyecto no existe o no está publicado.'

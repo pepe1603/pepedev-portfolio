@@ -83,6 +83,23 @@ function toApiError(error: unknown): ApiError {
   })
 }
 
+/**
+ * Recupera el ApiError de lo que devuelve `error.value` de useAsyncData.
+ * Nuxt envuelve cualquier error del handler en un H3Error y deja el
+ * original en `cause`, asi que un `instanceof ApiError` directo sobre
+ * `error.value` nunca cuadra (ni en servidor ni en cliente). Fuera de
+ * useAsyncData —un try/catch directo— llega el ApiError tal cual, y ahi
+ * esta funcion tambien lo devuelve. Null si no hay error de la API.
+ */
+export function unwrapApiError(error: unknown): ApiError | null {
+  if (error instanceof ApiError) return error
+
+  const cause = (error as { cause?: unknown } | null | undefined)?.cause
+  if (cause instanceof ApiError) return cause
+
+  return null
+}
+
 export function useApi() {
   const config = useRuntimeConfig()
   const lang = useLang()
