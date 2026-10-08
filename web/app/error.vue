@@ -18,6 +18,10 @@ const props = defineProps<{ error: NuxtError }>()
 // 404 = recurso o ruta inexistente; el resto se trata como fallo general.
 const title = computed(() => (props.error.statusCode === 404 ? 'Página no encontrada' : 'Algo ha fallado'))
 
+// import.meta.dev no puede ir en el template (expresión de Vue, no JS
+// puro): se resuelve aquí una vez.
+const isDev = import.meta.dev
+
 function backHome() {
   clearError({ redirect: '/' })
 }
@@ -49,7 +53,7 @@ function backHome() {
 
       <!-- El stack solo en dev: en producción es ruido y no debe salir. -->
       <pre
-        v-if="import.meta.dev && error.stack"
+        v-if="isDev && error.stack"
         class="text-dimmed max-w-full overflow-x-auto text-left text-xs"
       >{{ error.stack }}</pre>
     </UContainer>
