@@ -1,0 +1,11 @@
+package dev.pepe1603.api.repository;
+
+import dev.pepe1603.api.entity.User;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UserRepository extends JpaRepository<User, UUID> {
+
+    Optional<User> findByEmail(String email);
+}
