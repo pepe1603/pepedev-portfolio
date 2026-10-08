@@ -7,7 +7,7 @@
 ## Fase 0 · Cimientos
 
 - [ ] Repo git y push a <https://github.com/pepe1603> (repo `pepedev-portfolio`)
-- [ ] Estructura: `portfolio-api/` (Spring Boot Maven, generado en spring.io), `web/` (Nuxt), `docs`, `scripts`
+- [ ] Estructura: `api/` (Spring Boot Maven, generado en spring.io), `web/` (Nuxt), `docs`, `scripts`
 - [ ] Spring Boot base: web, data-jpa, security, redis, mail, actuator, flyway, springdoc
 - [ ] Nuxt base: Tailwind, i18n es/en, layout principal
 - [ ] `.env.example` completo; `.gitignore` con `.env*`

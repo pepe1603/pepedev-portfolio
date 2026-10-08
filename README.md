@@ -55,7 +55,7 @@ Docker y la migración al VPS de producción llegan solo cuando todo funcione en
 
 ```
 pepedev-portfolio/
-├── portfolio-api/   # Spring Boot (generado en start.spring.io)
+├── api/              # Spring Boot (generado en start.spring.io)
 ├── web/             # Nuxt 3 + TailwindCSS (a crear con nuxi)
 ├── docs/
 ├── docker/          # Dockerfiles y compose (fase final)
@@ -69,7 +69,7 @@ pepedev-portfolio/
 
 ```bash
 # API (puerto 8080) — requiere DATABASE_URL apuntando a Terramount
-cd portfolio-api && ./mvnw spring-boot:run
+cd api && ./mvnw spring-boot:run
 
 # Web (puerto 3000)
 cd web && pnpm install && pnpm dev

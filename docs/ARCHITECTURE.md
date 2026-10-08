@@ -67,7 +67,7 @@ que genera Spring (`/v3/api-docs`). Si se desea, se generará un cliente TS para
 
 ```
 pepedev-portfolio/
-├── portfolio-api/               # Spring Boot (Maven) · generado en start.spring.io
+├── api/                          # Spring Boot (Maven) · generado en start.spring.io
 │   └── src/main/java/.../
 │       ├── config/           # SecurityConfig, RedisConfig, CORS, OpenAPI
 │       ├── module/

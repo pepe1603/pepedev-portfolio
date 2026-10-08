@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
  * mano, y solo cuando MinIO está levantado:
  *
  * <pre>
- *   cd portfolio-api
+ *   cd api
  *   ./mvnw -o test -Dtest=UploadsToBucketMigrationIT
  * </pre>
  *
