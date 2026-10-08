@@ -46,3 +46,50 @@ export interface ContactRequest {
   body: string
   website?: string
 }
+
+export interface GalleryImage {
+  url: string
+  alt: string | null
+  caption: string | null
+}
+
+export interface ProjectSummaryDTO {
+  slug: string
+  title: string
+  subtitle: string
+  summary: string
+  stack: string[]
+  thumbnailUrl: string | null
+  /** LocalDate del backend: 'yyyy-MM-dd' en JSON. */
+  periodStart: string | null
+  periodEnd: string | null
+  featured: boolean
+}
+
+export interface ProjectDetailDTO {
+  slug: string
+  title: string
+  subtitle: string
+  summary: string
+  descriptionMd: string
+  stack: string[]
+  thumbnailUrl: string | null
+  gallery: GalleryImage[]
+  repoUrl: string | null
+  demoUrl: string | null
+  periodStart: string | null
+  periodEnd: string | null
+  featured: boolean
+}
+
+export interface CertificatePublicDTO {
+  title: string
+  issuer: string
+  /** 'certificate' | 'course' en minúsculas; otro valor → 400 (docs/API.md). */
+  kind: string
+  issueDate: string | null
+  expiryDate: string | null
+  credentialUrl: string | null
+  imageUrl: string | null
+  featured: boolean
+}
