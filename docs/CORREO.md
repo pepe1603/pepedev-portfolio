@@ -131,7 +131,7 @@ miedo:
 | Un SMTP atascado no alarga la respuesta del reset | `PasswordResetServiceTest.smtpAtasgadoNoAlargaLaRespuestaDelReset` |
 | Un endpoint público está en la cadena de seguridad | `SecurityPublicPathsTest` |
 
-244 tests en total. `./mvnw -o clean test` desde `portfolio-api/`.
+255 tests en total. `./mvnw -o clean test` desde `portfolio-api/`.
 
 ## 9. Referencia rápida
 

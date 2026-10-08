@@ -33,8 +33,10 @@ Copiar de `.env.example` y **ajustar**:
 | `APP_CONTACT_DEST_EMAIL` / `APP_CONTACT_FROM_EMAIL` | buzón destino + remitente verificado en Resend | si `FROM` vacío: no se notifica por mail (best-effort) |
 | `APP_LOGIN_RATE_*` / `APP_CONTACT_RATE_*` | mantener defaults o endurecer | 429 + `Retry-After` |
 | `APP_PUBLIC_CACHE_TTL` | `300` (segundos) | caché Redis de `/public/*` + ETag |
-| `APP_STORAGE_DIR` | path persistente en disco del servidor | **baqucupear**; sirve las URLs de `/files/**` |
-| `APP_STORAGE_PUBLIC_URL` | `https://pepe1603.dev/files` | debe ser la URL pública para construir URLs correctas |
+| `APP_S3_ENDPOINT` | `http://minio:9000` (MinIO en Docker junto a la API) | si MinIO va en otra máquina, su host; nunca se publica a Internet |
+| `APP_S3_ACCESS_KEY` / `APP_S3_SECRET_KEY` | credenciales del bucket | **nunca** las de `minioadmin` |
+| `APP_S3_BUCKET` / `APP_S3_REGION` | `portfolio` / `us-east-1` | el bucket lo crea la API al arrancar |
+| `APP_STORAGE_PUBLIC_URL` | `https://pepe1603.dev/files` | debe ser la URL pública para construir URLs correctas. **Cambiarla obliga a migrar las URLs ya guardadas** en la BD |
 
 Notas:
 - **Nunca** usar los secrets de `.env` local en producción.
@@ -120,11 +122,12 @@ Checklist de seguridad visible en la respuesta del login:
 - **Actualización**: `git pull` → `./mvnw -q -DskipTests package` → `systemctl restart`.
   Flyway aplica migraciones nuevas en arranque (`ddl-auto: validate`; las migraciones
   **son inmutables**: nunca editar una ya aplicada).
-- **Ficheros `uploads/`**: el borrado de huérfanos es best-effort (tras el cambio en BD).
-  Ocasional:
-  `find $APP_STORAGE_DIR -type f -mtime +90 -delete` (no borra los referenciados por URL
-  persistente si el sitio los sigue sirviendo; revisar primero).
-- **Backups**: PostgreSQL (pg_dump) e `uploads/`; la caché Redis es reconstruible sola.
+- **Ficheros**: viven en el bucket, no en el servidor. El borrado de huérfanos es
+  best-effort (tras el cambio en BD). Ya no hay un `find` de ficheros de más de 90 días: lo
+  equivalente sería listar objetos del bucket cuya `lastModified` sea antigua y comprobar que
+  ninguna URL de la BD los referencia. Está sin hacer a propósito (docs/STORAGE.md §4).
+- **Backups**: PostgreSQL (pg_dump) y **el bucket** (`mc mirror` a otra ubicación, o el que
+  traiga el despliegue); la caché Redis es reconstruible sola.
 - **Monitor**: `/actuator/health` (incluye `db`, `redis`, `mail`).
 - **Rotación de JWT**: cambiar `APP_JWT_SECRET`/`APP_JWT_REFRESH_SECRET` invalida todos los
   refresh (session de todos fuera); programarlo en horario de bajo tráfico.

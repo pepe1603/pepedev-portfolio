@@ -17,6 +17,7 @@ Docker y la migración al VPS de producción llegan solo cuando todo funcione en
 | Persistencia | JPA / Hibernate + Flyway (migraciones versionadas) |
 | Base de datos | PostgreSQL |
 | Caché / rate limiting | Redis |
+| Almacenamiento | MinIO (bucket S3) local; en Docker dentro del monorepo después |
 | Docs API | springdoc-openapi (Swagger UI) |
 | Empaquetado | Docker + docker compose (solo fase final) |
 
@@ -35,7 +36,7 @@ Docker y la migración al VPS de producción llegan solo cuando todo funcione en
 
 | Nodo | Rol |
 |---|---|
-| Laptop | Desarrollo de `web` y `api` sin Docker |
+| Laptop | Desarrollo de `web` y `api` sin Docker, con MinIO en local para los ficheros |
 | VPS Terramount (miniOS) | Entorno de desarrollo: aloja **PostgreSQL y Redis** que consume la laptop; además almacén de artefactos y backups |
 | VPS Hostinger | Producción oficial: front + API + proxy TLS + PostgreSQL + Redis, cuando todo funcione localmente |
 
@@ -48,6 +49,7 @@ Docker y la migración al VPS de producción llegan solo cuando todo funcione en
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Fases del desarrollo con checklists |
 | [docs/SETUP-FASE0-API.md](docs/SETUP-FASE0-API.md) | Guía paso a paso: Initializr, dependencias, secretos y primer arranque |
 | [docs/CORREO.md](docs/CORREO.md) | Por qué el envío es asíncrono y en un hilo propio, y qué alternativas se descartaron |
+| [docs/STORAGE.md](docs/STORAGE.md) | Por qué los ficheros van a un bucket S3 (MinIO) servido por proxy, y qué alternativas se descartaron |
 
 ## Estructura
 

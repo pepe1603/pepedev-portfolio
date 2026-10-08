@@ -13,6 +13,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -52,6 +53,14 @@ public class MailService {
     private final String fromEmail;
     private final ThreadPoolExecutor executor;
 
+    /**
+     * El {@code @Autowired} no es opcional: hay un segundo constructor para poder testear la
+     * saturación de la cola sin llenarla de 100 correos, y con dos constructores Spring deja
+     * de elegir el único que puede resolver solo, busca uno por defecto y falla al arrancar
+     * con "No default constructor found". Los tests no lo detectan porque instancian la
+     * clase directamente y en el proyecto no hay ningún test que levante el contexto entero.
+     */
+    @Autowired
     public MailService(JavaMailSender mailSender, @Value("${APP_CONTACT_FROM_EMAIL:}") String fromEmail) {
         this(mailSender, fromEmail, executorDeCorreo());
     }
