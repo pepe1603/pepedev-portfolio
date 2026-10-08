@@ -63,7 +63,8 @@ function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error
 
   const fetchError = error as FetchError
-  const body = fetchError?.body as ProblemDetail | undefined
+  // ofetch deja el cuerpo ya parseado en `data` (no en `body`).
+  const body = fetchError?.data as ProblemDetail | undefined
   const retryAfterHeader = fetchError?.response?.headers?.get('retry-after')
 
   // ofetch ya parsea el cuerpo JSON; el envelope se reconoce por title+status.
@@ -90,9 +91,16 @@ export function useApi() {
     baseURL: config.public.apiBase
   })
 
-  async function request<T>(url: string, options?: Parameters<typeof client>[1]): Promise<T> {
+  // El tipo de opciones sale del propio cliente tipeado de Nuxt (que exige
+  // method como literal HTTP), no del FetchOptions genérico de ofetch.
+  type RequestOptions = Parameters<typeof client>[1]
+
+  async function request<T>(url: string, options?: RequestOptions): Promise<T> {
     try {
-      return await client<T>(url, options)
+      // El cast es porque el $fetch tipeado de Nuxt devuelve
+      // TypedInternalResponse, que TS no puede unificar con un T
+      // arbitrario; el caller ya sabe qué tipo espera.
+      return await client(url, options) as T
     } catch (error) {
       throw toApiError(error)
     }
@@ -115,10 +123,13 @@ export function useApi() {
      * endpoint no lo acepta; el idioma del acuse lo decide Accept-Language,
      * que aqui se pone del idioma activo.
      */
-    post<T>(path: string, body: unknown): Promise<T> {
+    post<T>(path: string, body: object): Promise<T> {
       return request<T>(path, {
         method: 'POST',
-        body,
+        // Cast al tipo que acepta FetchOptions: un objeto sin índice
+        // implícito no es asignable directamente, y el body del POST es
+        // un DTO plano.
+        body: body as Record<string, unknown>,
         headers: { 'Accept-Language': lang.value }
       })
     }
