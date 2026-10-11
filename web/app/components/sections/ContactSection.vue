@@ -143,95 +143,214 @@ function onError({ errors }: { errors: { name?: string, message: string }[] }) {
 <template>
   <UPageSection
     id="contacto"
-    title="Contacto"
-    description="Cuéntame lo que necesitas y te contesto directamente."
+    headline="HABLEMOS"
+    title="¿Tienes un proyecto en mente?"
+    description="Cuéntame tu idea, una propuesta de colaboración o cualquier duda. Estoy al tanto de los mensajes y te responderé lo antes posible."
+    class="scroll-mt-24"
   >
-    <UForm
-      ref="form"
-      :schema="schema"
-      :state="state"
-      class="flex max-w-xl flex-col gap-6"
-      @submit="onSubmit"
-      @error="onError"
-    >
-      <UFormField
-        label="Nombre"
-        name="name"
-        required
-      >
-        <UInput
-          v-model="state.name"
-          placeholder="Tu nombre"
-          icon="i-lucide-user"
-          autocomplete="name"
-          class="w-full"
-        />
-      </UFormField>
+    <div class="grid items-start gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-12">
+      <!-- Presentación y vías de contacto -->
+      <div class="flex flex-col gap-6">
+        <UCard>
+          <div class="flex items-start gap-4">
+            <div
+              class="flex size-12 shrink-0 items-center justify-center
+                     rounded-xl bg-primary/10 text-primary"
+            >
+              <UIcon
+                name="i-lucide-message-circle"
+                class="size-6"
+              />
+            </div>
 
-      <UFormField
-        label="Correo"
-        name="email"
-        required
-        description="Para poder contestarte."
-      >
-        <UInput
-          v-model="state.email"
-          type="email"
-          inputmode="email"
-          placeholder="tu@correo.com"
-          icon="i-lucide-mail"
-          autocomplete="email"
-          class="w-full"
-        />
-      </UFormField>
+            <div class="space-y-2">
+              <h3 class="font-semibold">
+                Hablemos de tu idea
+              </h3>
 
-      <UFormField
-        label="Asunto"
-        name="subject"
-        required
-      >
-        <UInput
-          v-model="state.subject"
-          placeholder="En qué puedo ayudarte"
-          icon="i-lucide-message-square"
-          class="w-full"
-        />
-      </UFormField>
+              <p class="text-sm leading-6 text-muted">
+                Si buscas desarrollar una aplicación, necesitas ayuda
+                con una API o quieres colaborar en un proyecto,
+                puedes escribirme mediante este formulario.
+              </p>
+            </div>
+          </div>
+        </UCard>
 
-      <UFormField
-        label="Mensaje"
-        name="body"
-        required
-        description="Entre 10 y 5000 caracteres."
-      >
-        <UTextarea
-          v-model="state.body"
-          :rows="6"
-          placeholder="Cuéntame el proyecto, la idea o la duda…"
-          class="w-full"
-        />
-      </UFormField>
+        <div class="space-y-4">
+          <h3 class="text-sm font-semibold text-muted">
+            También puedes encontrarme en
+          </h3>
 
-      <!-- Honeypot: fuera del flujo visual y del tab. -->
-      <UFormField
-        name="website"
-        class="hidden"
-      >
-        <UInput
-          v-model="state.website"
-          tabindex="-1"
-          autocomplete="off"
-        />
-      </UFormField>
+          <UButton
+            to="https://github.com/pepe1603"
+            target="_blank"
+            rel="noopener noreferrer"
+            label="GitHub"
+            icon="i-simple-icons-github"
+            trailing-icon="i-lucide-arrow-up-right"
+            color="neutral"
+            variant="outline"
+            block
+            class="justify-start"
+          />
 
-      <div class="flex justify-end border-t border-default pt-6">
-        <UButton
-          type="submit"
-          label="Enviar mensaje"
-          icon="i-lucide-send"
-          :loading="isSending"
-        />
+          <UButton
+            to="https://linkedin.com/in/pepe1603"
+            target="_blank"
+            rel="noopener noreferrer"
+            label="LinkedIn"
+            icon="i-simple-icons-linkedin"
+            trailing-icon="i-lucide-arrow-up-right"
+            color="neutral"
+            variant="outline"
+            block
+            class="justify-start"
+          />
+
+          <UButton
+            to="mailto:000316jose@gmail.com"
+            label="Correo electrónico"
+            icon="i-lucide-mail"
+            trailing-icon="i-lucide-arrow-up-right"
+            color="neutral"
+            variant="outline"
+            block
+            class="justify-start"
+          />
+        </div>
+
+        <p class="flex items-center gap-2 text-sm text-muted">
+          <UIcon
+            name="i-lucide-map-pin"
+            class="size-4 shrink-0"
+          />
+          Chiapas, México
+        </p>
       </div>
-    </UForm>
+
+      <!-- Formulario -->
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-3">
+            <div
+              class="flex size-10 shrink-0 items-center justify-center
+                     rounded-lg bg-primary/10 text-primary"
+            >
+              <UIcon
+                name="i-lucide-mail"
+                class="size-5"
+              />
+            </div>
+
+            <div>
+              <h3 class="font-semibold">
+                Envíame un mensaje
+              </h3>
+
+              <p class="text-sm text-muted">
+                Los campos marcados son obligatorios.
+              </p>
+            </div>
+          </div>
+        </template>
+
+        <UForm
+          ref="form"
+          :schema="schema"
+          :state="state"
+          class="flex flex-col gap-5"
+          @submit="onSubmit"
+          @error="onError"
+        >
+          <div class="grid gap-5 sm:grid-cols-2">
+            <UFormField
+              label="Nombre"
+              name="name"
+              required
+            >
+              <UInput
+                v-model="state.name"
+                placeholder="Tu nombre"
+                icon="i-lucide-user"
+                autocomplete="name"
+                class="w-full"
+              />
+            </UFormField>
+
+            <UFormField
+              label="Correo electrónico"
+              name="email"
+              required
+            >
+              <UInput
+                v-model="state.email"
+                type="email"
+                inputmode="email"
+                placeholder="tu@correo.com"
+                icon="i-lucide-mail"
+                autocomplete="email"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
+
+          <UFormField
+            label="Asunto"
+            name="subject"
+            required
+          >
+            <UInput
+              v-model="state.subject"
+              placeholder="¿Sobre qué quieres hablar?"
+              icon="i-lucide-message-square"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField
+            label="Mensaje"
+            name="body"
+            required
+            description="Entre 10 y 5000 caracteres."
+          >
+            <UTextarea
+              v-model="state.body"
+              :rows="6"
+              placeholder="Cuéntame los detalles de tu propuesta..."
+              class="w-full"
+            />
+          </UFormField>
+
+          <!-- Honeypot anti-spam: se conserva sin mostrarlo. -->
+          <UFormField
+            name="website"
+            class="hidden"
+          >
+            <UInput
+              v-model="state.website"
+              tabindex="-1"
+              autocomplete="off"
+            />
+          </UFormField>
+
+          <div class="border-t border-default pt-5 flex flex-col justify-center items-center">
+            <UButton
+              type="submit"
+              label="Enviar mensaje"
+              icon="i-lucide-send"
+              trailing-icon="i-lucide-arrow-right"
+              :loading="isSending"
+              size="lg"
+            />
+
+            <p class="mt-3 sm:mt-6 text-center text-xs text-muted">
+              Tus datos se utilizarán para responder a tu mensaje.
+            </p>
+          </div>
+        </UForm>
+      </UCard>
+    </div>
   </UPageSection>
 </template>
+
