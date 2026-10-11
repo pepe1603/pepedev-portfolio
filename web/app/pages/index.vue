@@ -91,23 +91,26 @@ useHead({
     />
 
     <template v-else-if="profile">
-      <RevealOnScroll animation="fade-up">
+      <RevealOnScroll
+        animation="blur"
+        class="flex items-center justify-center min-h-screen"
+      >
         <HeroSection :profile="profile" />
       </RevealOnScroll>
 
-      <RevealOnScroll animation="fade-up">
+      <RevealOnScroll animation="blur">
         <ProfileSection :profile="profile" />
       </RevealOnScroll>
 
-      <RevealOnScroll animation="fade-up">
+      <RevealOnScroll animation="blur">
         <SkillsSection :skills="profile.skills" />
       </RevealOnScroll>
 
-      <RevealOnScroll animation="fade-up">
+      <RevealOnScroll animation="blur">
         <ExperienceSection :experiences="profile.experiences" />
       </RevealOnScroll>
 
-      <RevealOnScroll animation="fade-up">
+      <RevealOnScroll animation="fade-down">
         <ContactSection />
       </RevealOnScroll>
     </template>

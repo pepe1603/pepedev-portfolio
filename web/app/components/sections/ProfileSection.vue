@@ -63,31 +63,74 @@ const socialLinks = computed<SocialLink[]>(() => {
 </script>
 
 <template>
-  <UPageSection title="Sobre mí">
-    <div class="flex flex-col items-start gap-8 md:flex-row">
-      <!-- NuxtImg pasa por ipx (el host ya esta en image.domains), asi que
-           el avatar sale recortado y en avif/webp sin tocar el backend. -->
-      <NuxtImg
-        v-if="profile.avatarUrl"
-        :src="profile.avatarUrl"
-        :alt="profile.fullName"
-        width="128"
-        height="128"
-        class="size-32 shrink-0 rounded-full object-cover ring ring-default"
-      />
+  <UPageSection
+    id="perfil"
+    headline="CONÓCEME"
+    title="Sobre mí"
+    description="Un poco sobre quién soy y cómo trabajo."
+    class="scroll-mt-24"
+  >
+    <div
+      class="grid items-center gap-8 md:grid-cols-[220px_minmax(0,1fr)] md:gap-12"
+    >
+      <!-- Avatar -->
+      <div class="flex justify-center md:justify-start">
+        <div
+          class="relative size-48 overflow-hidden rounded-2xl
+                 bg-elevated ring-1 ring-default
+                 md:size-56"
+        >
+          <NuxtImg
+            v-if="profile.avatarUrl"
+            :src="profile.avatarUrl"
+            :alt="`Foto de ${profile.fullName}`"
+            width="224"
+            height="224"
+            sizes="192px md:224px"
+            format="webp"
+            class="size-full object-cover"
+          />
 
-      <UIcon
-        v-else
-        name="i-lucide-user"
-        class="size-32 shrink-0 text-dimmed"
-      />
+          <div
+            v-else
+            class="flex size-full items-center justify-center"
+          >
+            <UIcon
+              name="i-lucide-user-round"
+              class="size-20 text-muted"
+            />
+          </div>
+        </div>
+      </div>
 
-      <div class="flex flex-1 flex-col gap-4">
-        <p class="text-muted text-lg">
-          {{ profile.bio }}
-        </p>
+      <!-- Información -->
+      <div class="flex min-w-0 flex-col gap-5">
+        <div class="space-y-3">
+          <h3 class="text-2xl font-semibold tracking-tight">
+            {{ profile.fullName }}
+          </h3>
 
-        <div class="flex flex-wrap gap-2">
+          <p class="text-muted leading-7 whitespace-pre-line">
+            {{ profile.bio }}
+          </p>
+        </div>
+
+        <div
+          v-if="profile.location"
+          class="flex items-center gap-2 text-sm text-muted"
+        >
+          <UIcon
+            name="i-lucide-map-pin"
+            class="size-4 shrink-0"
+          />
+          <span>{{ profile.location }}</span>
+        </div>
+
+        <!-- Enlaces sociales -->
+        <div
+          v-if="socialLinks.length"
+          class="flex flex-wrap gap-2"
+        >
           <UButton
             v-for="link in socialLinks"
             :key="link.label"
@@ -95,20 +138,23 @@ const socialLinks = computed<SocialLink[]>(() => {
             :icon="link.icon"
             :to="link.to"
             :target="link.external ? '_blank' : undefined"
+            :rel="link.external ? 'noopener noreferrer' : undefined"
             color="neutral"
-            variant="soft"
+            variant="outline"
             size="sm"
           />
         </div>
 
-        <div>
+        <!-- CV -->
+        <div v-if="cvUrl">
           <UButton
-            v-if="cvUrl"
             :href="cvUrl"
             target="_blank"
+            rel="noopener noreferrer"
             label="Descargar CV"
             icon="i-lucide-file-down"
-            size="sm"
+            trailing-icon="i-lucide-arrow-up-right"
+            size="lg"
           />
         </div>
       </div>

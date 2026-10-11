@@ -47,20 +47,51 @@ const links = [
 
 <template>
   <UPageHero
-    :headline="profile.headline"
+    class="relative isolate overflow-hidden"
     :links="links"
   >
+    <template #top>
+      <div
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+      >
+        <div
+          class="absolute left-1/2 top-0 size-80
+                 -translate-x-1/2 rounded-full
+                 bg-primary/10 blur-3xl sm:size-96"
+        />
+      </div>
+    </template>
+
+    <template #headline>
+      <span
+        class="inline-flex items-center gap-2 rounded-full
+               border border-default bg-elevated/70
+               px-3 py-1.5 text-sm font-medium
+               text-muted backdrop-blur"
+      >
+        <UIcon
+          name="i-lucide-code-2"
+          class="size-4 text-primary"
+        />
+        Portfolio de desarrollo
+      </span>
+    </template>
+
     <template #title>
       <GradientTitle
         as="span"
         size="xl"
       >
-        {{ profile.fullName }}
+        {{ profile.headline }}
       </GradientTitle>
     </template>
 
     <template #description>
-      <p>{{ profile.location }}</p>
+      <p class="mx-auto max-w-xl text-pretty">
+        Explora mis proyectos y las tecnologías que utilizo
+        para construir soluciones de software.
+      </p>
     </template>
   </UPageHero>
 </template>
