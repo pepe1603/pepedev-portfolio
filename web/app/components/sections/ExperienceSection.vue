@@ -54,7 +54,7 @@ function typeIcon(type: string): string {
                    justify-center rounded-full
                    border-2 border-primary bg-default"
           >
-            <div class="size-2 rounded-full bg-primary"/>
+            <div class="size-2 rounded-full bg-primary" />
           </div>
 
           <div
