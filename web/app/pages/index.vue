@@ -76,6 +76,42 @@ useHead({
     }
   ]
 })
+
+const contactLinks = computed(() => {
+  const p = profile.value
+  if (!p) return []
+
+  return [
+    p.githubUrl
+      ? {
+          label: 'GitHub',
+          to: p.githubUrl,
+          icon: 'i-simple-icons-github'
+        }
+      : null,
+    p.linkedinUrl
+      ? {
+          label: 'LinkedIn',
+          to: p.linkedinUrl,
+          icon: 'i-simple-icons-linkedin'
+        }
+      : null,
+    p.emailPublic
+      ? {
+          label: 'Correo electrónico',
+          to: `mailto:${p.emailPublic}`,
+          icon: 'i-lucide-mail'
+        }
+      : null,
+    p.websiteUrl
+      ? {
+          label: 'Sitio web',
+          to: p.websiteUrl,
+          icon: 'i-lucide-globe'
+        }
+      : null
+  ].filter(link => link !== null)
+})
 </script>
 
 <template>
@@ -91,24 +127,29 @@ useHead({
     />
 
     <template v-else-if="profile">
-      <RevealOnScroll animation="fade-up">
+      <RevealOnScroll
+        animation="blur"
+        class="flex items-center justify-center min-h-screen"
+      >
         <HeroSection :profile="profile" />
       </RevealOnScroll>
 
-      <RevealOnScroll animation="fade-up">
+      <RevealOnScroll animation="blur">
         <ProfileSection :profile="profile" />
       </RevealOnScroll>
 
-      <RevealOnScroll animation="fade-up">
+      <RevealOnScroll animation="blur">
         <SkillsSection :skills="profile.skills" />
       </RevealOnScroll>
 
-      <RevealOnScroll animation="fade-up">
+      <RevealOnScroll animation="blur">
         <ExperienceSection :experiences="profile.experiences" />
       </RevealOnScroll>
 
-      <RevealOnScroll animation="fade-up">
-        <ContactSection />
+      <RevealOnScroll animation="fade-down">
+        <ContactSection
+          :links="contactLinks"
+        />
       </RevealOnScroll>
     </template>
   </UPage>

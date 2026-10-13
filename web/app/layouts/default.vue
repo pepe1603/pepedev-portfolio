@@ -47,7 +47,7 @@ const lang = useLang()
 
 <template>
   <div class="flex min-h-svh flex-col">
-    <UHeader class="w-full">
+    <UHeader class="mx-0 m-auto rounded-full">
       <template #left>
         <!-- Marca del portfolio. -->
         <NuxtLink
@@ -66,13 +66,6 @@ const lang = useLang()
 
         <!-- Navegación pública. Contacto no es ruta: es un ancla de la
              landing (#contacto), asi que va como hash a la raiz. -->
-        <UButton
-          to="/"
-          label="Inicio"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-        />
 
         <UButton
           to="/proyectos"
