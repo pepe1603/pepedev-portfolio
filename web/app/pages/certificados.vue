@@ -83,6 +83,20 @@ function metaLine(certificate: CertificatePublicDTO): string {
   return parts.join(' · ')
 }
 
+/**
+ * Certificado seleccionado para mostrar en el modal.
+ * null significa que el modal está cerrado.
+ */
+const selectedCertificate = ref<CertificatePublicDTO | null>(null)
+
+function openCertificate(certificate: CertificatePublicDTO) {
+  selectedCertificate.value = certificate
+}
+
+function closeCertificate() {
+  selectedCertificate.value = null
+}
+
 useSeoMeta({
   title: 'Certificados — pepedev',
   description: 'Certificados y cursos con su emisor, fecha y credencial.'
@@ -108,8 +122,7 @@ useSeoMeta({
       />
 
       <template v-else>
-        <!-- Filtro por tipo: los tres valores caben a la vista, no hace
-             falta un desplegable. -->
+        <!-- Filtro por tipo -->
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-muted text-sm">Tipo:</span>
 
@@ -132,6 +145,7 @@ useSeoMeta({
           />
         </div>
 
+        <!-- Filtro por emisor -->
         <div
           v-if="issuerOptions.length"
           class="mt-3 flex flex-wrap items-center gap-2"
@@ -157,6 +171,7 @@ useSeoMeta({
           />
         </div>
 
+        <!-- Estado vacío -->
         <UAlert
           v-if="!certificates?.length"
           color="neutral"
@@ -167,26 +182,50 @@ useSeoMeta({
           class="my-8"
         />
 
+        <!-- Grid de certificados -->
         <div
-          v-else
+          v-if="certificates?.length"
           class="grid gap-6 py-8 sm:grid-cols-2 lg:grid-cols-3"
         >
           <UCard
             v-for="certificate in certificates"
             :key="certificate.title"
-            class="flex flex-col gap-3"
+            :ui="{
+              root: 'group relative isolate overflow-hidden rounded-2xl bg-default transition-all duration-500 ease-out hover:-translate-y-1 hover:border-primary cursor-pointer',
+              body: 'relative z-10 flex flex-col gap-3 p-3 sm:p-4.5'
+            }"
+            role="button"
+            tabindex="0"
+            :aria-label="`Ver detalles de ${certificate.title}`"
+            @click="openCertificate(certificate)"
+            @keydown.enter.prevent="openCertificate(certificate)"
+            @keydown.space.prevent="openCertificate(certificate)"
           >
+            <!-- Imagen del certificado -->
             <NuxtImg
               v-if="certificate.imageUrl"
               :src="certificate.imageUrl"
               :alt="certificate.title"
               width="640"
               height="360"
-              class="aspect-video w-full rounded-md object-cover"
+              class="aspect-video w-full rounded-lg object-cover"
             />
 
-            <div class="flex items-start justify-between gap-2">
-              <h2 class="font-semibold">
+            <!-- Imagen alternativa -->
+            <div
+              v-else
+              class="flex aspect-video w-full items-center justify-center rounded-lg bg-elevated text-muted"
+              aria-hidden="true"
+            >
+              <UIcon
+                name="i-lucide-award"
+                class="size-12"
+              />
+            </div>
+
+            <!-- Título y tipo -->
+            <div class="flex items-start justify-between gap-3">
+              <h2 class="min-w-0 font-semibold text-highlighted">
                 {{ certificate.title }}
               </h2>
 
@@ -194,28 +233,147 @@ useSeoMeta({
                 color="neutral"
                 variant="subtle"
                 size="sm"
+                class="shrink-0"
               >
                 {{ kindLabels[certificate.kind] ?? certificate.kind }}
               </UBadge>
             </div>
 
-            <p class="text-muted text-sm">
+            <!-- Emisor y fechas -->
+            <p class="text-sm text-muted">
               {{ metaLine(certificate) }}
             </p>
 
-            <UButton
-              v-if="certificate.credentialUrl"
-              :href="certificate.credentialUrl"
-              target="_blank"
-              label="Ver credencial"
-              icon="i-lucide-external-link"
-              size="sm"
-              color="neutral"
-              variant="soft"
-              class="mt-auto self-start"
+            <!-- Sombra difusa inferior -->
+            <span
+              aria-hidden="true"
+              class="pointer-events-none absolute inset-x-0 -bottom-4 z-0
+              h-1/3 translate-y-3
+              bg-inverted opacity-0 blur-3xl
+              transition-all duration-500 ease-out
+              group-hover:translate-y-0 group-hover:opacity-30
+              motion-reduce:transition-none"
             />
           </UCard>
         </div>
+
+        <!-- Modal de detalles -->
+        <UModal
+          :open="selectedCertificate !== null"
+          :title="selectedCertificate?.title ?? ''"
+          :ui="{
+            content: 'sm:max-w-4xl',
+            body: 'p-0 sm:p-0'
+          }"
+          @update:open="(open) => !open && closeCertificate()"
+        >
+          <template #body>
+            <div
+              v-if="selectedCertificate"
+              class="flex flex-col gap-5 p-4 sm:p-6"
+            >
+              <!-- Imagen completa -->
+              <NuxtImg
+                v-if="selectedCertificate.imageUrl"
+                :src="selectedCertificate.imageUrl"
+                :alt="selectedCertificate.title"
+                width="960"
+                height="540"
+                class="min-h-80 sm:max-h-full w-full rounded-xl object-contain bg-muted"
+              />
+
+              <div
+                v-else
+                class="flex h-40 items-center justify-center rounded-xl bg-elevated text-muted"
+                aria-hidden="true"
+              >
+                <UIcon
+                  name="i-lucide-award"
+                  class="size-16"
+                />
+              </div>
+
+              <!-- Tipo y destacado -->
+              <div class="flex flex-wrap items-center gap-2">
+                <UBadge
+                  color="neutral"
+                  variant="subtle"
+                >
+                  {{ kindLabels[selectedCertificate.kind] ?? selectedCertificate.kind }}
+                </UBadge>
+
+                <UBadge
+                  v-if="selectedCertificate.featured"
+                  color="primary"
+                  variant="soft"
+                >
+                  <UIcon
+                    name="i-lucide-star"
+                    class="mr-1 size-3.5"
+                  />
+                  Destacado
+                </UBadge>
+              </div>
+
+              <!-- Información completa disponible -->
+              <dl class="grid gap-4 sm:grid-cols-2">
+                <div class="flex flex-col gap-1">
+                  <dt class="text-sm text-muted">
+                    Emisor
+                  </dt>
+                  <dd class="font-medium text-highlighted">
+                    {{ selectedCertificate.issuer }}
+                  </dd>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <dt class="text-sm text-muted">
+                    Fecha de emisión
+                  </dt>
+                  <dd class="text-highlighted">
+                    {{
+                      selectedCertificate.issueDate
+                        ? formatDate(selectedCertificate.issueDate)
+                        : 'No disponible'
+                    }}
+                  </dd>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                  <dt class="text-sm text-muted">
+                    Fecha de expiración
+                  </dt>
+                  <dd class="text-highlighted">
+                    {{
+                      selectedCertificate.expiryDate
+                        ? formatDate(selectedCertificate.expiryDate)
+                        : 'Sin fecha de expiración'
+                    }}
+                  </dd>
+                </div>
+              </dl>
+
+              <!-- Credencial -->
+              <div
+                v-if="selectedCertificate.credentialUrl"
+                class="border-t border-default pt-4"
+              >
+                <UButton
+                  :href="selectedCertificate.credentialUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  color="primary"
+                  variant="solid"
+                  icon="i-lucide-external-link"
+                  trailing
+                  block
+                >
+                  Ver credencial oficial
+                </UButton>
+              </div>
+            </div>
+          </template>
+        </UModal>
       </template>
     </UPageBody>
   </UPage>
