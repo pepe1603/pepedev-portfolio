@@ -1,20 +1,4 @@
 <script setup lang="ts">
-// ======================================================================
-// /proyectos — listado público
-//
-// GET /public/projects?lang=... devuelve ProjectSummaryDTO[]. La página
-// no inventa proyectos: pinta exactamente lo que la API tiene publicado.
-//
-// --------------------------------------------------------------------------
-// POR QUE EL FILTRO DE STACK ES EN CLIENTE
-//
-// El contrato (docs/API.md) solo acepta ?lang en este endpoint; no existe
-// ?stack. Ante la contradicción entre el prompt y el contrato, manda el
-// contrato: se descarga la lista completa y se filtra aquí. Con la lista
-// ya cargada el filtro es instantáneo y no cuesta una petición por tecla.
-// Si algún día la API añade el filtro server-side, solo cambia este
-// computed.
-// ======================================================================
 const api = useApi()
 const lang = useLang()
 
@@ -24,12 +8,8 @@ const { data: projects, error } = await useAsyncData(
   { watch: [lang] }
 )
 
-// null = sin filtro ("Todos").
 const selectedStack = ref<string | null>(null)
 
-// El desplegable de filtros se construye de los stacks que aparecen en los
-// proyectos reales: si la API deja de devolver un stack, el botón deja de
-// existir, y no al revés.
 const stackOptions = computed(() => {
   const set = new Set<string>()
 
@@ -45,18 +25,18 @@ const stackOptions = computed(() => {
 const filteredProjects = computed(() => {
   if (!selectedStack.value) return projects.value ?? []
 
-  return (projects.value ?? []).filter(project => project.stack.includes(selectedStack.value as string))
+  return (projects.value ?? []).filter(
+    project => project.stack.includes(selectedStack.value!)
+  )
 })
 
-// Pulsar el stack activo lo quita: el segundo click del toggle vuelve a
-// "Todos" sin necesidad de un botón aparte.
 function toggleStack(tech: string) {
   selectedStack.value = selectedStack.value === tech ? null : tech
 }
 
 useSeoMeta({
   title: 'Proyectos — pepedev',
-  description: 'Listado de proyectos con su stack, resumen y enlaces a repositorio y demo.'
+  description: 'Explora proyectos, tecnologías y desarrollos publicados.'
 })
 </script>
 
@@ -64,7 +44,7 @@ useSeoMeta({
   <UPage>
     <UPageHeader
       title="Proyectos"
-      description="Cada proyecto enlaza a su detalle con la galería completa."
+      description="Una selección de proyectos, herramientas y experimentos."
     />
 
     <UPageBody>
@@ -79,92 +59,198 @@ useSeoMeta({
       />
 
       <template v-else>
-        <!-- Chips de filtro. Son botones, no un select: con pocos stacks
-             visibles todo a la vista vale más que un desplegable. -->
-        <div
+        <!-- Filtros -->
+        <section
           v-if="stackOptions.length"
-          class="flex flex-wrap items-center gap-2"
+          aria-label="Filtrar proyectos por tecnología"
+          class="mb-2 flex flex-col gap-3"
         >
-          <span class="text-muted text-sm">Filtrar por stack:</span>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="mr-1 text-sm text-muted">
+              Tecnologías
+            </span>
 
-          <UButton
-            label="Todos"
-            size="xs"
-            :color="!selectedStack ? 'primary' : 'neutral'"
-            :variant="!selectedStack ? 'soft' : 'ghost'"
-            @click="selectedStack = null"
-          />
+            <UButton
+              label="Todos"
+              size="sm"
+              :color="selectedStack === null ? 'primary' : 'neutral'"
+              :variant="selectedStack === null ? 'soft' : 'ghost'"
+              @click="selectedStack = null"
+            />
 
-          <UButton
-            v-for="tech in stackOptions"
-            :key="tech"
-            :label="tech"
-            size="xs"
-            :color="selectedStack === tech ? 'primary' : 'neutral'"
-            :variant="selectedStack === tech ? 'soft' : 'ghost'"
-            @click="toggleStack(tech)"
-          />
-        </div>
+            <UButton
+              v-for="tech in stackOptions"
+              :key="tech"
+              :label="tech"
+              size="sm"
+              :color="selectedStack === tech ? 'primary' : 'neutral'"
+              :variant="selectedStack === tech ? 'soft' : 'ghost'"
+              @click="toggleStack(tech)"
+            />
+          </div>
 
+          <p class="text-xs text-muted">
+            {{ filteredProjects.length }}
+            {{ filteredProjects.length === 1 ? 'proyecto' : 'proyectos' }}
+            {{ selectedStack ? `con ${selectedStack}` : 'publicados' }}
+          </p>
+        </section>
+
+        <!-- Estado vacío -->
         <UAlert
           v-if="!filteredProjects.length"
           color="neutral"
           variant="subtle"
-          icon="i-lucide-folder-open"
-          :title="selectedStack ? `No hay proyectos con «${selectedStack}»` : 'Todavía no hay proyectos publicados'"
+          :icon="selectedStack ? 'i-lucide-search-x' : 'i-lucide-folder-open'"
+          :title="
+            selectedStack
+              ? `No hay proyectos con «${selectedStack}»`
+              : 'Todavía no hay proyectos publicados'
+          "
+          :description="
+            selectedStack
+              ? 'Prueba otra tecnología o muestra todos los proyectos.'
+              : 'Los nuevos proyectos aparecerán aquí cuando se publiquen.'
+          "
           class="my-8"
-        />
+        >
+          <template
+            v-if="selectedStack"
+            #actions
+          >
+            <UButton
+              label="Ver todos"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="selectedStack = null"
+            />
+          </template>
+        </UAlert>
 
+        <!-- Grid -->
         <div
           v-else
-          class="grid gap-6 py-8 sm:grid-cols-2 lg:grid-cols-3"
+          class="grid grid-cols-1 gap-6 py-8 sm:grid-cols-2 sm:gap-7 xl:gap-8"
         >
-          <UCard
+          <NuxtLink
             v-for="project in filteredProjects"
             :key="project.slug"
-            class="flex flex-col gap-4 overflow-hidden"
+            :to="`/proyectos/${project.slug}`"
+            class="group block min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+            :aria-label="`Ver proyecto: ${project.title}`"
           >
-            <NuxtLink
-              :to="`/proyectos/${project.slug}`"
-              class="rounded-md focus-visible:outline-2 focus-visible:outline-primary"
+            <UCard
+              :ui="{
+                root: 'h-full overflow-hidden rounded-2xl border border-default bg-default transition-[border-color,transform,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:border-primary/50 group-hover:shadow-lg motion-reduce:transform-none motion-reduce:transition-none',
+                body: 'flex h-full flex-col gap-4 p-4 sm:p-5 lg:p-6'
+              }"
             >
-              <NuxtImg
-                v-if="project.thumbnailUrl"
-                :src="project.thumbnailUrl"
-                :alt="project.title"
-                width="640"
-                height="360"
-                class="aspect-video w-full rounded-md object-cover"
-              />
-            </NuxtLink>
+              <!-- Miniatura -->
+              <div class="relative overflow-hidden rounded-xl bg-elevated">
+                <NuxtImg
+                  v-if="project.thumbnailUrl"
+                  :src="project.thumbnailUrl"
+                  :alt="project.title"
+                  width="960"
+                  height="540"
+                  loading="lazy"
+                  class="aspect-video w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
+                />
 
-            <div class="flex flex-1 flex-col gap-2">
-              <h2 class="font-semibold">
-                <NuxtLink
-                  :to="`/proyectos/${project.slug}`"
-                  class="hover:text-highlighted transition-colors"
+                <div
+                  v-else
+                  class="flex aspect-video w-full items-center justify-center text-muted"
+                  aria-hidden="true"
                 >
-                  {{ project.title }}
-                </NuxtLink>
-              </h2>
+                  <UIcon
+                    name="i-lucide-panels-top-left"
+                    class="size-12"
+                  />
+                </div>
 
-              <p class="text-muted text-sm">
-                {{ project.summary }}
-              </p>
-
-              <div class="mt-auto flex flex-wrap gap-1 pt-2">
-                <UBadge
-                  v-for="tech in project.stack"
-                  :key="tech"
-                  color="neutral"
-                  variant="subtle"
-                  size="sm"
+                <div
+                  v-if="project.featured"
+                  class="absolute left-3 top-3"
                 >
-                  {{ tech }}
-                </UBadge>
+                  <UBadge
+                    color="primary"
+                    variant="solid"
+                    size="sm"
+                  >
+                    <UIcon
+                      name="i-lucide-star"
+                      class="mr-1 size-3 sm:size-4"
+                    />
+                    Destacado
+                  </UBadge>
+                </div>
               </div>
-            </div>
-          </UCard>
+
+              <!-- Información esencial -->
+              <div class="flex flex-1 flex-col gap-3">
+                <div class="flex items-start justify-between gap-3">
+                  <h2
+                    class="min-w-0 text-lg font-semibold tracking-tight text-highlighted transition-colors group-hover:text-primary sm:text-xl"
+                  >
+                    {{ project.title }}
+                  </h2>
+
+                  <UIcon
+                    name="i-lucide-arrow-up-right"
+                    class="mt-1 size-5 shrink-0 text-muted transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary motion-reduce:transition-none"
+                    aria-hidden="true"
+                  />
+                </div>
+
+                <p
+                  v-if="project.subtitle"
+                  class="text-sm font-medium text-muted"
+                >
+                  {{ project.subtitle }}
+                </p>
+
+                <p class="line-clamp-3 text-sm leading-6 text-muted">
+                  {{ project.summary }}
+                </p>
+
+                <!-- Tecnologías -->
+                <div
+                  v-if="project.stack.length"
+                  class="mt-auto flex flex-wrap items-center gap-2 pt-2"
+                  aria-label="Tecnologías utilizadas"
+                >
+                  <UBadge
+                    v-for="tech in project.stack.slice(0, 3)"
+                    :key="tech"
+                    color="neutral"
+                    variant="subtle"
+                    size="md"
+                  >
+                    {{ tech }}
+                  </UBadge>
+
+                  <span
+                    v-if="project.stack.length > 3"
+                    class="text-xs text-muted"
+                  >
+                    +{{ project.stack.length - 3 }}
+                  </span>
+                </div>
+
+                <div
+                  class="flex items-center gap-2 border-t border-default pt-3 text-sm font-medium text-primary"
+                >
+                  <span>Explorar proyecto</span>
+                  <UIcon
+                    name="i-lucide-arrow-right"
+                    class="size-4 transition-transform group-hover:translate-x-1 motion-reduce:transition-none"
+                    aria-hidden="true"
+                  />
+                </div>
+              </div>
+            </UCard>
+          </NuxtLink>
         </div>
       </template>
     </UPageBody>
