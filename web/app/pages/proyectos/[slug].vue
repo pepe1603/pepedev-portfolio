@@ -87,20 +87,7 @@ useSeoMeta({
     <UPageHeader
       :title="project?.title ?? 'Proyecto'"
       :description="project?.subtitle"
-    >
-      <template #headline>
-        <NuxtLink
-          to="/proyectos"
-          class="hover:text-highlighted inline-flex items-center gap-1 transition-colors"
-        >
-          <UIcon
-            name="i-lucide-arrow-left"
-            class="size-4"
-          />
-          Volver a proyectos
-        </NuxtLink>
-      </template>
-    </UPageHeader>
+    />
 
     <UPageBody>
       <UAlert
@@ -115,80 +102,183 @@ useSeoMeta({
 
       <article
         v-else-if="project"
-        class="flex flex-col gap-8"
+        class="flex flex-col gap-8 pb-8 sm:gap-10"
       >
-        <!-- Meta: periodo y stack en una fila; el periodo no pinta nada si
-             el proyecto no tiene fechas. -->
-        <div class="text-muted flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <span
-            v-if="period"
-            class="inline-flex items-center gap-1"
-          >
-            <UIcon
-              name="i-lucide-calendar"
-              class="size-4"
-            />
-            {{ period }}
-          </span>
-
-          <span class="flex flex-wrap gap-1">
+        <!-- Información general -->
+        <section
+          aria-label="Información del proyecto"
+          class="flex flex-col gap-5"
+        >
+          <div class="flex flex-wrap items-center gap-2">
             <UBadge
-              v-for="tech in project.stack"
-              :key="tech"
-              color="neutral"
-              variant="subtle"
-              size="sm"
+              v-if="project.featured"
+              color="primary"
+              variant="soft"
+              size="md"
             >
-              {{ tech }}
+              <UIcon
+                name="i-lucide-star"
+                class="mr-1 size-3.5"
+              />
+              Destacado
             </UBadge>
-          </span>
-        </div>
 
-        <NuxtImg
+            <span
+              v-if="period"
+              class="inline-flex items-center gap-2 text-sm text-muted"
+            >
+              <UIcon
+                name="i-lucide-calendar-days"
+                class="size-4"
+              />
+              {{ period }}
+            </span>
+          </div>
+
+          <div
+            v-if="project.stack.length"
+            class="flex flex-col gap-2"
+          >
+            <span class="text-xs font-medium uppercase tracking-wider text-muted">
+              Tecnologías
+            </span>
+
+            <div class="flex flex-wrap gap-2">
+              <UBadge
+                v-for="tech in project.stack"
+                :key="tech"
+                color="neutral"
+                variant="subtle"
+                size="md"
+              >
+                {{ tech }}
+              </UBadge>
+            </div>
+          </div>
+        </section>
+
+        <!-- Imagen principal -->
+        <figure
           v-if="project.thumbnailUrl"
-          :src="project.thumbnailUrl"
-          :alt="project.title"
-          width="1280"
-          height="720"
-          class="aspect-video w-full rounded-xl object-cover"
-        />
+          class="overflow-hidden rounded-2xl border border-default bg-elevated"
+        >
+          <NuxtImg
+            :src="project.thumbnailUrl"
+            :alt="project.title"
+            width="1600"
+            height="900"
+            class="aspect-video w-full object-cover"
+          />
+        </figure>
 
-        <!-- eslint-disable vue/no-v-html -->
-        <!-- El HTML no sale de un visitante: viene de descriptionMd
-             (contenido del admin), convertido por marked y saneado con
-             DOMPurify.sanitize en el script antes de llegar aquí. Sin ese
-             paso el v-html sería XSS, y con él no hay vector abierto. -->
-        <div
+        <!-- Descripción completa -->
+        <section
           v-if="descriptionHtml"
-          class="text-muted flex flex-col gap-4 [&_a]:text-primary [&_code]:bg-elevated [&_code]:rounded [&_code]:px-1 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:ps-5"
-          v-html="descriptionHtml"
-        />
-        <!-- eslint-enable vue/no-v-html -->
+          aria-label="Descripción del proyecto"
+          class="min-w-0"
+        >
+          <!-- eslint-disable vue/no-v-html -- descriptionHtml ya pasó por DOMPurify (ver cabecera del script). -->
+          <div
+            class="text-muted
+              [&_h1]:mb-4 [&_h1]:mt-8 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:text-highlighted
+              [&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-highlighted
+              [&_h3]:mb-2 [&_h3]:mt-6 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-highlighted
+              [&_p]:my-4 [&_p]:leading-7
+              [&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/40 [&_a]:underline-offset-4 [&_a:hover]:decoration-primary
+              [&_strong]:font-semibold [&_strong]:text-highlighted
+              [&_ul]:my-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:ps-6
+              [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:ps-6
+              [&_li]:ps-1
+              [&_blockquote]:my-6 [&_blockquote]:border-s-2 [&_blockquote]:border-primary [&_blockquote]:ps-4 [&_blockquote]:italic
+              [&_hr]:my-8 [&_hr]:border-default
+              [&_img]:my-6 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-xl
+              [&_pre]:my-6 [&_pre]:max-w-full [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-default [&_pre]:bg-elevated [&_pre]:p-4
+              [&_pre_code]:bg-transparent [&_pre_code]:p-0
+              [&_code]:rounded-md [&_code]:bg-elevated [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-sm
+              [&_table]:my-6 [&_table]:w-full [&_table]:border-collapse
+              [&_th]:border [&_th]:border-default [&_th]:bg-elevated [&_th]:p-3 [&_th]:text-start [&_th]:font-semibold [&_th]:text-highlighted
+              [&_td]:border [&_td]:border-default [&_td]:p-3
+              [&_th]:text-sm [&_td]:text-sm"
+            v-html="descriptionHtml"
+          />
+          <!-- eslint-enable vue/no-v-html -->
+        </section>
 
-        <GalleryCarousel
+        <!-- Galería -->
+        <section
           v-if="project.gallery.length"
-          :images="project.gallery.map(image => image.url)"
-          :alt="project.title"
-        />
+          class="flex flex-col gap-4"
+          aria-label="Galería del proyecto"
+        >
+          <div class="flex flex-col gap-1">
+            <h2 class="text-xl font-semibold tracking-tight text-highlighted">
+              Galería
+            </h2>
+            <p class="text-sm text-muted">
+              Imágenes adicionales del proyecto.
+            </p>
+          </div>
 
-        <div class="flex flex-wrap gap-2">
+          <GalleryCarousel
+            :images="project.gallery.map(image => image.url)"
+            :alt="project.title"
+          />
+        </section>
+
+        <!-- Acciones -->
+        <section
+          v-if="project.repoUrl || project.demoUrl"
+          class="flex flex-col gap-4 rounded-2xl border border-default bg-elevated/50 p-4 sm:p-6"
+          aria-label="Enlaces del proyecto"
+        >
+          <div class="flex flex-col gap-1">
+            <h2 class="font-semibold text-highlighted">
+              Explora el proyecto
+            </h2>
+            <p class="text-sm text-muted">
+              Consulta el código fuente o visita la versión disponible.
+            </p>
+          </div>
+
+          <div class="flex flex-col gap-3 sm:flex-row">
+            <UButton
+              v-if="project.repoUrl"
+              :to="project.repoUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              label="Ver repositorio"
+              icon="i-lucide-github"
+              color="neutral"
+              variant="outline"
+              size="lg"
+              block
+              class="sm:flex-1"
+            />
+
+            <UButton
+              v-if="project.demoUrl"
+              :to="project.demoUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              label="Ver demo"
+              icon="i-lucide-external-link"
+              size="lg"
+              block
+              class="sm:flex-1"
+            />
+          </div>
+        </section>
+
+        <!-- Volver al listado -->
+        <div class="border-t border-default pt-6">
           <UButton
-            v-if="project.repoUrl"
-            :href="project.repoUrl"
-            target="_blank"
-            label="Repositorio"
-            icon="i-lucide-github"
+            to="/proyectos"
             color="neutral"
-            variant="soft"
-          />
-
-          <UButton
-            v-if="project.demoUrl"
-            :href="project.demoUrl"
-            target="_blank"
-            label="Demo"
-            icon="i-lucide-external-link"
-          />
+            variant="ghost"
+            icon="i-lucide-arrow-left"
+          >
+            Volver a todos los proyectos
+          </UButton>
         </div>
       </article>
     </UPageBody>
