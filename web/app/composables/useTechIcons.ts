@@ -59,7 +59,7 @@ export function useTechIcons() {
     'spring': 'i-simple-icons-spring',
     'spring boot': 'i-simple-icons-springboot',
     'springboot': 'i-simple-icons-springboot',
-    'spring security': 'i-simple-icons-springsecurity',
+    'spring security': 'i-simple-icons-springsecurity'
   }
 
   const getTechIcon = (tech: string): string => {
