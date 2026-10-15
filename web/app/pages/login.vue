@@ -80,6 +80,16 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       loading-auto
       @submit="onSubmit"
     >
+      <template #password-hint>
+        <ULink
+          to="/recuperar"
+          class="text-primary font-medium"
+          tabindex="-1"
+        >
+          ¿Olvidaste tu contraseña?
+        </ULink>
+      </template>
+
       <template #validation>
         <UAlert
           v-if="formError"
