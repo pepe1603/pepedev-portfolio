@@ -7,7 +7,8 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@vueuse/nuxt',
     '@vueuse/motion/nuxt',
-    'vue3-carousel-nuxt'
+    'vue3-carousel-nuxt',
+    'nuxt-auth-utils'
   ],
 
   // Sin pathPrefix, una seccion en components/sections/HeroSection.vue se
@@ -48,6 +49,16 @@ export default defineNuxtConfig({
   // convierte la ruta del config a SCREAMING_SNAKE_CASE (public.apiBase →
   // PUBLIC_API_BASE) y le pone el prefijo NUXT_.
   runtimeConfig: {
+    // nuxt-auth-utils sella la sesion —incluido el access token y el refresh
+    // token que devuelve Spring— en una cookie httpOnly cifrada con AES-GCM.
+    // La clave sale de NUXT_SESSION_PASSWORD (32+ caracteres, obligatoria) y
+    // el JWT nunca llega al navegador: solo viaja a la API desde el servidor.
+    session: {
+      // El refresh token de Spring vive 7 dias (APP_JWT_REFRESH_TTL). La
+      // cookie de sesion se alinea con el para no obligar a reautenticar
+      // antes de que el refresh caduque por su cuenta.
+      maxAge: 60 * 60 * 24 * 7
+    },
     public: {
       apiBase: 'http://localhost:8080',
       // Dominio del sitio para canonical, Open Graph, sitemap y robots.
