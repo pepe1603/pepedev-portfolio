@@ -18,6 +18,10 @@ const auth = useAuthApi()
 const { fetch: fetchSession } = useUserSession()
 const { notify } = useAppNotify()
 
+// Destino al que volver tras autenticarse; lo pone el middleware al
+// interceptar una visita a /admin sin sesión.
+const redirectTarget = typeof route.query.redirect === 'string' ? route.query.redirect : '/admin'
+
 const fields: AuthFormField[] = [
   {
     name: 'email',
@@ -51,17 +55,20 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   try {
     const result = await auth.login(event.data.email, event.data.password)
 
-    // 202: el segundo factor está activo; todavía no hay sesión.
+    // 202: el segundo factor está activo; todavía no hay sesión. Se arrastra
+    // el destino para volver a él una vez verificado el código.
     if ('challengeId' in result) {
-      await navigateTo({ path: '/verificar', query: { challenge: result.challengeId } })
+      await navigateTo({
+        path: '/verificar',
+        query: { challenge: result.challengeId, redirect: redirectTarget }
+      })
       return
     }
 
     await fetchSession()
     notify(`Sesión iniciada como ${result.user.email}`)
 
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/admin'
-    await navigateTo(redirect)
+    await navigateTo(redirectTarget)
   } catch (error) {
     formError.value = (error as ApiError).problem?.detail ?? 'No se pudo iniciar sesión'
   }
