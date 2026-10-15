@@ -47,13 +47,13 @@ const links = [
 
 <template>
   <UPageHero
-    class="relative isolate overflow-hidden"
+    class="relative isolate"
     :links="links"
   >
     <template #top>
       <div
         aria-hidden="true"
-        class="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+        class="pointer-events-none absolute inset-0 z-10 overflow-visible"
       >
         <div
           class="absolute left-1/2 top-0 size-80

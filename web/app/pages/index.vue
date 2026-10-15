@@ -146,7 +146,7 @@ const contactLinks = computed(() => {
         <ExperienceSection :experiences="profile.experiences" />
       </RevealOnScroll>
 
-      <RevealOnScroll animation="fade-down">
+      <RevealOnScroll animation="blur">
         <ContactSection
           :links="contactLinks"
         />
