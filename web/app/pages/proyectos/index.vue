@@ -142,7 +142,7 @@ useSeoMeta({
           >
             <UCard
               :ui="{
-                root: 'h-full overflow-hidden rounded-2xl border border-default bg-default transition-[border-color,transform,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:border-primary/50 group-hover:shadow-lg motion-reduce:transform-none motion-reduce:transition-none',
+                root: 'h-full overflow-hidden rounded-2xl border border-primary/50 bg-default transition-[border-color,transform,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:border-primary group-hover:shadow-lg motion-reduce:transform-none motion-reduce:transition-none',
                 body: 'flex h-full flex-col gap-4 p-4 sm:p-5 lg:p-6'
               }"
             >
