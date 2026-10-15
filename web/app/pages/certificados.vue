@@ -185,14 +185,14 @@ useSeoMeta({
         <!-- Grid de certificados -->
         <div
           v-if="certificates?.length"
-          class="grid gap-6 py-8 sm:grid-cols-2 lg:grid-cols-3"
+          class="grid grid-cols-1 gap-6 py-8 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3 xl:gap-8"
         >
           <UCard
             v-for="certificate in certificates"
             :key="certificate.title"
             :ui="{
-              root: 'group relative isolate overflow-hidden rounded-2xl bg-default transition-all duration-500 ease-out hover:-translate-y-1 hover:border-primary cursor-pointer',
-              body: 'relative z-10 flex flex-col gap-3 p-3 sm:p-4.5'
+              root: 'group h-full overflow-hidden rounded-2xl border border-default bg-default transition-[border-color,transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:border-primary/50 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transform-none motion-reduce:transition-none',
+              body: 'flex h-full flex-col gap-4 p-4 sm:p-5 lg:p-6'
             }"
             role="button"
             tabindex="0"
@@ -201,59 +201,82 @@ useSeoMeta({
             @keydown.enter.prevent="openCertificate(certificate)"
             @keydown.space.prevent="openCertificate(certificate)"
           >
-            <!-- Imagen del certificado -->
-            <NuxtImg
-              v-if="certificate.imageUrl"
-              :src="certificate.imageUrl"
-              :alt="certificate.title"
-              width="640"
-              height="360"
-              class="aspect-video w-full rounded-lg object-cover"
-            />
-
-            <!-- Imagen alternativa -->
-            <div
-              v-else
-              class="flex aspect-video w-full items-center justify-center rounded-lg bg-elevated text-muted"
-              aria-hidden="true"
-            >
-              <UIcon
-                name="i-lucide-award"
-                class="size-12"
+            <!-- Miniatura -->
+            <div class="relative overflow-hidden rounded-xl bg-elevated">
+              <NuxtImg
+                v-if="certificate.imageUrl"
+                :src="certificate.imageUrl"
+                :alt="certificate.title"
+                width="960"
+                height="540"
+                loading="lazy"
+                class="aspect-video w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
               />
-            </div>
 
-            <!-- Título y tipo -->
-            <div class="flex items-start justify-between gap-3">
-              <h2 class="min-w-0 font-semibold text-highlighted">
-                {{ certificate.title }}
-              </h2>
-
-              <UBadge
-                color="neutral"
-                variant="subtle"
-                size="sm"
-                class="shrink-0"
+              <div
+                v-else
+                class="flex aspect-video w-full items-center justify-center text-muted"
+                aria-hidden="true"
               >
-                {{ kindLabels[certificate.kind] ?? certificate.kind }}
-              </UBadge>
+                <UIcon
+                  name="i-lucide-award"
+                  class="size-12"
+                />
+              </div>
+
+              <div
+                v-if="certificate.featured"
+                class="absolute left-3 top-3"
+              >
+                <UBadge
+                  color="primary"
+                  variant="solid"
+                  size="sm"
+                >
+                  <UIcon
+                    name="i-lucide-star"
+                    class="mr-1 size-3 sm:size-4"
+                  />
+                  Destacado
+                </UBadge>
+              </div>
             </div>
 
-            <!-- Emisor y fechas -->
-            <p class="text-sm text-muted">
-              {{ metaLine(certificate) }}
-            </p>
+            <!-- Información esencial -->
+            <div class="flex flex-1 flex-col gap-3">
+              <div class="flex items-start justify-between gap-3">
+                <h2
+                  class="min-w-0 text-lg font-semibold tracking-tight text-highlighted transition-colors group-hover:text-primary sm:text-xl"
+                >
+                  {{ certificate.title }}
+                </h2>
 
-            <!-- Sombra difusa inferior -->
-            <span
-              aria-hidden="true"
-              class="pointer-events-none absolute inset-x-0 -bottom-4 z-0
-              h-1/3 translate-y-3
-              bg-inverted opacity-0 blur-3xl
-              transition-all duration-500 ease-out
-              group-hover:translate-y-0 group-hover:opacity-30
-              motion-reduce:transition-none"
-            />
+                <UBadge
+                  color="neutral"
+                  variant="subtle"
+                  size="sm"
+                  class="shrink-0"
+                >
+                  {{ kindLabels[certificate.kind] ?? certificate.kind }}
+                </UBadge>
+              </div>
+
+              <!-- Emisor y fechas -->
+              <p class="text-sm font-medium text-muted">
+                {{ metaLine(certificate) }}
+              </p>
+
+              <div
+                class="mt-auto flex items-center gap-2 border-t border-default pt-3 text-sm font-medium text-primary"
+              >
+                <span>Ver detalles</span>
+                <UIcon
+                  name="i-lucide-arrow-right"
+                  class="size-4 transition-transform group-hover:translate-x-1 motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
+              </div>
+            </div>
           </UCard>
         </div>
 
