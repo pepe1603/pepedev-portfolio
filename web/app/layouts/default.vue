@@ -1,55 +1,41 @@
 <script setup lang="ts">
-// ======================================================================
-// LAYOUT POR DEFECTO
-// El shell (cabecera, contenido, pie) vive aqui y no en app.vue.
+// Layout por defecto: el shell (cabecera, contenido, pie) vive aquí y no en
+// app.vue, para poder salirse del contenedor con definePageMeta({ layout: false }).
 //
-// Que el shell este en un layout y no en app.vue no es cosmetico: Nuxt
-// resuelve el layout por pagina, asi que una pagina puede salirse del
-// contenedor con `definePageMeta({ layout: false })`. Con el shell en app.vue
-// no habria manera de tener una pagina a sangre sin duplicar el header.
+// Solo el contenido va dentro de un UContainer: UHeader y UFooter ya
+// renderizan el suyo por dentro. El ancho sale de --ui-container (main.css).
 //
-// ======================================================================
-// POR QUE SOLO EL CONTENIDO VA DENTRO DE UN UCONTAINER
-//
-// Ni UHeader ni UFooter llevan UContainer propio. Al parecer que si, pero es
-// al reves: los dos renderizan uno por dentro (Header.vue y Footer.vue lo
-// importan). Envolverlos aqui ademas seria el error tipico de esta pagina,
-// doble centrado.
-//
-// Asi que el unico contenedor explicito va alrededor del slot, y el
-// contenedor de la cabecera y el del pie los pone cada componente. Tres
-// contenedores, tres regiones, ninguno dentro de otro.
-//
-// ======================================================================
-// NAVEGACION PUBLICA
-//
-// Inicio, Proyectos y Certificados son rutas reales. Contacto NO: es una
-// seccion anclada dentro de la landing (pages/index.vue, id="contacto"),
-// asi que se navega como hash a la raiz. La lista es la del portfolio, no
-// la de la plantilla original: /formulario y /carrusel eran demos.
-//
-// ======================================================================
-// EL SELECTOR DE IDIOMA
-//
-// Cambia useLang, que es lo que lee useApi para montar ?lang= en cada
-// peticion publica. Solo afecta al CONTENIDO de la API: la interfaz
-// (etiquetas, toasts) se queda en español hasta la Fase 4 del roadmap.
-// ======================================================================
+// Contacto no es ruta: es un ancla de la landing (#contacto).
+// El selector de idioma cambia useLang, que useApi usa para ?lang=.
 
-// El ancho sale de --ui-container, declarado en assets/css/main.css. Cambiar
-// ese token mueve cabecera, contenido y pie a la vez.
-
-// El boton de buscar y la paleta comparten este estado. Lo consume el
-// header de este layout y el componente AppCommandPalette.
+// Estado compartido con AppCommandPalette y el atajo ⌘K / Ctrl+K.
 const isCommandPaletteOpen = useCommandPalette()
 const lang = useLang()
+
+// Estado del menú móvil de UHeader, para cerrarlo al navegar a un hash.
+const isMenuOpen = ref(false)
+
+const navLinks = [
+  { label: 'Proyectos', to: '/proyectos' },
+  { label: 'Certificados', to: '/certificados' },
+  { label: 'Contacto', to: '/#contacto' }
+]
+
+// Alterna entre ES y EN. El botón muestra el idioma activo.
+const nextLang = computed(() => (lang.value === 'es' ? 'en' : 'es'))
+function toggleLang() {
+  lang.value = nextLang.value
+}
 </script>
 
 <template>
   <div class="flex min-h-svh flex-col">
-    <UHeader class="mx-0 m-auto rounded-full">
+    <UHeader
+      v-model:open="isMenuOpen"
+      class="mx-0 m-auto rounded-full"
+    >
       <template #left>
-        <!-- Marca del portfolio. -->
+        <!-- Marca: visible siempre. -->
         <NuxtLink
           to="/"
           class="flex items-center gap-2 rounded-md p-1.5 -ms-1 hover:outline-1 outline-primary/25"
@@ -58,43 +44,25 @@ const lang = useLang()
             name="i-lucide-code-xml"
             class="text-primary size-5"
           />
-
-          <span class="font-semibold">
-            pepedev
-          </span>
+          <span class="font-semibold">pepedev</span>
         </NuxtLink>
 
-        <!-- Navegación pública. Contacto no es ruta: es un ancla de la
-             landing (#contacto), asi que va como hash a la raiz. -->
-
-        <UButton
-          to="/proyectos"
-          label="Proyectos"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-        />
-
-        <UButton
-          to="/certificados"
-          label="Certificados"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-        />
-
-        <UButton
-          to="/#contacto"
-          label="Contacto"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-        />
+        <!-- Navegación de escritorio: oculta bajo lg (la sustituye el menú móvil). -->
+        <div class="hidden lg:flex items-center gap-1.5">
+          <UButton
+            v-for="link in navLinks"
+            :key="link.to"
+            :to="link.to"
+            :label="link.label"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+          />
+        </div>
       </template>
 
       <template #right>
-        <!-- Abre la paleta global. Es el mismo estado que el atajo
-             ⌘K / Ctrl+K, asi que los dos caminos hacen lo mismo. -->
+        <!-- Búsqueda: mismo estado que ⌘K / Ctrl+K. -->
         <UButton
           icon="i-lucide-search"
           aria-label="Buscar"
@@ -103,43 +71,39 @@ const lang = useLang()
           @click="isCommandPaletteOpen = true"
         />
 
-        <!-- Selector de idioma del contenido de la API. `soft` en el activo
-             para que se vea cual esta elegido sin inventar un estilo nuevo. -->
+        <!-- Idioma: un solo botón que muestra el idioma activo y alterna. -->
         <UButton
-          label="ES"
+          icon="i-lucide-languages"
+          :label="lang.toUpperCase()"
           size="xs"
           color="neutral"
-          :variant="lang === 'es' ? 'soft' : 'ghost'"
-          :aria-pressed="lang === 'es'"
-          @click="lang = 'es'"
-        />
-
-        <UButton
-          label="EN"
-          size="xs"
-          color="neutral"
-          :variant="lang === 'en' ? 'soft' : 'ghost'"
-          :aria-pressed="lang === 'en'"
-          @click="lang = 'en'"
+          variant="soft"
+          :aria-label="`Idioma: ${lang.toUpperCase()}. Cambiar a ${nextLang.toUpperCase()}`"
+          @click="toggleLang"
         />
 
         <ColorModeToggle />
+      </template>
 
-        <UButton
-          to="https://github.com/pepe1603"
-          target="_blank"
-          icon="i-simple-icons-github"
-          aria-label="GitHub"
-          color="neutral"
-          variant="ghost"
-        />
+      <!-- Menú móvil nativo de UHeader (solo se muestra bajo lg). -->
+      <template #body>
+        <div class="flex flex-col gap-1">
+          <UButton
+            v-for="link in navLinks"
+            :key="link.to"
+            :to="link.to"
+            :label="link.label"
+            color="neutral"
+            variant="ghost"
+            block
+            class="justify-start"
+            @click="isMenuOpen = false"
+          />
+        </div>
       </template>
     </UHeader>
 
     <UMain class="flex-1">
-      <!-- El unico UContainer explicito del layout. El contenido de las
-           paginas entra aqui sin contenedor propio: UPage no lo necesita
-           porque no lleva ancho, solo flex-col y flex-1. -->
       <UContainer>
         <slot />
       </UContainer>

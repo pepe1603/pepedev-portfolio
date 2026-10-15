@@ -134,23 +134,25 @@ const contactLinks = computed(() => {
         <HeroSection :profile="profile" />
       </RevealOnScroll>
 
-      <RevealOnScroll animation="blur">
-        <ProfileSection :profile="profile" />
-      </RevealOnScroll>
+      <div class="flex flex-col gap-20 sm:gap-24 lg:gap-28">
+        <RevealOnScroll animation="blur">
+          <ProfileSection :profile="profile" />
+        </RevealOnScroll>
 
-      <RevealOnScroll animation="blur">
-        <SkillsSection :skills="profile.skills" />
-      </RevealOnScroll>
+        <RevealOnScroll animation="blur">
+          <SkillsSection :skills="profile.skills" />
+        </RevealOnScroll>
 
-      <RevealOnScroll animation="blur">
-        <ExperienceSection :experiences="profile.experiences" />
-      </RevealOnScroll>
+        <RevealOnScroll animation="blur">
+          <ExperienceSection :experiences="profile.experiences" />
+        </RevealOnScroll>
 
-      <RevealOnScroll animation="blur">
-        <ContactSection
-          :links="contactLinks"
-        />
-      </RevealOnScroll>
+        <RevealOnScroll animation="blur">
+          <ContactSection
+            :links="contactLinks"
+          />
+        </RevealOnScroll>
+      </div>
     </template>
   </UPage>
 </template>
