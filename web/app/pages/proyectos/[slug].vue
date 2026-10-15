@@ -20,10 +20,12 @@
 // ======================================================================
 import DOMPurify from 'isomorphic-dompurify'
 import { marked } from 'marked'
+import { useTechIcons } from '~/composables/useTechIcons'
 
 const route = useRoute()
 const api = useApi()
 const lang = useLang()
+const { getTechIcon } = useTechIcons()
 
 const slug = computed(() => String(route.params.slug))
 
@@ -134,25 +136,23 @@ useSeoMeta({
               {{ period }}
             </span>
           </div>
-
-          <div
-            v-if="project.stack.length"
-            class="flex flex-col gap-2"
-          >
+          <div v-if="project.stack.length" class="flex flex-col gap-3">
             <span class="text-xs font-medium uppercase tracking-wider text-muted">
-              Tecnologías
+              Stack tecnológico
             </span>
-
             <div class="flex flex-wrap gap-2">
-              <UBadge
+              <UTooltip
                 v-for="tech in project.stack"
                 :key="tech"
-                color="neutral"
-                variant="subtle"
-                size="md"
+                :text="tech"
               >
-                {{ tech }}
-              </UBadge>
+                <div
+                  class="flex items-center gap-1.5 rounded-full border border-default bg-elevated px-3 py-1.5 text-sm font-medium text-muted transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 hover:text-primary cursor-default"
+                >
+                  <UIcon :name="getTechIcon(tech)" class="size-4" />
+                  <span>{{ tech }}</span>
+                </div>
+              </UTooltip>
             </div>
           </div>
         </section>

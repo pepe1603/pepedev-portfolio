@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useTechIcons } from '~/composables/useTechIcons.ts'
+
 const api = useApi()
 const lang = useLang()
+const { getTechIcon } = useTechIcons()
 
 const { data: projects, error } = await useAsyncData(
   'projects-list',
@@ -217,27 +220,25 @@ useSeoMeta({
                 <!-- Tecnologías -->
                 <div
                   v-if="project.stack.length"
-                  class="mt-auto flex flex-wrap items-center gap-2 pt-2"
+                  class="mt-auto flex flex-wrap items-center gap-2 pt-3"
                   aria-label="Tecnologías utilizadas"
                 >
-                  <UBadge
+                  <div
                     v-for="tech in project.stack.slice(0, 3)"
                     :key="tech"
-                    color="neutral"
-                    variant="subtle"
-                    size="md"
+                    class="flex items-center gap-1.5 rounded-md border border-default bg-elevated px-2.5 py-1 text-xs font-medium text-muted transition-colors group-hover:border-primary/40 group-hover:text-primary"
                   >
-                    {{ tech }}
-                  </UBadge>
+                    <UIcon :name="getTechIcon(tech)" class="size-3.5" />
+                    <span>{{ tech }}</span>
+                  </div>
 
-                  <span
+                  <div
                     v-if="project.stack.length > 3"
-                    class="text-xs text-muted"
+                    class="flex items-center justify-center rounded-md border border-default bg-elevated px-2.5 py-1 text-xs font-medium text-muted"
                   >
                     +{{ project.stack.length - 3 }}
-                  </span>
+                  </div>
                 </div>
-
                 <div
                   class="flex items-center gap-2 border-t border-default pt-3 text-sm font-medium text-primary"
                 >
