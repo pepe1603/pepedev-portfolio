@@ -17,6 +17,12 @@
 /** Roles que emite Spring en el claim `role` del JWT. */
 export type AuthRole = 'ADMIN' | 'USER'
 
+/** Datos del usuario que el cliente sí puede conocer. */
+export interface AuthUser {
+  email: string
+  role: AuthRole
+}
+
 declare module '#auth-utils' {
   interface User {
     /** Claim `sub` del JWT (email del usuario). */
