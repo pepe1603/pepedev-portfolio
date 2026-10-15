@@ -34,13 +34,19 @@ const items: NavigationMenuItem[][] = [
   ]
 ]
 
-function logout() {
-  // Aquí va tu lógica de cierre de sesión (por ejemplo, clear() de useUserSession).
-}
+const { user } = useUserSession()
+const { logout } = useLogout()
+
+// Marca del footer: el email real de la sesión y su inicial como avatar.
+const userLabel = computed(() => user.value?.email ?? 'Admin')
+const userInitials = computed(() => (user.value?.email?.[0] ?? 'A').toUpperCase())
 </script>
 
 <template>
-  <UDashboardGroup storage="local" storage-key="admin">
+  <UDashboardGroup
+    storage="local"
+    storage-key="admin"
+  >
     <UDashboardSidebar
       collapsible
       resizable
@@ -86,8 +92,14 @@ function logout() {
             #trailing
           >
             <div class="flex items-center gap-0.5 ms-auto">
-              <UKbd value="meta" variant="subtle" />
-              <UKbd value="K" variant="subtle" />
+              <UKbd
+                value="meta"
+                variant="subtle"
+              />
+              <UKbd
+                value="K"
+                variant="subtle"
+              />
             </div>
           </template>
         </UButton>
@@ -107,8 +119,8 @@ function logout() {
           :class="collapsed ? 'flex-col' : ''"
         >
           <UButton
-            :label="collapsed ? undefined : 'Admin'"
-            :avatar="{ text: 'A' }"
+            :label="collapsed ? undefined : userLabel"
+            :avatar="{ text: userInitials }"
             color="neutral"
             variant="ghost"
             class="flex-1 min-w-0"
@@ -119,7 +131,7 @@ function logout() {
             aria-label="Cerrar sesión"
             color="neutral"
             variant="ghost"
-            @click="logout"
+            @click="logout()"
           />
         </div>
       </template>

@@ -57,7 +57,13 @@ export default defineNuxtConfig({
       // El refresh token de Spring vive 7 dias (APP_JWT_REFRESH_TTL). La
       // cookie de sesion se alinea con el para no obligar a reautenticar
       // antes de que el refresh caduque por su cuenta.
-      maxAge: 60 * 60 * 24 * 7
+      maxAge: 60 * 60 * 24 * 7,
+      cookie: {
+        // Secure por defecto (solo viaja por HTTPS). Se declara aqui para que
+        // Nuxt registre la clave y permita sobreescribirla con
+        // NUXT_SESSION_COOKIE_SECURE (en dev sobre http se pone en false).
+        secure: true
+      }
     },
     public: {
       apiBase: 'http://localhost:8080',
