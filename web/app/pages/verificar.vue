@@ -28,6 +28,7 @@ const redirectTarget = typeof route.query.redirect === 'string' ? route.query.re
 const code = ref<number[]>([])
 const error = ref('')
 const loading = ref(false)
+const resending = ref(false)
 const cooldown = ref(0)
 let cooldownTimer: ReturnType<typeof setInterval> | undefined
 
@@ -73,6 +74,7 @@ async function resend() {
   }
 
   error.value = ''
+  resending.value = true
   try {
     await auth.resendOtp(challengeId)
     notify('Código reenviado')
@@ -87,6 +89,8 @@ async function resend() {
     } else {
       error.value = problem?.detail ?? 'No se pudo reenviar el código'
     }
+  } finally {
+    resending.value = false
   }
 }
 </script>
@@ -100,6 +104,7 @@ async function resend() {
       icon="i-lucide-link-2-off"
       title="Verificación no válida"
       description="Falta el identificador del intento de acceso. Vuelve a iniciar sesión."
+      role="alert"
     />
 
     <template v-else>
@@ -107,6 +112,7 @@ async function resend() {
         <UIcon
           name="i-lucide-mail-check"
           class="text-primary mx-auto size-10"
+          aria-hidden="true"
         />
         <h1 class="text-highlighted text-xl font-semibold">
           Verifica tu identidad
@@ -122,6 +128,7 @@ async function resend() {
         variant="subtle"
         icon="i-lucide-circle-x"
         :title="error"
+        role="alert"
       />
 
       <form
@@ -153,6 +160,7 @@ async function resend() {
         <UButton
           variant="link"
           color="primary"
+          :loading="resending"
           :disabled="cooldown > 0 || loading"
           :label="cooldown > 0 ? `Reenviar en ${cooldown} s` : 'Reenviar código'"
           @click="resend"
