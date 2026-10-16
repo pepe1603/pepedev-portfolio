@@ -6,7 +6,9 @@
 // el email, así que el formulario lo pide. Si falta el token, el enlace es
 // inválido y no tiene sentido pintar el formulario.
 //
-// Al confirmar (204), Spring revoca todas las sesiones: se vuelve al login.
+// Al confirmar (204), Spring revoca todas las sesiones: se avisa en la
+// descripción para que el cierre de sesión no pille por sorpresa, y se vuelve
+// al login.
 // ======================================================================
 import * as z from 'zod'
 import type { AuthFormField, FormSubmitEvent } from '@nuxt/ui'
@@ -20,6 +22,9 @@ const auth = useAuthApi()
 const { notify } = useAppNotify()
 
 const token = computed(() => (typeof route.query.token === 'string' ? route.query.token : ''))
+// El contrato solo garantiza el token, pero si algún día el correo añade el
+// email al enlace, se aprovecha para no obligar a teclearlo de nuevo.
+const emailFromLink = typeof route.query.email === 'string' ? route.query.email : ''
 
 const fields: AuthFormField[] = [
   {
@@ -28,13 +33,16 @@ const fields: AuthFormField[] = [
     label: 'Email',
     placeholder: 'tu@email.com',
     required: true,
-    autocomplete: 'username'
+    autocomplete: 'username',
+    autofocus: true,
+    defaultValue: emailFromLink
   },
   {
     name: 'password',
     type: 'password',
     label: 'Nueva contraseña',
-    placeholder: 'Mínimo 8 caracteres',
+    hint: 'Mín. 8 caracteres',
+    placeholder: '••••••••',
     required: true,
     autocomplete: 'new-password'
   },
@@ -82,6 +90,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       icon="i-lucide-link-2-off"
       title="Enlace no válido"
       description="El enlace no incluye el token de recuperación. Solicita uno nuevo."
+      role="alert"
     />
 
     <UAuthForm
@@ -89,7 +98,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       :schema="schema"
       :fields="fields"
       title="Nueva contraseña"
-      description="Elige una contraseña de al menos 8 caracteres."
+      description="Elige una contraseña de al menos 8 caracteres. Al guardarla se cerrarán todas tus sesiones."
       icon="i-lucide-key-round"
       :submit="{ label: 'Guardar contraseña', block: true }"
       loading-auto
@@ -102,6 +111,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           variant="subtle"
           icon="i-lucide-circle-x"
           :title="formError"
+          role="alert"
         />
       </template>
     </UAuthForm>
