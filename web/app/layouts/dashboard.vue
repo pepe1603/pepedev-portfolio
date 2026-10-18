@@ -4,15 +4,31 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 // Estado compartido con AppCommandPalette y el atajo ⌘K / Ctrl+K.
 const isCommandPaletteOpen = useCommandPalette()
 
+// Marca de las entradas sin API. En vez de enlazar a rutas que devuelven 404,
+// se quedan visibles y deshabilitadas: el usuario ve la estructura del panel y
+// lo que falta, y no se le promete nada roto. `disabled` no quita el item, solo
+// lo desactiva (llega a ULinkBase como `:disabled`).
+//
+// Quien implemente la sección quita `disabled` y esta marca de una vez.
+const PENDING: NavigationMenuItem['badge'] = { label: 'Próximamente', color: 'neutral', variant: 'subtle' }
+
 // Grupos de navegación. `type: 'label'` crea el título de sección y
 // `to` activa el item automáticamente según la ruta.
+//
+// Hoy solo hay API de panel para Proyectos, Certificados y Mensajes. Las
+// tres entradas marcadas como PENDING no tienen ningún endpoint detrás:
+// el stack es un atributo de /admin/profile (no un CRUD propio), los iconos
+// son cosa del frontend y "Medios" no existe porque /admin/storage solo
+// sube un fichero, sin listado del bucket.
 const items: NavigationMenuItem[][] = [
   [
     { label: 'General', type: 'label' },
     { label: 'Dashboard', icon: 'i-lucide-layout-dashboard', to: '/admin' },
     { label: 'Proyectos', icon: 'i-lucide-folder-kanban', to: '/admin/proyectos' },
     { label: 'Certificados', icon: 'i-lucide-award', to: '/admin/certificados' },
-    { label: 'Mensajes', icon: 'i-lucide-mail', to: '/admin/mensajes', badge: '3' }
+    // El contador de no leídos todavía no existe (GET /admin/messages/unread-count);
+    // vuelva con la página de mensajes.
+    { label: 'Mensajes', icon: 'i-lucide-mail', to: '/admin/mensajes' }
   ],
   [
     { label: 'Contenido', type: 'label' },
@@ -21,15 +37,15 @@ const items: NavigationMenuItem[][] = [
       icon: 'i-lucide-code-xml',
       defaultOpen: true,
       children: [
-        { label: 'Stack', to: '/admin/tecnologias' },
-        { label: 'Iconos', to: '/admin/tecnologias/iconos' }
+        { label: 'Stack', to: '/admin/tecnologias', disabled: true, badge: PENDING },
+        { label: 'Iconos', to: '/admin/tecnologias/iconos', disabled: true, badge: PENDING }
       ]
     },
-    { label: 'Medios', icon: 'i-lucide-image', to: '/admin/medios' }
+    { label: 'Medios', icon: 'i-lucide-image', to: '/admin/medios', disabled: true, badge: PENDING }
   ],
   [
     { label: 'Sistema', type: 'label' },
-    { label: 'Ajustes', icon: 'i-lucide-settings', to: '/admin/ajustes' },
+    { label: 'Ajustes', icon: 'i-lucide-settings', to: '/admin/ajustes', disabled: true, badge: PENDING },
     { label: 'Ver portfolio', icon: 'i-lucide-external-link', to: '/', target: '_blank' }
   ]
 ]
