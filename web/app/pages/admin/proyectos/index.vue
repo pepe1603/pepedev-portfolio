@@ -74,14 +74,11 @@ function clearFilters() {
 
 // ---------------------------------------------------------------------------
 // FORMATEO
+//
+// El texto bilingüe lo pinta localizedText() y las fechas adminDate(), ambos
+// de utils/adminTypes.ts: mismo criterio en todo el panel. `updatedAt` es un
+// Instant ISO-8601 completo, así que adminDate no toca nada.
 // ---------------------------------------------------------------------------
-// El texto bilingüe lo pinta localizedText() de utils/adminTypes.ts, que es
-// el mismo criterio en todo el panel; aquí solo queda la fecha.
-const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
-
-function formatDate(value: string | null): string {
-  return value ? dateFormatter.format(new Date(value)) : '—'
-}
 
 // ---------------------------------------------------------------------------
 // COLUMNAS
@@ -373,7 +370,7 @@ function rowActions(project: AdminProject): DropdownMenuItem[][] {
 
         <template #updatedAt-cell="{ row }">
           <span class="text-muted text-sm">
-            {{ formatDate(row.original.updatedAt) }}
+            {{ adminDate(row.original.updatedAt) }}
           </span>
         </template>
 

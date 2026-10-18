@@ -46,6 +46,33 @@ export function localizedText(text: LocalizedText | null | undefined): string {
   return text?.es?.trim() || text?.en?.trim() || ''
 }
 
+// ---------------------------------------------------------------------------
+// FECHAS
+//
+// El backend devuelve DOS cosas distintas y el JSON las distingue bien:
+//   · LocalDate → 'yyyy-MM-dd' SIN hora: issueDate, expiryDate, periodStart…
+//   · Instant   → ISO-8601 completo: createdAt, publishedAt, updatedAt…
+//
+// OJO con los date-only: `new Date('yyyy-MM-dd')` se interpreta como
+// MEDIANOCHE UTC, así que en cualquier zona al oeste de Greenwich (toda
+// América) formatearlo en local salta al día ANTERIOR. Un certificado
+// emitido el 2025-03-01 se vería como "28 feb 2025" en México. Para los
+// date-only se parsea como hora local añadiendo T00:00:00, que no mueve el
+// día en ninguna zona; los instantes se quedan tal cual.
+// ---------------------------------------------------------------------------
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
+
+export function adminDate(
+  value: string | null | undefined,
+  options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' }
+): string {
+  if (!value) {
+    return '—'
+  }
+  const date = DATE_ONLY.test(value) ? new Date(`${value}T00:00:00`) : new Date(value)
+  return new Intl.DateTimeFormat('es-ES', options).format(date)
+}
+
 /** Registro de la galería. Mismo shape que GalleryImage del lado público. */
 export interface AdminGalleryImage {
   url: string
@@ -110,6 +137,67 @@ export interface ProjectRequest {
   /** Primitivo en la API: enviar siempre, aunque sea false. */
   featured: boolean
   sortOrder?: number
+}
+
+// ---------------------------------------------------------------------------
+// CERTIFICADOS
+//
+// Mismo esquema que proyectos (lista completa sin paginar, POST/PUT, PATCH
+// publish|unpublish, PUT order y DELETE), pero bastante más plano: título
+// bilingüe + emisor + tipo, sin galería, stack ni descripción.
+//
+// Hay dos diferencias que importan al pintar:
+//  · `title` lleva la MISMA restricción LocalizedNonBlank que en proyectos:
+//    hay que tener es O en, no los dos.
+//  · NO existe `updatedAt` en la entidad, solo `createdAt` y `publishedAt`.
+// ---------------------------------------------------------------------------
+
+/** Certificado o curso. El panel lo traduce a 'Certificado' y 'Curso'. */
+export type CertificateKind = 'CERTIFICATE' | 'COURSE'
+
+export interface AdminCertificate {
+  id: string
+  title: LocalizedText
+  issuer: string
+  kind: CertificateKind
+  /** LocalDate: 'yyyy-MM-dd', igual que en proyectos. */
+  issueDate: string | null
+  /** null = sin caducidad. */
+  expiryDate: string | null
+  credentialUrl: string | null
+  /** Imagen del certificado (use='image' de POST /admin/storage). */
+  imageUrl: string | null
+  featured: boolean
+  sortOrder: number
+  status: CertificateStatus
+  publishedAt: string | null
+  createdAt: string
+}
+
+/**
+ * Body de POST y PUT /admin/certificates (CertificateRequest en la API).
+ *
+ * `featured` y `sortOrder` se comportan igual que en proyectos: el primero es
+ * boolean primitivo y omitirlo da 400 de parseo, el segundo cae a 0 si no
+ * viene. El resto de opcionales se envía null en lugar de omitirse, porque
+ * `PUT` es edición completa y lo ausente se guarda vacío.
+ */
+export interface CertificateRequest {
+  title: LocalizedText
+  issuer: string
+  kind: CertificateKind
+  issueDate?: string | null
+  expiryDate?: string | null
+  credentialUrl?: string | null
+  imageUrl?: string | null
+  /** Primitivo en la API: enviar siempre, aunque sea false. */
+  featured: boolean
+  sortOrder?: number
+}
+
+/** Mismo criterio que la página pública de certificados. */
+export function certificateKindLabel(kind: CertificateKind): string {
+  return kind === 'COURSE' ? 'Curso' : 'Certificado'
 }
 
 /**

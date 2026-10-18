@@ -108,11 +108,8 @@ const recentProjects = computed(() =>
     .slice(0, 4)
 )
 
-const recentDateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
-
-function formatDate(value: string | null): string {
-  return value ? recentDateFormatter.format(new Date(value)) : '—'
-}
+// La fecha la pinta adminDate() de utils/adminTypes.ts: mismo criterio que en
+// el resto del panel (aquí `updatedAt` es un Instant, no un LocalDate).
 </script>
 
 <template>
@@ -253,7 +250,7 @@ function formatDate(value: string | null): string {
                   {{ localizedText(project.title) || project.slug }}
                 </p>
                 <p class="text-muted truncate text-xs">
-                  {{ project.slug }} · actualizado el {{ formatDate(project.updatedAt) }}
+                  {{ project.slug }} · actualizado el {{ adminDate(project.updatedAt) }}
                 </p>
               </div>
 
