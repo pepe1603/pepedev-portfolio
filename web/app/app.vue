@@ -71,5 +71,16 @@ useHead({
       abre, asi que en el servidor no hay nada que hydratear.
     -->
     <AppCommandPalette />
+
+    <!--
+      Igual que la paleta: global, se monta una vez y va fuera de UPage, al
+      final del template. Su estado no vive aqui sino en
+      utils/sessionGuard.ts, porque lo abre el watcher de sesion
+      (plugins/session-watcher.client.ts) y lo cierra el propio componente.
+
+      No pinta nada hasta que se abre, asi que no hace falta ningun
+      <ClientOnly>: en el servidor no hay nada que hydratear.
+    -->
+    <SessionExpiredModal />
   </UApp>
 </template>
