@@ -27,6 +27,25 @@ export interface LocalizedText {
 /** Estado de un proyecto o certificado. `POST` crea siempre DRAFT. */
 export type ProjectStatus = 'DRAFT' | 'PUBLISHED'
 
+/**
+ * Los certificados usan exactamente el mismo par de valores: en Java es el
+ * enum `CertificateStatus`, pero su identidad no cambia (DRAFT | PUBLISHED).
+ */
+export type CertificateStatus = ProjectStatus
+
+/**
+ * Muestra un campo bilingüe tal y como viene de /admin/**: se prefiere el
+ * español y, si no tiene, el inglés.
+ *
+ * Es el equivalente admin de lo que ya resuelve el servidor en el lado
+ * público (que devuelve una sola cadena en el idioma pedido). Devuelve cadena
+ * vacía si el campo está vacío o es null, para que quien pinte no tenga que
+ * comprobar nada más.
+ */
+export function localizedText(text: LocalizedText | null | undefined): string {
+  return text?.es?.trim() || text?.en?.trim() || ''
+}
+
 /** Registro de la galería. Mismo shape que GalleryImage del lado público. */
 export interface AdminGalleryImage {
   url: string

@@ -60,7 +60,7 @@ const visibleProjects = computed(() => {
     if (!needle) {
       return true
     }
-    return [localized(project.title), localized(project.subtitle), project.slug, ...project.stack]
+    return [localizedText(project.title), localizedText(project.subtitle), project.slug, ...project.stack]
       .some(field => field.toLowerCase().includes(needle))
   })
 })
@@ -75,14 +75,8 @@ function clearFilters() {
 // ---------------------------------------------------------------------------
 // FORMATEO
 // ---------------------------------------------------------------------------
-// Los textos de admin llegan como mapa bilingüe {es, en} SIN resolver (a
-// diferencia del lado público, que ya recibe la cadena en el idioma pedido).
-// Aquí basta con pintar algo legible: se prefiere el español y, si no tiene,
-// el inglés. Editar ambos idiomas es trabajo del formulario, no del listado.
-function localized(text: LocalizedText | null | undefined): string {
-  return text?.es?.trim() || text?.en?.trim() || ''
-}
-
+// El texto bilingüe lo pinta localizedText() de utils/adminTypes.ts, que es
+// el mismo criterio en todo el panel; aquí solo queda la fecha.
 const dateFormatter = new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })
 
 function formatDate(value: string | null): string {
@@ -325,7 +319,7 @@ function rowActions(project: AdminProject): DropdownMenuItem[][] {
         <template #title-cell="{ row }">
           <div class="min-w-0">
             <p class="truncate font-medium text-highlighted">
-              {{ localized(row.original.title) || '(sin título)' }}
+              {{ localizedText(row.original.title) || '(sin título)' }}
             </p>
             <p class="text-muted truncate text-xs">
               {{ row.original.slug }}
@@ -413,7 +407,7 @@ function rowActions(project: AdminProject): DropdownMenuItem[][] {
             class="text-muted text-sm"
           >
             Se eliminará
-            <span class="font-medium text-highlighted">{{ localized(deleteTarget.title) }}</span>
+            <span class="font-medium text-highlighted">{{ localizedText(deleteTarget.title) }}</span>
             de forma permanente, junto con su miniatura y su galería.
             Esta acción no se puede deshacer.
           </p>
