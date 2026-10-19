@@ -200,6 +200,59 @@ export function certificateKindLabel(kind: CertificateKind): string {
   return kind === 'COURSE' ? 'Curso' : 'Certificado'
 }
 
+// ---------------------------------------------------------------------------
+// MENSAJES
+//
+// Son lo ÚNICO paginado del panel: GET /admin/messages devuelve un
+// PageResponse<Message> (page=0 y size=20 por defecto, size máximo 100),
+// ordenado por la API createdAt DESC → id DESC. Proyectos y certificados,
+// en cambio, devuelven la lista entera de una vez.
+//
+// El listado ya trae el cuerpo completo de cada mensaje, así que abrir la
+// ficha no necesita un GET /admin/messages/{id} adicional.
+// ---------------------------------------------------------------------------
+
+/** NEW (sin leer) → READ (leído) → ARCHIVED (archivado). */
+export type MessageStatus = 'NEW' | 'READ' | 'ARCHIVED'
+
+export interface AdminMessage {
+  id: string
+  name: string
+  email: string
+  /** Asunto tal cual lo escribió quien envió el formulario. */
+  subject: string
+  body: string
+  /** IP de origen, la guarda la API para poder filtrar spam. */
+  ip: string
+  userAgent: string | null
+  status: MessageStatus
+  /** Instant ISO-8601. */
+  createdAt: string
+}
+
+/** El sobre genérico de la API para lo paginado (PageResponse<T>). */
+export interface AdminPage<T> {
+  items: T[]
+  /** Índice de la página actual, base 0. */
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+  /** true en la última página; útil para deshabilitar "siguiente". */
+  last: boolean
+}
+
+/** Respuesta de GET /admin/messages/unread-count. */
+export interface MessageCount {
+  count: number
+}
+
+/** Estados de un mensaje en la ficha y en el listado. */
+export function messageStatusLabel(status: MessageStatus): string {
+  if (status === 'NEW') return 'Sin leer'
+  return status === 'READ' ? 'Leído' : 'Archivado'
+}
+
 /**
  * Usos permitidos de POST /admin/storage. `image` es el genérico (imagen de
  * certificado); `cv` es el único que admite PDF.

@@ -20,15 +20,27 @@ const PENDING: NavigationMenuItem['badge'] = { label: 'Próximamente', color: 'n
 // el stack es un atributo de /admin/profile (no un CRUD propio), los iconos
 // son cosa del frontend y "Medios" no existe porque /admin/storage solo
 // sube un fichero, sin listado del bucket.
-const items: NavigationMenuItem[][] = [
+
+// Badge de mensajes sin leer: lo trae GET /admin/messages/unread-count y lo
+// comparte con /admin/mensajes (composables/useUnreadMessages.ts).
+const { count: unreadCount, refreshUnread } = useUnreadMessages()
+onMounted(refreshUnread)
+
+const items = computed<NavigationMenuItem[][]>(() => [
   [
     { label: 'General', type: 'label' },
     { label: 'Dashboard', icon: 'i-lucide-layout-dashboard', to: '/admin' },
     { label: 'Proyectos', icon: 'i-lucide-folder-kanban', to: '/admin/proyectos' },
     { label: 'Certificados', icon: 'i-lucide-award', to: '/admin/certificados' },
-    // El contador de no leídos todavía no existe (GET /admin/messages/unread-count);
-    // vuelva con la página de mensajes.
-    { label: 'Mensajes', icon: 'i-lucide-mail', to: '/admin/mensajes' }
+    {
+      label: 'Mensajes',
+      icon: 'i-lucide-mail',
+      to: '/admin/mensajes',
+      // Solo aparece si hay algo sin leer: un badge con "0" es ruido.
+      badge: unreadCount.value
+        ? { label: String(unreadCount.value), color: 'primary', variant: 'solid' }
+        : undefined
+    }
   ],
   [
     { label: 'Contenido', type: 'label' },
@@ -48,7 +60,7 @@ const items: NavigationMenuItem[][] = [
     { label: 'Ajustes', icon: 'i-lucide-settings', to: '/admin/ajustes', disabled: true, badge: PENDING },
     { label: 'Ver portfolio', icon: 'i-lucide-external-link', to: '/', target: '_blank' }
   ]
-]
+])
 
 const { user } = useUserSession()
 const { logout } = useLogout()
