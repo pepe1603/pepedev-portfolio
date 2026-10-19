@@ -34,6 +34,7 @@ export const TECH_ICON_MAP: Record<string, string> = {
   'javascript': 'i-simple-icons-javascript',
   'tailwind': 'i-simple-icons-tailwindcss',
   'tailwind css': 'i-simple-icons-tailwindcss',
+  'tailwindcss': 'i-simple-icons-tailwindcss',
   'node': 'i-simple-icons-nodedotjs',
   'node.js': 'i-simple-icons-nodedotjs',
   'python': 'i-simple-icons-python',
@@ -68,6 +69,7 @@ export const TECH_ICON_MAP: Record<string, string> = {
   'django': 'i-simple-icons-django',
   'express': 'i-simple-icons-express',
   'nestjs': 'i-simple-icons-nestjs',
+  'readme': 'i-simple-icons-readme',
   'angular': 'i-simple-icons-angular',
   'svelte': 'i-simple-icons-svelte',
   'astro': 'i-simple-icons-astro',
@@ -106,6 +108,10 @@ export const CATEGORY_ICON_FALLBACK = 'i-lucide-code-2'
  * Devuelve el icono de una categoría del stack. A diferencia del mapa de
  * tecnologías, aquí no hay tabla: son reglas por subcadena, porque las
  * categorías son texto libre ("Backend", "backend", "Base de datos"...).
+ *
+ * Las reglas son tolerantes al plural a propósito: la categoría real del
+ * perfil es "Bases de datos", y una regla que buscara solo "base de datos"
+ * no la cogería (fue justo el hueco que señaló /admin/tecnologias/iconos).
  */
 export function categoryIcon(category: string): string {
   const value = category.toLowerCase()
@@ -114,7 +120,7 @@ export function categoryIcon(category: string): string {
     return 'i-lucide-server'
   }
 
-  if (value.includes('base de datos') || value.includes('database')) {
+  if (value.includes('base') || value.includes('database')) {
     return 'i-lucide-database'
   }
 
