@@ -354,3 +354,18 @@ export type StorageUse = 'avatar' | 'thumbnail' | 'gallery' | 'image' | 'cv'
 export interface StorageUploadResult {
   url: string
 }
+
+/**
+ * Un objeto del bucket, espejo de StorageObjectResponse de Spring
+ * (GET /admin/storage). `key` es el nombre del objeto (<uuid>.<ext>) y es
+ * lo que se manda a DELETE /admin/storage/{name}.
+ */
+export interface AdminStorageObject {
+  key: string
+  url: string
+  size: number
+  /** Instant ISO-8601. */
+  lastModified: string
+  /** image/jpeg, image/png, image/webp o application/pdf; null si no se pudo deducir. */
+  contentType: string | null
+}

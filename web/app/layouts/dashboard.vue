@@ -4,23 +4,15 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 // Estado compartido con AppCommandPalette y el atajo ⌘K / Ctrl+K.
 const isCommandPaletteOpen = useCommandPalette()
 
-// Marca de las entradas sin API. En vez de enlazar a rutas que devuelven 404,
-// se quedan visibles y deshabilitadas: el usuario ve la estructura del panel y
-// lo que falta, y no se le promete nada roto. `disabled` no quita el item, solo
-// lo desactiva (llega a ULinkBase como `:disabled`).
-//
-// Quien implemente la sección quita `disabled` y esta marca de una vez.
-const PENDING: NavigationMenuItem['badge'] = { label: 'Próximamente', color: 'neutral', variant: 'subtle' }
-
 // Grupos de navegación. `type: 'label'` crea el título de sección y
 // `to` activa el item automáticamente según la ruta.
 //
 // Hoy hay API de panel para Proyectos, Certificados, Mensajes, el stack
 // (que se gestiona como un PUT /admin/profile completo, sin CRUD propio de
-// skills), Ajustes (OTP y sesiones sobre la propia cuenta) e Iconos (que es
-// solo de lectura: los mapas de iconos viven en el código, no en la API).
-// "Medios" sigue marcado como PENDING: /admin/storage solo sube un fichero,
-// sin listado del bucket, así que todavía no hay página que lo consuma.
+// skills), Ajustes (OTP y sesiones sobre la propia cuenta), Iconos (solo de
+// lectura: los mapas de iconos viven en el código, no en la API) y Medios
+// (GET y DELETE /admin/storage sobre el bucket). Ya no queda ninguna entrada
+// sin endpoint detrás.
 
 // Badge de mensajes sin leer: lo trae GET /admin/messages/unread-count y lo
 // comparte con /admin/mensajes (composables/useUnreadMessages.ts).
@@ -54,7 +46,7 @@ const items = computed<NavigationMenuItem[][]>(() => [
         { label: 'Iconos', to: '/admin/tecnologias/iconos' }
       ]
     },
-    { label: 'Medios', icon: 'i-lucide-image', to: '/admin/medios', disabled: true, badge: PENDING }
+    { label: 'Medios', icon: 'i-lucide-image', to: '/admin/medios' }
   ],
   [
     { label: 'Sistema', type: 'label' },
