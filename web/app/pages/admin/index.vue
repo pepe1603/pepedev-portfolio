@@ -8,7 +8,8 @@
 // el tamaño real de un portfolio no compensa inventar nada más.
 //
 // El contador de mensajes sí es propio (GET /admin/messages/unread-count)
-// y las tecnologías salen de skills dentro de GET /admin/profile.
+// y las tecnologías salen de skills dentro de GET /admin/profile, que ya
+// tiene su sección en /admin/tecnologias.
 //
 // Como el resto del panel, se carga en cliente: el $fetch de Nuxt no
 // reenvía las cookies en SSR y llegaríamos al proxy sin sesión.
@@ -17,17 +18,13 @@ definePageMeta({ layout: 'dashboard' })
 
 const api = useAdminApi()
 
-// Solo la parte del perfil que consume esta página; la entidad completa se
-// tipa cuando exista la sección de ajustes.
-interface DashboardProfile {
-  skills: Array<{ name: string }>
-}
-
+// Solo se leen los skills del perfil aquí, pero el tipo es el de la entidad
+// entera (utils/adminTypes.ts), que es el que devuelve la API.
 interface DashboardData {
   projects: AdminProject[]
   certificates: Array<{ id: string, status: CertificateStatus, featured: boolean }>
   unread: { count: number }
-  profile: DashboardProfile
+  profile: AdminProfile
 }
 
 const { data, status, error, refresh } = await useAsyncData(
@@ -37,7 +34,7 @@ const { data, status, error, refresh } = await useAsyncData(
       api.get<AdminProject[]>('/projects'),
       api.get<DashboardData['certificates']>('/certificates'),
       api.get<DashboardData['unread']>('/messages/unread-count'),
-      api.get<DashboardProfile>('/profile')
+      api.get<AdminProfile>('/profile')
     ])
     return { projects, certificates, unread, profile }
   },
@@ -91,11 +88,9 @@ const stats = computed(() => {
     {
       label: 'Tecnologías',
       value: skills,
-      hint: skills ? 'En el stack' : 'Stack vacío',
+      hint: skills ? n(skills, 'tecnología', 'tecnologías') : 'Stack vacío',
       icon: 'i-lucide-code-xml',
-      // La sección de tecnologías todavía no existe: la tarjeta cuenta lo
-      // que sí hay (los skills del perfil), pero no abre una página rota.
-      disabled: true
+      to: '/admin/tecnologias'
     }
   ]
 })
@@ -195,7 +190,7 @@ const recentProjects = computed(() =>
             </p>
 
             <p
-              v-if="!stat.disabled && stat.to"
+              v-if="stat.to"
               class="mt-1 text-xs"
             >
               <ULink

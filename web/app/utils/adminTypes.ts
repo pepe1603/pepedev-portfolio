@@ -201,6 +201,97 @@ export function certificateKindLabel(kind: CertificateKind): string {
 }
 
 // ---------------------------------------------------------------------------
+// PERFIL (TECNOLOGÍAS)
+//
+// GET /admin/profile devuelve la ENTIDAD Profile (singleton, id=1): los
+// textos bilingües SIN resolver y skills/experiencias guardados como
+// columnas JSONB tal cual (los records Skill y Experience de Java).
+//
+// PUT /admin/profile es edición COMPLETA del perfil entero: no existe
+// "PUT /admin/profile/skills", así que quien edita el stack reenvía TODOS
+// los campos tal cual los leyó y cambia únicamente `skills`. Si no se
+// reenvían, la API los guarda vacíos y se pierden la biografía, las URLs o
+// las experiencias.
+//
+// Tres campos son obligatorios en el request, aunque solo se quiera tocar
+// el stack: fullName (@NotBlank) y headline/bio (@LocalizedNonBlank, que
+// exige al menos un idioma con texto). Son la razón de que la página de
+// tecnologías compruebe el perfil antes de guardar.
+// ---------------------------------------------------------------------------
+
+/** Record Skill de Java: el mismo shape que el Skill público de types.ts. */
+export interface AdminSkill {
+  name: string
+  /** La web agrupa por texto EXACTO: "Backend" y "backend" son dos grupos. */
+  category: string
+  /** null en la base de datos; la web oculta el nivel si no viene. */
+  level: string | null
+}
+
+/** Record Experience de Java. La página de tecnologías no lo toca: solo lo reenvía. */
+export interface AdminExperience {
+  title: string
+  company: string
+  period: string
+  type: string
+  description: string
+}
+
+export interface AdminProfile {
+  /** SMALLINT fijo a 1: solo existe un perfil en toda la base de datos. */
+  id: number
+  fullName: string
+  headline: LocalizedText | null
+  bio: LocalizedText | null
+  location: string | null
+  githubUrl: string | null
+  linkedinUrl: string | null
+  emailPublic: string | null
+  websiteUrl: string | null
+  cvUrlEs: string | null
+  cvUrlEn: string | null
+  avatarUrl: string | null
+  skills: AdminSkill[]
+  experiences: AdminExperience[]
+  /** Visitas a la landing; solo lo lee, nadie lo escribe desde el panel. */
+  viewsCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * Body de PUT /admin/profile (ProfileRequest en la API).
+ *
+ * `fullName`, `headline` y `bio` van sin `?`: la validación de la API los
+ * exige siempre, vengan o no de la UI. El resto son opcionales y se envían
+ * tal cual (null si la base los tiene vacíos).
+ */
+export interface ProfileRequest {
+  fullName: string
+  headline: LocalizedText
+  bio: LocalizedText
+  location?: string | null
+  githubUrl?: string | null
+  linkedinUrl?: string | null
+  emailPublic?: string | null
+  websiteUrl?: string | null
+  cvUrlEs?: string | null
+  cvUrlEn?: string | null
+  avatarUrl?: string | null
+  skills?: AdminSkill[]
+  experiences?: AdminExperience[]
+}
+
+/**
+ * true si el mapa bilingüe trae al menos un idioma con texto, que es lo
+ * que exige @LocalizedNonBlank en la API. Un mapa null o en blanco no
+ * sobrevive a un PUT del perfil.
+ */
+export function hasLocalizedText(text: LocalizedText | null | undefined): boolean {
+  return !!text?.es?.trim() || !!text?.en?.trim()
+}
+
+// ---------------------------------------------------------------------------
 // MENSAJES
 //
 // Son lo ÚNICO paginado del panel: GET /admin/messages devuelve un

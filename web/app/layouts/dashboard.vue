@@ -15,11 +15,11 @@ const PENDING: NavigationMenuItem['badge'] = { label: 'Próximamente', color: 'n
 // Grupos de navegación. `type: 'label'` crea el título de sección y
 // `to` activa el item automáticamente según la ruta.
 //
-// Hoy solo hay API de panel para Proyectos, Certificados y Mensajes. Las
-// tres entradas marcadas como PENDING no tienen ningún endpoint detrás:
-// el stack es un atributo de /admin/profile (no un CRUD propio), los iconos
-// son cosa del frontend y "Medios" no existe porque /admin/storage solo
-// sube un fichero, sin listado del bucket.
+// Hoy hay API de panel para Proyectos, Certificados, Mensajes y el stack,
+// que se gestiona como un PUT /admin/profile completo (no hay CRUD propio
+// de skills). Las dos entradas marcadas como PENDING no tienen ningún
+// endpoint detrás: los iconos son cosa del frontend y "Medios" no existe
+// porque /admin/storage solo sube un fichero, sin listado del bucket.
 
 // Badge de mensajes sin leer: lo trae GET /admin/messages/unread-count y lo
 // comparte con /admin/mensajes (composables/useUnreadMessages.ts).
@@ -49,7 +49,7 @@ const items = computed<NavigationMenuItem[][]>(() => [
       icon: 'i-lucide-code-xml',
       defaultOpen: true,
       children: [
-        { label: 'Stack', to: '/admin/tecnologias', disabled: true, badge: PENDING },
+        { label: 'Stack', to: '/admin/tecnologias' },
         { label: 'Iconos', to: '/admin/tecnologias/iconos', disabled: true, badge: PENDING }
       ]
     },
