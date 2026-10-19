@@ -1,6 +1,7 @@
 package dev.pepe1603.api.controller;
 
 import dev.pepe1603.api.dto.admin.OtpEnabledRequest;
+import dev.pepe1603.api.dto.admin.OtpEnabledResponse;
 import dev.pepe1603.api.dto.common.ApiProblemDetail;
 import dev.pepe1603.api.entity.User;
 import dev.pepe1603.api.enums.AuditAction;
@@ -16,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,6 +39,18 @@ public class AdminOtpController {
         this.accessTokenReader = accessTokenReader;
     }
 
+    @GetMapping
+    @Operation(summary = "Estado del segundo factor por email (OTP)",
+            description = "Devuelve la preferencia guardada del usuario del token. Ojo: es su "
+                    + "preferencia, no el feature flag APP_AUTH_OTP_ENABLED, que decide si el flujo "
+                    + "OTP está disponible en el servidor.")
+    @ApiResponse(responseCode = "200", description = "{ \"enabled\": boolean }")
+    @ApiResponse(responseCode = "401", description = "No autenticado",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    public OtpEnabledResponse getEnabled(HttpServletRequest servletRequest) {
+        return new OtpEnabledResponse(Boolean.TRUE.equals(requireUser(servletRequest).getOtpEnabled()));
+    }
+
     @PatchMapping
     @Operation(summary = "Activar o desactivar el segundo factor por email (OTP)",
             description = "Solo aplica si el feature flag global APP_AUTH_OTP_ENABLED está activo. "
@@ -46,13 +60,18 @@ public class AdminOtpController {
             content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
     public ResponseEntity<Void> setEnabled(@Valid @RequestBody OtpEnabledRequest request,
             HttpServletRequest servletRequest) {
-        User user = accessTokenReader.read(servletRequest)
-                .map(claims -> claims.getSubject())
-                .flatMap(userRepository::findByEmail)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+        User user = requireUser(servletRequest);
         user.setOtpEnabled(request.enabled());
         userRepository.save(user);
         auditService.record(AuditAction.UPDATE, AuditResource.USER, user.getId(), "otp-enabled:" + request.enabled());
         return ResponseEntity.noContent().build();
+    }
+
+    /** Usuario del Bearer; sin token válido o sin fila, 401. */
+    private User requireUser(HttpServletRequest servletRequest) {
+        return accessTokenReader.read(servletRequest)
+                .map(claims -> claims.getSubject())
+                .flatMap(userRepository::findByEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
     }
 }
