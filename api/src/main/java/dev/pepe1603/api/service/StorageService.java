@@ -2,15 +2,21 @@ package dev.pepe1603.api.service;
 
 import dev.pepe1603.api.config.S3Properties;
 import dev.pepe1603.api.config.StorageProperties;
+import dev.pepe1603.api.dto.admin.StorageObjectResponse;
 import dev.pepe1603.api.enums.StorageUse;
 import io.minio.BucketExistsArgs;
+import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.Result;
+import io.minio.messages.Item;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -111,6 +117,45 @@ public class StorageService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo guardar el fichero", e);
         }
         return publicUrl(properties.getPublicUrl()) + "/" + name;
+    }
+
+    /**
+     * Lista los objetos del bucket para el panel de Medios.
+     *
+     * <p>No hay paginación nativa de S3 por offset: {@code listObjects} usa marker, así que
+     * se recorre todo el bucket y quien llama pagina en memoria con {@code PageResponse}. Es
+     * lo que ya anticipaba docs/STORAGE.md §4: listar es barato y el bucket de un portafolio
+     * tiene pocos objetos. Si algún día crece, este es el punto donde meter marker nativo.
+     *
+     * <p>{@code recursive(true)} es obligatorio para que las claves no se corten por el
+     * delimitador {@code /}; los objetos son planos ({@code <uuid>.<ext>}), sin carpetas.
+     * Se descartan los "directorios" ({@code isDir}) por si algún cliente dejó un prefijo.
+     */
+    public List<StorageObjectResponse> list() {
+        String baseUrl = publicUrl(properties.getPublicUrl());
+        List<StorageObjectResponse> objects = new ArrayList<>();
+        try {
+            Iterable<Result<Item>> results = minioClient.listObjects(ListObjectsArgs.builder()
+                    .bucket(s3Properties.getBucket())
+                    .recursive(true)
+                    .build());
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                if (item.isDir()) {
+                    continue;
+                }
+                String key = item.objectName();
+                objects.add(new StorageObjectResponse(
+                        key,
+                        baseUrl + "/" + key,
+                        item.size(),
+                        item.lastModified().toInstant(),
+                        contentTypeFor(key)));
+            }
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo listar el bucket", e);
+        }
+        return objects;
     }
 
     private static boolean allows(StorageUse use, String extension) {
