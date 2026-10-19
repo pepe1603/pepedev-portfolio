@@ -76,7 +76,7 @@ public class PublicController {
         String resolved = LocalizedText.normalizeLang(lang);
         String body = cacheService.getProject(slug, resolved).orElseGet(() -> {
             String fresh = serialize(publicService.getPublishedProjectBySlug(slug, resolved)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "projecto no encontrado")));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "proyecto no encontrado")));
             cacheService.putProject(slug, resolved, fresh);
             return fresh;
         });
