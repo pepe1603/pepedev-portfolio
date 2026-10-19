@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> {
 
@@ -27,11 +28,19 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
 
     boolean existsByUserIdAndUserAgent(UUID userId, String userAgent);
 
+    /**
+     * Borra las sesiones cerradas o caducadas. Es un {@code delete}, así que necesita su propia
+     * transacción: quien la llama (el controlador) no está dentro de ninguna, y una consulta
+     * {@code @Modifying} sin transacción lanza {@code TransactionRequiredException} (500).
+     */
     @Modifying
+    @Transactional
     @Query("delete from AuthSession s where s.revokedAt is not null or s.expiresAt < :now")
     int prune(@Param("now") Instant now);
 
+    /** Igual que {@link #prune(Instant)}: {@code update} {@code @Modifying} exige transacción. */
     @Modifying
+    @Transactional
     @Query("update AuthSession s set s.revokedAt = :now where s.userId = :userId and s.revokedAt is null")
     int revokeAllByUserId(@Param("userId") UUID userId, @Param("now") Instant now);
 }
