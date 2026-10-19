@@ -9,7 +9,7 @@
 // Retry-After o un 400 de validación lleguen siempre como ApiError con el
 // mismo envelope ProblemDetail que usa el resto de la app.
 // ======================================================================
-import type { AuthUser } from '#shared/types/auth'
+import type { AuthUser, AuthSession } from '#shared/types/auth'
 import { toApiError } from './useApi'
 
 /** Respuesta 202 del login cuando el OTP está activo. */
@@ -21,7 +21,7 @@ export interface LoginChallenge {
 export type LoginResult = { user: AuthUser } | LoginChallenge
 
 interface RequestOptions {
-  method?: 'POST' | 'DELETE'
+  method?: 'GET' | 'POST' | 'DELETE'
   body?: Record<string, unknown>
 }
 
@@ -73,6 +73,26 @@ export function useAuthApi() {
     /** POST /api/auth/reset/confirm — fija la nueva contraseña con el token. */
     confirmPasswordReset(email: string, token: string, password: string) {
       return request<unknown>('/api/auth/reset/confirm', { body: { email, token, password } })
+    },
+
+    /** GET /api/auth/sessions — sesiones activas del usuario. */
+    sessions() {
+      return request<AuthSession[]>('/api/auth/sessions', { method: 'GET' })
+    },
+
+    /** POST /api/auth/sessions/[id]/revoke — revoca una sesión concreta. */
+    revokeSession(id: string) {
+      return request<unknown>(`/api/auth/sessions/${encodeURIComponent(id)}/revoke`, { method: 'POST' })
+    },
+
+    /** POST /api/auth/sessions/revoke-others — revoca todas menos la actual. */
+    revokeOtherSessions() {
+      return request<unknown>('/api/auth/sessions/revoke-others', { method: 'POST' })
+    },
+
+    /** POST /api/auth/logout-all — revoca todas (incluida la actual) y cierra sesión. */
+    logoutAll() {
+      return request<unknown>('/api/auth/logout-all', { method: 'POST' })
     }
   }
 }

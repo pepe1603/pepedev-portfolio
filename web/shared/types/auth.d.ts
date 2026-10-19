@@ -23,6 +23,20 @@ export interface AuthUser {
   role: AuthRole
 }
 
+/**
+ * Sesión activa del usuario, espejo de SessionResponse de Spring
+ * (GET /auth/sessions). `current` marca la del navegador que consulta.
+ */
+export interface AuthSession {
+  id: string
+  createdAt: string
+  lastSeenAt: string
+  expiresAt: string
+  ipAddress: string | null
+  userAgent: string | null
+  current: boolean
+}
+
 declare module '#auth-utils' {
   interface User {
     /** Claim `sub` del JWT (email del usuario). */
