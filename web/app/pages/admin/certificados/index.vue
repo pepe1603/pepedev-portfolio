@@ -323,78 +323,149 @@ function rowActions(certificate: AdminCertificate): DropdownMenuItem[][] {
         </div>
       </UCard>
 
-      <UTable
+      <div
         v-else
-        :data="visibleCertificates"
-        :columns="columns"
-        aria-label="Listado de certificados"
+        class="flex flex-col gap-3"
       >
-        <template #title-cell="{ row }">
-          <div class="min-w-0">
-            <p class="truncate font-medium text-highlighted">
-              {{ localizedText(row.original.title) || '(sin título)' }}
-            </p>
-            <p class="text-muted truncate text-xs">
-              {{ row.original.issuer }}
-            </p>
-          </div>
-        </template>
-
-        <template #kind-cell="{ row }">
-          <UBadge
-            color="neutral"
-            variant="outline"
-            size="sm"
+        <!-- Tarjetas por debajo de lg: la tabla mide ~798 px y en pantallas
+             estrechas el menu de acciones quedaba fuera de vista. -->
+        <div class="flex flex-col gap-3 lg:hidden">
+          <UCard
+            v-for="certificate in visibleCertificates"
+            :key="certificate.id"
           >
-            {{ certificateKindLabel(row.original.kind) }}
-          </UBadge>
-        </template>
+            <div class="flex flex-col gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-medium text-highlighted">
+                  {{ localizedText(certificate.title) || '(sin título)' }}
+                </span>
+                <UBadge
+                  :color="certificate.status === 'PUBLISHED' ? 'success' : 'neutral'"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ certificate.status === 'PUBLISHED' ? 'Publicado' : 'Borrador' }}
+                </UBadge>
+                <UIcon
+                  v-if="certificate.featured"
+                  name="i-lucide-star"
+                  class="text-warning size-4"
+                  aria-label="Destacado"
+                />
+              </div>
 
-        <template #status-cell="{ row }">
-          <UBadge
-            :color="row.original.status === 'PUBLISHED' ? 'success' : 'neutral'"
-            variant="subtle"
-            size="sm"
-          >
-            {{ row.original.status === 'PUBLISHED' ? 'Publicado' : 'Borrador' }}
-          </UBadge>
-        </template>
+              <p class="text-muted text-sm">
+                {{ certificate.issuer }}
+              </p>
 
-        <template #featured-cell="{ row }">
-          <UIcon
-            v-if="row.original.featured"
-            name="i-lucide-star"
-            class="text-warning size-4"
-            aria-label="Destacado"
-          />
-          <span
-            v-else
-            class="text-dimmed text-xs"
-            aria-label="No destacado"
-          >—</span>
-        </template>
+              <div class="flex flex-wrap items-center gap-2">
+                <UBadge
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                >
+                  {{ certificateKindLabel(certificate.kind) }}
+                </UBadge>
+                <span class="text-muted text-xs">
+                  Emitido el {{ adminDate(certificate.issueDate) }}
+                </span>
+              </div>
+            </div>
 
-        <template #issueDate-cell="{ row }">
-          <span class="text-muted text-sm">
-            {{ adminDate(row.original.issueDate) }}
-          </span>
-        </template>
+            <template #footer>
+              <div class="flex w-full justify-end">
+                <UDropdownMenu
+                  :items="rowActions(certificate)"
+                  :content="{ align: 'end' }"
+                >
+                  <UButton
+                    label="Acciones"
+                    icon="i-lucide-ellipsis"
+                    color="neutral"
+                    variant="soft"
+                    size="sm"
+                    block
+                    aria-label="Acciones del certificado"
+                  />
+                </UDropdownMenu>
+              </div>
+            </template>
+          </UCard>
+        </div>
 
-        <template #actions-cell="{ row }">
-          <UDropdownMenu
-            :items="rowActions(row.original)"
-            :content="{ align: 'end' }"
-          >
-            <UButton
-              icon="i-lucide-ellipsis"
+        <UTable
+          class="hidden lg:block"
+          :data="visibleCertificates"
+          :columns="columns"
+          aria-label="Listado de certificados"
+        >
+          <template #title-cell="{ row }">
+            <div class="min-w-0">
+              <p class="truncate font-medium text-highlighted">
+                {{ localizedText(row.original.title) || '(sin título)' }}
+              </p>
+              <p class="text-muted truncate text-xs">
+                {{ row.original.issuer }}
+              </p>
+            </div>
+          </template>
+
+          <template #kind-cell="{ row }">
+            <UBadge
               color="neutral"
-              variant="ghost"
-              square
-              aria-label="Acciones del certificado"
+              variant="outline"
+              size="sm"
+            >
+              {{ certificateKindLabel(row.original.kind) }}
+            </UBadge>
+          </template>
+
+          <template #status-cell="{ row }">
+            <UBadge
+              :color="row.original.status === 'PUBLISHED' ? 'success' : 'neutral'"
+              variant="subtle"
+              size="sm"
+            >
+              {{ row.original.status === 'PUBLISHED' ? 'Publicado' : 'Borrador' }}
+            </UBadge>
+          </template>
+
+          <template #featured-cell="{ row }">
+            <UIcon
+              v-if="row.original.featured"
+              name="i-lucide-star"
+              class="text-warning size-4"
+              aria-label="Destacado"
             />
-          </UDropdownMenu>
-        </template>
-      </UTable>
+            <span
+              v-else
+              class="text-dimmed text-xs"
+              aria-label="No destacado"
+            >—</span>
+          </template>
+
+          <template #issueDate-cell="{ row }">
+            <span class="text-muted text-sm">
+              {{ adminDate(row.original.issueDate) }}
+            </span>
+          </template>
+
+          <template #actions-cell="{ row }">
+            <UDropdownMenu
+              :items="rowActions(row.original)"
+              :content="{ align: 'end' }"
+            >
+              <UButton
+                icon="i-lucide-ellipsis"
+                color="neutral"
+                variant="ghost"
+                square
+                aria-label="Acciones del certificado"
+              />
+            </UDropdownMenu>
+          </template>
+        </UTable>
+      </div>
 
       <!-- Borrado. El modal se cierra con ESC o clic fuera. -->
       <UModal
