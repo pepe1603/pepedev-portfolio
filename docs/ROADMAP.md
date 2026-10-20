@@ -33,7 +33,7 @@
 
 ## Fase 3 · CRM privado
 
-- [ ] Ruta oculta + combinación de teclas (p. ej. `Ctrl+Shift+A`) que abre el login
+- [x] Ruta oculta + combinación de teclas (p. ej. `Ctrl+Shift+A`) que abre el login
 - [ ] Auth: login email/password, JWT access + refresh rotativo, guard de rutas
 - [ ] CRUD proyectos (borrador/publicado, destacados, orden)
 - [ ] CRUD certificados/cursos
