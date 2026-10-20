@@ -560,57 +560,114 @@ const atLimit = computed(() => (profile.value?.skills.length ?? 0) >= MAX_SKILLS
         </div>
       </UCard>
 
-      <UTable
+      <div
         v-else
-        :data="visibleSkills"
-        :columns="columns"
-        aria-label="Listado de tecnologías"
+        class="flex flex-col gap-3"
       >
-        <template #name-cell="{ row }">
-          <span class="font-medium text-highlighted">
-            {{ row.original.name }}
-          </span>
-        </template>
-
-        <template #category-cell="{ row }">
-          <UBadge
-            color="neutral"
-            variant="outline"
-            size="sm"
+        <!-- Tarjetas por debajo de lg, para que el panel se vea igual en todas
+             las paginas con listado. Esta tabla cabe a 390 px, pero se
+             uniforma con proyectos/certificados/mensajes: mismas tarjetas,
+             mismas acciones abajo. -->
+        <div class="flex flex-col gap-3 lg:hidden">
+          <UCard
+            v-for="skill in visibleSkills"
+            :key="`${skill.name}|${skill.category}`"
           >
-            {{ row.original.category || 'Sin categoría' }}
-          </UBadge>
-        </template>
+            <div class="flex flex-col gap-2">
+              <span class="font-medium text-highlighted">
+                {{ skill.name }}
+              </span>
 
-        <template #level-cell="{ row }">
-          <span
-            v-if="row.original.level"
-            class="text-muted text-sm"
-          >
-            {{ row.original.level }}
-          </span>
-          <span
-            v-else
-            class="text-dimmed text-xs"
-            aria-label="Sin nivel"
-          >—</span>
-        </template>
+              <div class="flex flex-wrap items-center gap-2">
+                <UBadge
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                >
+                  {{ skill.category || 'Sin categoría' }}
+                </UBadge>
+                <span
+                  v-if="skill.level"
+                  class="text-muted text-sm"
+                >
+                  {{ skill.level }}
+                </span>
+              </div>
+            </div>
 
-        <template #actions-cell="{ row }">
-          <UDropdownMenu
-            :items="rowActions(row.original)"
-            :content="{ align: 'end' }"
-          >
-            <UButton
-              icon="i-lucide-ellipsis"
+            <template #footer>
+              <div class="flex w-full justify-end">
+                <UDropdownMenu
+                  :items="rowActions(skill)"
+                  :content="{ align: 'end' }"
+                >
+                  <UButton
+                    label="Acciones"
+                    icon="i-lucide-ellipsis"
+                    color="neutral"
+                    variant="soft"
+                    size="sm"
+                    block
+                    aria-label="Acciones de la tecnología"
+                  />
+                </UDropdownMenu>
+              </div>
+            </template>
+          </UCard>
+        </div>
+
+        <UTable
+          class="hidden lg:block"
+          :data="visibleSkills"
+          :columns="columns"
+          aria-label="Listado de tecnologías"
+        >
+          <template #name-cell="{ row }">
+            <span class="font-medium text-highlighted">
+              {{ row.original.name }}
+            </span>
+          </template>
+
+          <template #category-cell="{ row }">
+            <UBadge
               color="neutral"
-              variant="ghost"
-              square
-              aria-label="Acciones de la tecnología"
-            />
-          </UDropdownMenu>
-        </template>
-      </UTable>
+              variant="outline"
+              size="sm"
+            >
+              {{ row.original.category || 'Sin categoría' }}
+            </UBadge>
+          </template>
+
+          <template #level-cell="{ row }">
+            <span
+              v-if="row.original.level"
+              class="text-muted text-sm"
+            >
+              {{ row.original.level }}
+            </span>
+            <span
+              v-else
+              class="text-dimmed text-xs"
+              aria-label="Sin nivel"
+            >—</span>
+          </template>
+
+          <template #actions-cell="{ row }">
+            <UDropdownMenu
+              :items="rowActions(row.original)"
+              :content="{ align: 'end' }"
+            >
+              <UButton
+                icon="i-lucide-ellipsis"
+                color="neutral"
+                variant="ghost"
+                square
+                aria-label="Acciones de la tecnología"
+              />
+            </UDropdownMenu>
+          </template>
+        </UTable>
+      </div>
 
       <!-- Alta y edición. Se cierra con ESC o clic fuera si no hay un guardado en curso. -->
       <UModal
