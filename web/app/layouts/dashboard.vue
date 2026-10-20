@@ -4,6 +4,12 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 // Estado compartido con AppCommandPalette y el atajo ⌘K / Ctrl+K.
 const isCommandPaletteOpen = useCommandPalette()
 
+// Nada del panel debe indexarse. El Disallow de robots.txt (ver
+// server/routes/robots.txt.ts) es solo una petición de cortesía al
+// rastreador; esto es lo que de verdad lo impide, aunque alguien enlace a
+// /admin desde fuera. Cada página del panel entra aquí por usar este layout.
+useSeoMeta({ robots: 'noindex, nofollow' })
+
 // Grupos de navegación. `type: 'label'` crea el título de sección y
 // `to` activa el item automáticamente según la ruta.
 //
