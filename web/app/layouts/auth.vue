@@ -6,6 +6,11 @@
 // por código, recuperación y 403). No usa el layout público a propósito:
 // arrastrar cabecera, menú móvil y pie a un flujo de acceso sobra, y el
 // portfolio no debe cambiar por esto.
+//
+// Estas pantallas no se indexan: son flujos, no contenido, y no hay nada
+// que un buscador deba ofrecer aquí. Se refuerza con el Disallow de
+// robots.txt (ver server/routes/robots.txt.ts).
+useSeoMeta({ robots: 'noindex, nofollow' })
 // ======================================================================
 </script>
 
