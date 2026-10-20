@@ -108,6 +108,46 @@ function retryAfterFrom(headers: Headers): number | null {
   return Number.isFinite(seconds) ? seconds : null
 }
 
+/**
+ * Cabeceras que identifican al cliente REAL para Spring.
+ *
+ * El navegador no habla con la API: habla con Nitro, y Nitro con Spring. Sin
+ * esto, Spring solo ve la IP y el user-agent del propio Nitro (::1 y "node"),
+ * y eso es lo que aparecía en la lista de sesiones de Ajustes.
+ *
+ * - `user-agent`: el del navegador, tal cual llega al borde.
+ * - `x-forwarded-for`: la IP del cliente. Se toma de la conexión directa
+ *   (`xForwardedFor: false`) y NO de una cabecera que ya viniera, para no
+ *   dejar que un cliente invente su propia IP. Si algún día se pone un proxy
+ *   delante de Nitro, habría que pasar a leer la cadena por la derecha.
+ * - `x-forwarded-proto`: http/https, que ya resuelve Nitro.
+ *
+ * Spring las consume con `server.forward-headers-strategy=framework`: a partir
+ * de ahí, `getRemoteAddr()` devuelve la IP de x-forwarded-for. Por eso la API
+ * no debe exponerse directamente: esa cabecera se puede falsificar si alguien
+ * llega a Spring sin pasar por Nitro.
+ */
+export function clientForwardedHeaders(event: NitroEvent): Record<string, string> {
+  const headers: Record<string, string> = {}
+
+  const userAgent = getRequestHeader(event, 'user-agent')
+  if (userAgent) {
+    headers['user-agent'] = userAgent
+  }
+
+  const ip = getRequestIP(event, { xForwardedFor: false })
+  if (ip) {
+    headers['x-forwarded-for'] = ip
+  }
+
+  const proto = getRequestProtocol(event, { xForwardedProto: false })
+  if (proto) {
+    headers['x-forwarded-proto'] = proto
+  }
+
+  return headers
+}
+
 /** Respuesta cruda de Spring: estado, cuerpo ya parseado y metadatos. */
 export interface SpringResult<T> {
   status: number
@@ -132,11 +172,16 @@ export async function springRequest<T>(
     headers?: Record<string, string>
   } = {}
 ): Promise<SpringResult<T>> {
+  // Las cabeceras del cliente real van de base; lo que pida cada llamada
+  // (authorization, cookie...) las sobrescribe. Así toda llamada a Spring
+  // lleva la IP y el user-agent del navegador sin repetirlo en cada helper.
+  const headers = { ...clientForwardedHeaders(event), ...options.headers }
+
   const response = await $fetch.raw<T>(springUrl(event, path), {
     method: (options.method ?? 'GET') as 'GET',
     query: options.query,
     body: options.body as Record<string, unknown> | undefined,
-    headers: options.headers,
+    headers,
     ignoreResponseError: true
   })
 
