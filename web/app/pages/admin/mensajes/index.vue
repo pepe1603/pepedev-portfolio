@@ -298,7 +298,71 @@ function rowActions(message: AdminMessage): DropdownMenuItem[][] {
       </UCard>
 
       <template v-else>
+        <!-- Tarjetas por debajo de lg: la tabla mide ~820 px y en pantallas
+             estrechas el menu de acciones quedaba fuera de vista. La tarjeta
+             entera abre la ficha (igual que la fila), salvo el menu. -->
+        <div class="flex flex-col gap-3 lg:hidden">
+          <UCard
+            v-for="message in messages"
+            :key="message.id"
+            class="cursor-pointer"
+            @click="openDetail(message)"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex min-w-0 flex-col gap-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span
+                    class="truncate text-sm"
+                    :class="message.status === 'NEW' ? 'font-semibold text-highlighted' : 'font-medium'"
+                  >
+                    {{ message.name }}
+                  </span>
+                  <UBadge
+                    :color="message.status === 'NEW' ? 'primary' : 'neutral'"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    {{ messageStatusLabel(message.status) }}
+                  </UBadge>
+                </div>
+
+                <p class="text-muted truncate text-xs">
+                  {{ message.email }}
+                </p>
+
+                <p
+                  class="truncate text-sm"
+                  :class="message.status === 'NEW' ? 'font-semibold text-highlighted' : 'text-toned'"
+                >
+                  {{ message.subject }}
+                </p>
+
+                <p class="text-muted text-xs">
+                  {{ adminDate(message.createdAt, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                </p>
+              </div>
+
+              <!-- .stop: desplegar el menu no debe abrir tambien la ficha. -->
+              <div @click.stop>
+                <UDropdownMenu
+                  :items="rowActions(message)"
+                  :content="{ align: 'end' }"
+                >
+                  <UButton
+                    icon="i-lucide-ellipsis"
+                    color="neutral"
+                    variant="ghost"
+                    square
+                    aria-label="Acciones del mensaje"
+                  />
+                </UDropdownMenu>
+              </div>
+            </div>
+          </UCard>
+        </div>
+
         <UTable
+          class="hidden lg:block"
           :data="messages"
           :columns="columns"
           :on-select="(event, row) => openDetail(row.original)"
