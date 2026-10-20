@@ -16,10 +16,14 @@ import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -159,10 +163,35 @@ public class StorageService {
     }
 
     private static boolean allows(StorageUse use, String extension) {
-        if (use == StorageUse.CV) {
-            return "pdf".equals(extension);
+        return use.formats().contains(extension);
+    }
+
+    /**
+     * Dimensiones de una imagen, leyendo solo la cabecera: no carga la imagen entera en
+     * memoria. Devuelve {@code null} si no se puede leer (un PDF, un fichero corrupto), en
+     * cuyo caso el panel simplemente no avisa de nada. El fichero se lee desde el stream
+     * original, que Spring puede volver a entregar mientras no se cierre.
+     */
+    public static int[] imageSize(MultipartFile file) {
+        try (InputStream in = file.getInputStream();
+             ImageInputStream imageStream = ImageIO.createImageInputStream(in)) {
+            if (imageStream == null) {
+                return null;
+            }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageStream);
+            if (!readers.hasNext()) {
+                return null;
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(imageStream);
+                return new int[] {reader.getWidth(0), reader.getHeight(0)};
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException | RuntimeException e) {
+            return null;
         }
-        return "jpg".equals(extension) || "png".equals(extension) || "webp".equals(extension);
     }
 
     private static byte[] readHeader(MultipartFile file) {

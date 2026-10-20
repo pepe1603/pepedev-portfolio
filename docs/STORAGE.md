@@ -16,6 +16,8 @@ demás son lecturas públicas o borrados de huérfanos.
 | Flujo | Lo dispara | Qué ocurre en el bucket |
 |---|---|---|
 | Subida | `POST /admin/storage?use=…` | `putObject` con clave `<uuid>.<ext>` |
+| Listado | `GET /admin/storage` | `listObjects`; solo lee, no toca nada |
+| Borrado manual | `DELETE /admin/storage/{name}` | `removeObject` **solo si nadie lo referencia** (409 si está en uso) |
 | Lectura | `GET /files/<uuid>.<ext>` | `getObject` y se devuelve al navegador |
 | Descarga del CV | `GET /public/cv/{lang}` | nada: redirige (302) a la URL del CV |
 | Huérfanos | al borrar o sustituir perfil, proyecto o certificado | `removeObject` si nadie lo referencia |
@@ -84,6 +86,27 @@ no se bufferea el fichero en memoria, y el content type se deduce de la extensi�
 los magic bytes, no del nombre que manda el cliente— para que lo que se anuncia y lo que se
 comprueba no puedan separarse.
 
+## 3.bis Gobierno del bucket desde el panel de Medios
+
+El panel de Medios (`/admin/medios`) es la cara visible de `GET`/`DELETE /admin/storage`. Dos
+decisiones que no volver a abrir sin motivo:
+
+- **Un fichero en uso no se borra (409).** El borrado manual comparte criterio con
+  `OrphanFileCleaner`: si perfil, un proyecto o un certificado siguen apuntando al fichero, el
+  `DELETE` responde **409** y el detalle dice *dónde* se usa ("avatar del perfil", "miniatura
+  del proyecto vault-qr"...). La alternativa —borrar con aviso y dejar la web pública con un
+  hueco— se descartó: para borrar un fichero, primero se deja de usar, y el panel lo dice.
+  `StorageReferenceChecker.usages()` es la única fuente de esa lista, y `isReferenced()` se
+  apoya en ella para que no puedan desincronizarse.
+- **La subida guía, no adivina.** `POST /admin/storage` acepta cinco usos (`avatar`,
+  `thumbnail`, `gallery`, `image`, `cv`), cada uno con sus formatos y una recomendación en
+  `StorageUse`. `GET /admin/storage/uses` los expone para que el front no duplique esas reglas.
+  La recomendación es **orientativa**: la API no puede saber por los bytes si una imagen es "de
+  galería" o "de avatar", así que solo se valida el formato (duro: 415/400) y las dimensiones
+  se devuelven en la respuesta del `POST` (`{url,width,height}`, leídas de la cabecera con
+  `ImageIO`, sin cargar la imagen entera) para que el panel avise si no encajan. Rechazar por
+  dimensiones se descartó por frágil y por fricción.
+
 ## 4. Lo que no hay, y por qué
 
 Estas son decisiones, no despistes pendientes.
@@ -127,7 +150,7 @@ retirarlo, cuando toca:
 
 ## 6. Cómo se comprueban estas decisiones
 
-255 tests en total. `./mvnw -o clean test` desde `api/`, sin MinIO levantado: el SDK va
+266 tests en total. `./mvnw -o clean test` desde `api/`, sin MinIO levantado: el SDK va
 mockeado. El único que toca el servidor es el de la migración, y no lo recoge la suite.
 
 | Decisión | Test |
@@ -139,6 +162,11 @@ mockeado. El único que toca el servidor es el de la migración, y no lo recoge 
 | El bucket se crea al arrancar si falta, con su región | `StorageServiceBootstrapTest.creaElBucketConSuRegionSiNoExiste` |
 | Si MinIO no responde, la app no arranca | `StorageServiceBootstrapTest.siMinioNoRespondeFallaAlArrancarDiciendoQueMinio` |
 | Se sube al bucket correcto, con el content type y los bytes de verdad | `StorageServiceTest.pngAvatarSeGuardaConUrlPublicaYNombreUUID` |
+| Las dimensiones salen de la cabecera; un PDF no las tiene | `StorageServiceTest.imageSizeLeeLasDimensionesDeUnPng`, `…imageSizeEsNullParaUnPdf` |
+| Un fichero en uso no se borra: 409 con dónde se usa | `ApiErrorContractTest.storageEnUsoAlBorrar_409ConDetalleDeDondeSeUsa` |
+| Un fichero libre se borra: 204 | `ApiErrorContractTest.storageLibreAlBorrar_204` |
+| La guía de usos se expone con sus formatos | `ApiErrorContractTest.storageUsesDevuelveLosCincoUsosConRecomendacion` |
+| Se sabe dónde se usa cada fichero | `StorageReferenceCheckerTest.usagesNombraElProyectoDeLaMiniaturaYDeLaGaleria` y siguientes |
 | Solo se toca lo que es clave de objeto | `StorageServiceTest.isManagedNameEsLaFronteraDelBucket`, `StorageServiceTest.deleteByUrlNoMandaAlBucketUnaClaveQueNoEsDelStorage` |
 | La migración sube, relee y es idempotente | `UploadsToBucketMigrationIT` (opt-in, no lo corre la suite) |
 
@@ -153,12 +181,15 @@ complicado.
 S3Properties (endpoint, claves, bucket, región) + MinioConfig → MinioClient
 StorageService
   ├── store(use, fichero)  → valida magic bytes y tamaño, putObject, devuelve URL
+  ├── list() → lista el bucket (recursive), con URL, tamaño y content type
+  ├── imageSize(fichero) → dimensiones desde la cabecera, null si no es imagen
   ├── deleteByUrl / deleteByName → removeObject, best-effort
   ├── baseName(url) / isManagedName(name) → qué es una clave de objeto
   └── ensureBucket() → @PostConstruct: crea el bucket si falta
 FileServingController  → GET /files/{name}, proxy en streaming, 304 con If-None-Match
 OrphanFileCleaner      → borra lo que ya no referencia nadie
-StorageReferenceChecker → mira perfil, proyectos y certificados
+StorageReferenceChecker → usages(fileName): dónde se usa (perfil, proyectos, certificados)
+StorageUse             → label + formatos + recomendación de cada tipo de subida
 ```
 
 ## 8. Qué queda para el paso a Docker y a Nuxt

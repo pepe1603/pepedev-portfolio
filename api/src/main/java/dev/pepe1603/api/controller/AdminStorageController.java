@@ -2,11 +2,14 @@ package dev.pepe1603.api.controller;
 
 import dev.pepe1603.api.dto.admin.PageResponse;
 import dev.pepe1603.api.dto.admin.StorageObjectResponse;
+import dev.pepe1603.api.dto.admin.StorageUploadResponse;
+import dev.pepe1603.api.dto.admin.StorageUseGuideResponse;
 import dev.pepe1603.api.dto.common.ApiProblemDetail;
 import dev.pepe1603.api.enums.AuditAction;
 import dev.pepe1603.api.enums.AuditResource;
 import dev.pepe1603.api.enums.StorageUse;
 import dev.pepe1603.api.service.AuditService;
+import dev.pepe1603.api.service.StorageReferenceChecker;
 import dev.pepe1603.api.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,7 +20,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -42,10 +44,13 @@ public class AdminStorageController {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final StorageService storageService;
+    private final StorageReferenceChecker referenceChecker;
     private final AuditService auditService;
 
-    public AdminStorageController(StorageService storageService, AuditService auditService) {
+    public AdminStorageController(StorageService storageService, StorageReferenceChecker referenceChecker,
+                                  AuditService auditService) {
         this.storageService = storageService;
+        this.referenceChecker = referenceChecker;
         this.auditService = auditService;
     }
 
@@ -57,18 +62,32 @@ public class AdminStorageController {
                             properties = {
                                     @StringToClassMapItem(key = "use", value = String.class),
                                     @StringToClassMapItem(key = "file", value = MultipartFile.class)}))))
-    @ApiResponse(responseCode = "200", description = "{ \"url\": \"https://.../files/<uuid>.<ext>\" }")
+    @ApiResponse(responseCode = "200", description = "{ \"url\": \"https://.../files/<uuid>.<ext>\", \"width\": 400, \"height\": 400 }")
     @ApiResponse(responseCode = "400", description = "use inválido/duplicado, fichero vacío o parte file ausente",
             content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
     @ApiResponse(responseCode = "413", description = "Fichero mayor que el límite (5/10 MB negocio o 15/20 MB multipart del contenedor)",
             content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
     @ApiResponse(responseCode = "415", description = "Tipo de fichero no permitido (p. ej. pdf para un uso que no es 'cv')",
             content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
-    public Map<String, String> upload(@RequestParam String use, @RequestPart MultipartFile file) {
+    public StorageUploadResponse upload(@RequestParam String use, @RequestPart MultipartFile file) {
         StorageUse resolved = resolveUse(use);
+        // Las dimensiones se leen antes de subir, del mismo stream que valida el servicio.
+        // Para un PDF son null; el panel no avisa entonces de nada.
+        int[] size = StorageService.imageSize(file);
         String url = storageService.store(resolved, file);
         auditService.record(AuditAction.UPLOAD, AuditResource.STORAGE, null, url);
-        return Map.of("url", url);
+        return new StorageUploadResponse(url, size == null ? null : size[0], size == null ? null : size[1]);
+    }
+
+    @GetMapping("/uses")
+    @Operation(summary = "Guía de los tipos de subida",
+            description = "Lista los usos admitidos por POST /admin/storage con su nombre, formatos permitidos y "
+                    + "una recomendación para el panel. Es solo de lectura: no cambia nada.")
+    @ApiResponse(responseCode = "200", description = "Lista de usos: [{ use, label, formats, recommendation }]")
+    public List<StorageUseGuideResponse> uses() {
+        return java.util.Arrays.stream(StorageUse.values())
+                .map(StorageUseGuideResponse::of)
+                .toList();
     }
 
     @GetMapping
@@ -102,15 +121,27 @@ public class AdminStorageController {
     @DeleteMapping("/{name}")
     @Operation(summary = "Borrar un fichero del bucket",
             description = "Borra un objeto por su nombre (<uuid>.<ext>). Un nombre que no encaje con ese patrón "
-                    + "se rechaza con 400: solo se puede tocar lo que la propia API subió. Responde 204 aunque el "
-                    + "objeto no exista (S3 borra de forma idempotente).")
+                    + "se rechaza con 400: solo se puede tocar lo que la propia API subió. Si algún recurso "
+                    + "(perfil, proyecto o certificado) sigue apuntando al fichero, se rechaza con 409 y el "
+                    + "detalle dice dónde se usa: para borrarlo hay que dejar de usarlo antes. Responde 204 "
+                    + "aunque el objeto no exista (S3 borra de forma idempotente).")
     @ApiResponse(responseCode = "204", description = "Objeto borrado (o ya no estaba)")
     @ApiResponse(responseCode = "400", description = "Nombre con forma inválida",
+            content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
+    @ApiResponse(responseCode = "409", description = "El fichero sigue en uso; el detalle dice dónde",
             content = @Content(schema = @Schema(implementation = ApiProblemDetail.class)))
     public ResponseEntity<Void> delete(@PathVariable String name) {
         if (!StorageService.isManagedName(name)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Nombre de fichero no válido. Se espera <uuid>.<jpg|png|webp|pdf>");
+        }
+        // Mismo criterio que el borrado de huérfanos: un fichero referenciado no se borra.
+        // Aquí sí se explica por qué, para que se pueda dejar de usarlo y volver.
+        List<String> usages = referenceChecker.usages(name);
+        if (!usages.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Este archivo está en uso (" + String.join("; ", usages)
+                            + "). Quita esa referencia antes de borrarlo.");
         }
         storageService.deleteByName(name);
         auditService.record(AuditAction.DELETE, AuditResource.STORAGE, null, name);

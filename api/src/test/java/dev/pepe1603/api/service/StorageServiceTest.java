@@ -215,6 +215,28 @@ class StorageServiceTest {
     }
 
     @Test
+    void imageSizeLeeLasDimensionesDeUnPng() {
+        // PNG real de 2x3, generado aparte: si esto dejara de ser un PNG válido, el test
+        // no fallaría con "no es imagen" sino con las dimensiones, que es lo que se mira.
+        byte[] png = java.util.Base64.getDecoder().decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAIAAAADCAIAAAA2iEnWAAAAEUlEQVR4nGP4z8DwnwGMERQARNAF+7BYSawAAAAASUVORK5CYII=");
+
+        int[] size = StorageService.imageSize(file("foto.png", "image/png", png));
+
+        assertThat(size).containsExactly(2, 3);
+    }
+
+    @Test
+    void imageSizeEsNullParaUnPdf() {
+        assertThat(StorageService.imageSize(file("cv.pdf", "application/pdf", PDF))).isNull();
+    }
+
+    @Test
+    void imageSizeEsNullParaUnFicheroQueNoEsImagen() {
+        assertThat(StorageService.imageSize(file("notas.txt", "text/plain", "hola".getBytes()))).isNull();
+    }
+
+    @Test
     void baseNameExtraeElNombreSoloSiCumpleElPatron() {
         String name = "123e4567-e89b-12d3-a456-426614174000.png";
         assertThat(StorageService.baseName("http://host/files/" + name)).isEqualTo(name);

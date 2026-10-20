@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -26,6 +27,7 @@ import dev.pepe1603.api.service.OtpService;
 import dev.pepe1603.api.service.PasswordResetService;
 import dev.pepe1603.api.service.SecurityNotificationService;
 import dev.pepe1603.api.service.ContactService;
+import dev.pepe1603.api.service.StorageReferenceChecker;
 import dev.pepe1603.api.service.StorageService;
 import dev.pepe1603.api.security.ContactRateLimiter;
 import dev.pepe1603.api.security.AccessTokenReader;
@@ -87,6 +89,8 @@ class ApiErrorContractTest {
     private ContactRateLimiter contactRateLimiter;
     @MockitoBean
     private StorageService storageService;
+    @MockitoBean
+    private StorageReferenceChecker storageReferenceChecker;
     @MockitoBean
     private AdminCertificateService adminCertificateService;
     @MockitoBean
@@ -303,6 +307,46 @@ class ApiErrorContractTest {
                         jsonPath("$.detail").value("El fichero supera el tamaño máximo permitido"),
                         jsonPath("$.instance").value("/admin/storage"),
                         NO_LEGACY_FIELDS);
+    }
+
+    @Test
+    void storageEnUsoAlBorrar_409ConDetalleDeDondeSeUsa() throws Exception {
+        given(storageReferenceChecker.usages(anyString()))
+                .willReturn(java.util.List.of("avatar del perfil", "miniatura del proyecto vault-qr"));
+
+        mockMvc.perform(delete("/admin/storage/123e4567-e89b-12d3-a456-426614174000.png"))
+                .andExpect(status().isConflict())
+                .andExpectAll(
+                        jsonPath("$.title").value("Conflict"),
+                        jsonPath("$.status").value(409),
+                        jsonPath("$.detail").value(
+                                "Este archivo está en uso (avatar del perfil; miniatura del proyecto vault-qr). "
+                                        + "Quita esa referencia antes de borrarlo."),
+                        jsonPath("$.instance").value("/admin/storage/123e4567-e89b-12d3-a456-426614174000.png"),
+                        NO_LEGACY_FIELDS);
+        verify(storageService, never()).deleteByName(anyString());
+    }
+
+    @Test
+    void storageLibreAlBorrar_204() throws Exception {
+        given(storageReferenceChecker.usages(anyString())).willReturn(java.util.List.of());
+
+        mockMvc.perform(delete("/admin/storage/123e4567-e89b-12d3-a456-426614174000.png"))
+                .andExpect(status().isNoContent());
+        verify(storageService).deleteByName("123e4567-e89b-12d3-a456-426614174000.png");
+    }
+
+    @Test
+    void storageUsesDevuelveLosCincoUsosConRecomendacion() throws Exception {
+        mockMvc.perform(get("/admin/storage/uses"))
+                .andExpect(status().isOk())
+                .andExpectAll(
+                        jsonPath("$.length()").value(5),
+                        jsonPath("$[0].use").value("avatar"),
+                        jsonPath("$[0].label").value("Avatar"),
+                        jsonPath("$[0].formats").isArray(),
+                        jsonPath("$[4].use").value("cv"),
+                        jsonPath("$[4].formats[0]").value("pdf"));
     }
 
     @Test
