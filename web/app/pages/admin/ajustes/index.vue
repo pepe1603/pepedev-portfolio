@@ -233,7 +233,7 @@ async function sendResetEmail() {
     </template>
 
     <template #body>
-      <div class="flex max-w-3xl flex-col gap-6">
+      <div class="flex max-w-4xl flex-col gap-6">
         <!-- ============================ SEGURIDAD ============================ -->
         <section class="flex flex-col gap-3">
           <div>
@@ -323,7 +323,7 @@ async function sendResetEmail() {
               </p>
             </div>
 
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
               <UButton
                 v-if="otherSessionCount > 0"
                 label="Cerrar las demás"
@@ -392,61 +392,132 @@ async function sendResetEmail() {
             </p>
           </UCard>
 
-          <!-- Listado -->
-          <UTable
+          <div
             v-else
-            :data="sessions"
-            :columns="sessionColumns"
-            aria-label="Sesiones activas"
+            class="flex flex-col gap-3"
           >
-            <template #userAgent-cell="{ row }">
-              <div class="flex items-center gap-2">
-                <span class="text-highlighted">
-                  {{ deviceLabel(row.original.userAgent) }}
+            <!-- Tarjetas en movil: la tabla tiene 5 columnas y no cabe en
+                 una pantalla estrecha; con scroll horizontal el boton
+                 Cerrar quedaba fuera. A partir de sm manda la tabla. -->
+            <div class="flex flex-col gap-3 sm:hidden">
+              <UCard
+                v-for="session in sessions"
+                :key="session.id"
+                :class="session.current ? 'ring-2 ring-primary' : ''"
+              >
+                <div class="flex flex-col gap-2">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-medium text-highlighted">
+                      {{ deviceLabel(session.userAgent) }}
+                    </span>
+                    <UBadge
+                      v-if="session.current"
+                      color="primary"
+                      variant="soft"
+                      size="sm"
+                    >
+                      Esta sesión
+                    </UBadge>
+                  </div>
+
+                  <dl class="text-sm">
+                    <div class="flex justify-between gap-3 py-0.5">
+                      <dt class="text-muted">
+                        IP
+                      </dt>
+                      <dd class="text-highlighted">
+                        {{ session.ipAddress || '—' }}
+                      </dd>
+                    </div>
+                    <div class="flex justify-between gap-3 py-0.5">
+                      <dt class="text-muted">
+                        Última actividad
+                      </dt>
+                      <dd class="text-highlighted">
+                        {{ adminDate(session.lastSeenAt, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }}
+                      </dd>
+                    </div>
+                    <div class="flex justify-between gap-3 py-0.5">
+                      <dt class="text-muted">
+                        Caduca
+                      </dt>
+                      <dd class="text-highlighted">
+                        {{ adminDate(session.expiresAt) }}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <template #footer>
+                  <UButton
+                    label="Cerrar"
+                    icon="i-lucide-x"
+                    color="error"
+                    variant="soft"
+                    size="sm"
+                    block
+                    :disabled="sessionAction !== null"
+                    @click="askRevoke(session)"
+                  />
+                </template>
+              </UCard>
+            </div>
+
+            <UTable
+              class="hidden sm:block"
+              :data="sessions"
+              :columns="sessionColumns"
+              aria-label="Sesiones activas"
+            >
+              <template #userAgent-cell="{ row }">
+                <div class="flex items-center gap-2">
+                  <span class="text-highlighted">
+                    {{ deviceLabel(row.original.userAgent) }}
+                  </span>
+                  <UBadge
+                    v-if="row.original.current"
+                    color="primary"
+                    variant="soft"
+                    size="sm"
+                  >
+                    Esta sesión
+                  </UBadge>
+                </div>
+              </template>
+
+              <template #ipAddress-cell="{ row }">
+                <span class="text-muted text-sm">
+                  {{ row.original.ipAddress || '—' }}
                 </span>
-                <UBadge
-                  v-if="row.original.current"
-                  color="primary"
-                  variant="soft"
-                  size="sm"
-                >
-                  Esta sesión
-                </UBadge>
-              </div>
-            </template>
+              </template>
 
-            <template #ipAddress-cell="{ row }">
-              <span class="text-muted text-sm">
-                {{ row.original.ipAddress || '—' }}
-              </span>
-            </template>
+              <template #lastSeenAt-cell="{ row }">
+                <span class="text-muted text-sm">
+                  {{ adminDate(row.original.lastSeenAt, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }}
+                </span>
+              </template>
 
-            <template #lastSeenAt-cell="{ row }">
-              <span class="text-muted text-sm">
-                {{ adminDate(row.original.lastSeenAt, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }}
-              </span>
-            </template>
+              <template #expiresAt-cell="{ row }">
+                <span class="text-muted text-sm">
+                  {{ adminDate(row.original.expiresAt) }}
+                </span>
+              </template>
 
-            <template #expiresAt-cell="{ row }">
-              <span class="text-muted text-sm">
-                {{ adminDate(row.original.expiresAt) }}
-              </span>
-            </template>
-
-            <template #actions-cell="{ row }">
-              <div class="flex justify-end">
-                <UButton
-                  label="Cerrar"
-                  icon="i-lucide-x"
-                  color="error"
-                  variant="ghost"
-                  size="xs"
-                  :disabled="sessionAction !== null"
-                  @click="askRevoke(row.original)"
-                />
-              </div>
-            </template>
-          </UTable>
+              <template #actions-cell="{ row }">
+                <div class="flex justify-end">
+                  <UButton
+                    label="Cerrar"
+                    icon="i-lucide-x"
+                    color="error"
+                    variant="ghost"
+                    size="xs"
+                    :disabled="sessionAction !== null"
+                    @click="askRevoke(row.original)"
+                  />
+                </div>
+              </template>
+            </UTable>
+          </div>
         </section>
 
         <!-- ============================ CONTRASEÑA ============================ -->
