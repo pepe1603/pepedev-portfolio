@@ -350,9 +350,27 @@ export function messageStatusLabel(status: MessageStatus): string {
  */
 export type StorageUse = 'avatar' | 'thumbnail' | 'gallery' | 'image' | 'cv'
 
-/** Respuesta de POST /admin/storage: la URL pública ya montada por la API. */
+/**
+ * Respuesta de POST /admin/storage: la URL pública ya montada por la API y,
+ * si es una imagen legible, sus dimensiones. En un PDF van a null.
+ */
 export interface StorageUploadResult {
   url: string
+  width: number | null
+  height: number | null
+}
+
+/**
+ * Espejo de StorageUseGuideResponse (GET /admin/storage/uses): la guía que la
+ * API publica de cada tipo de subida para que el panel no la duplique.
+ */
+export interface AdminStorageUse {
+  use: StorageUse
+  label: string
+  /** Extensiones admitidas ('jpg', 'png', 'webp', 'pdf'). */
+  formats: string[]
+  /** Recomendación en lenguaje de persona; orientativa, no bloquea. */
+  recommendation: string
 }
 
 /**

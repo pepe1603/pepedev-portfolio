@@ -2,14 +2,20 @@
 // ======================================================================
 // MEDIOS
 //
-// Gestión del bucket: ver qué ficheros hay y borrar los que sobran. Son
-// dos endpoints nuevos de la API (GET y DELETE /admin/storage); el proxy
-// /api/admin/** los reenvía tal cual, así que no hay endpoint BFF propio.
+// Gestión del bucket: ver qué ficheros hay, subir nuevos por tipo y borrar
+// los que sobran. Todo son endpoints de la API (GET/DELETE /admin/storage,
+// GET /admin/storage/uses, POST /admin/storage); el proxy /api/admin/** los
+// reenvía tal cual, así que no hay endpoint BFF propio.
 //
-// OJO con una cosa que el borrado NO hace: no toca la base de datos. Si el
-// fichero borrado es el avatar del perfil, la miniatura de un proyecto o
-// una imagen de la galería, la web pública mostrará un hueco. Se avisa en
-// la confirmación porque es la trampa más fácil de pisar aquí.
+// El borrado NO toca la base de datos, y la API lo sabe: si perfil, un
+// proyecto o un certificado siguen apuntando al fichero, DELETE responde 409
+// y dice dónde se usa. Por eso aquí no se ofrece borrar "a la fuerza": el
+// aviso explica que primero hay que dejar de usarlo.
+//
+// La subida guía, no adivina: los tipos y sus recomendaciones vienen de la
+// API (GET /admin/storage/uses) para no duplicar aquí reglas que ya viven en
+// StorageUse. Las dimensiones las devuelve el propio POST para avisar si no
+// encajan; nunca bloquean (solo el formato lo hace, y eso ya lo valida la API).
 //
 // El listado llega paginado (GET /admin/storage?page=&size=) y ordenado por
 // fecha de modificación, lo más reciente primero.
@@ -22,6 +28,7 @@ const api = useAdminApi()
 const { notify } = useAppNotify()
 
 const PAGE_SIZE = 24
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 // Estado de los filtros. El tipo y la búsqueda son client-side sobre la página
 // cargada; para el tamaño del bucket (pocos objetos) no merece un round trip.
@@ -35,6 +42,13 @@ const { data, status, error, refresh } = await useAsyncData(
   'admin-media',
   () => api.get<AdminPage<AdminStorageObject>>('/storage', { page: page.value - 1, size: PAGE_SIZE }),
   { server: false, watch: [page] }
+)
+
+// La guía de tipos se carga una vez; no depende de la página ni de los filtros.
+const { data: uses } = await useAsyncData(
+  'admin-media-uses',
+  () => api.get<AdminStorageUse[]>('/storage/uses'),
+  { server: false }
 )
 
 const objects = computed(() => data.value?.items ?? [])
@@ -92,6 +106,111 @@ function typeLabel(object: AdminStorageObject): string {
 }
 
 // ---------------------------------------------------------------------------
+// COPIAR URL Y DESCARGAR
+// ---------------------------------------------------------------------------
+/** Copia la URL pública al portapapeles. Si el navegador la deniega, se avisa. */
+async function copyUrl(object: AdminStorageObject) {
+  try {
+    await navigator.clipboard.writeText(object.url)
+    notify('URL copiada al portapapeles', 'success')
+  } catch {
+    notify('No se pudo copiar la URL. Cópiala a mano desde el nombre del archivo.', 'error')
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SUBIDA
+// ---------------------------------------------------------------------------
+const uploadOpen = ref(false)
+const uploadUse = ref<StorageUse>('thumbnail')
+const uploadInput = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
+// Aviso de dimensiones tras subir: se queda visible en el modal hasta cerrarlo.
+const uploadWarning = ref<string | null>(null)
+
+// El tipo por defecto es el primero que ofrece la API, para no hardcodear nada.
+watchEffect(() => {
+  if (uses.value?.length && !uses.value.some(u => u.use === uploadUse.value)) {
+    uploadUse.value = uses.value[0]!.use
+  }
+})
+
+const currentUse = computed(() => uses.value?.find(u => u.use === uploadUse.value) ?? null)
+
+/** La extensión que hay que pedir en el selector de fichero, según el tipo. */
+const acceptForCurrentUse = computed(() =>
+  currentUse.value && !currentUse.value.formats.includes('jpg')
+    ? 'application/pdf'
+    : 'image/jpeg,image/png,image/webp'
+)
+
+function openUpload() {
+  uploadWarning.value = null
+  uploadOpen.value = true
+}
+
+/**
+ * Avisa si las dimensiones subidas no encajan con la recomendación del tipo.
+ * No bloquea: es orientativo. Sin dimensiones (un PDF) no hay nada que decir.
+ */
+function dimensionWarning(result: StorageUploadResult): string | null {
+  if (result.width == null || result.height == null) return null
+  const { width, height } = result
+  const ratio = width / height
+  switch (uploadUse.value) {
+    case 'avatar':
+      if (Math.abs(ratio - 1) > 0.1) return `La imagen es ${width}×${height}; para un avatar se recomienda cuadrada.`
+      if (width < 400) return `La imagen es ${width}×${height}; para un avatar se recomienda al menos 400×400.`
+      return null
+    case 'thumbnail':
+      if (Math.abs(ratio - 16 / 9) > 0.15) return `La imagen es ${width}×${height}; para una miniatura se recomienda 16:9.`
+      if (width < 1200) return `La imagen es ${width}×${height}; para una miniatura se recomienda al menos 1200 px de ancho.`
+      return null
+    default:
+      if (width < 1200) return `La imagen es ${width}×${height}; se recomienda al menos 1200 px de ancho.`
+      return null
+  }
+}
+
+/** Valida el fichero elegido y lo sube. Reutiliza el patrón de los formularios. */
+async function onFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  // Se limpia ya el input para poder volver a elegir el mismo fichero.
+  if (input) input.value = ''
+  if (!file) return
+
+  const isPdfUse = uploadUse.value === 'cv'
+  if (isPdfUse && file.type !== 'application/pdf') {
+    notify('Para el CV solo se admite PDF', 'error')
+    return
+  }
+  if (!isPdfUse && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    notify('Solo se admiten imágenes JPEG, PNG o WebP', 'error')
+    return
+  }
+
+  uploading.value = true
+  uploadWarning.value = null
+  try {
+    const result = await api.upload<StorageUploadResult>('/storage', file, uploadUse.value)
+    uploadWarning.value = dimensionWarning(result)
+    notify('Archivo subido', 'success')
+    // El nuevo fichero es el más reciente: va al principio de la primera página.
+    if (page.value === 1) {
+      await refresh()
+    } else {
+      page.value = 1
+    }
+  } catch (err) {
+    const apiError = toApiError(err)
+    notify(apiError.problem.detail || apiError.message, 'error')
+  } finally {
+    uploading.value = false
+  }
+}
+
+// ---------------------------------------------------------------------------
 // BORRADO
 // ---------------------------------------------------------------------------
 const deleteOpen = ref(false)
@@ -139,6 +258,11 @@ async function confirmDelete() {
         <template #right>
           <ColorModeToggle />
           <UButton
+            label="Subir"
+            icon="i-lucide-upload"
+            @click="openUpload"
+          />
+          <UButton
             label="Actualizar"
             icon="i-lucide-refresh-cw"
             color="neutral"
@@ -152,8 +276,8 @@ async function confirmDelete() {
 
     <template #body>
       <p class="text-muted max-w-3xl text-sm">
-        Todos los archivos del bucket. Se suben desde las fichas de perfil, proyectos y certificados; aquí solo se
-        consultan y se borran los que ya no se usan.
+        Todos los archivos del bucket. Se pueden subir desde aquí o desde las fichas de perfil, proyectos y
+        certificados; un archivo en uso no se puede borrar.
       </p>
 
       <!-- Filtros -->
@@ -243,9 +367,15 @@ async function confirmDelete() {
               No hay archivos en el bucket
             </p>
             <p class="text-muted text-sm">
-              Aquí aparecerán las imágenes y PDF que subas desde el perfil, los proyectos y los certificados.
+              Aquí aparecerán las imágenes y PDF que subas. Puedes subirlos desde aquí o desde las fichas de perfil,
+              proyectos y certificados.
             </p>
           </div>
+          <UButton
+            label="Subir archivo"
+            icon="i-lucide-upload"
+            @click="openUpload"
+          />
         </div>
       </UCard>
 
@@ -321,7 +451,26 @@ async function confirmDelete() {
           </div>
 
           <template #footer>
-            <div class="flex justify-end">
+            <div class="flex items-center justify-between gap-1">
+              <div class="flex gap-1">
+                <UButton
+                  label="Copiar URL"
+                  icon="i-lucide-link"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  @click="copyUrl(object)"
+                />
+                <UButton
+                  label="Descargar"
+                  icon="i-lucide-download"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  :to="object.url"
+                  :download="object.key"
+                />
+              </div>
               <UButton
                 label="Borrar"
                 icon="i-lucide-trash-2"
@@ -365,6 +514,77 @@ async function confirmDelete() {
         </div>
       </div>
 
+      <!-- Modal de subida -->
+      <UModal
+        v-model:open="uploadOpen"
+        title="Subir archivo"
+        :dismissible="!uploading"
+        :close="!uploading"
+      >
+        <template #body>
+          <div class="flex flex-col gap-4">
+            <UFormField
+              label="Tipo de archivo"
+              description="Determina el formato admitido y la recomendación."
+            >
+              <USelect
+                v-model="uploadUse"
+                :items="(uses ?? []).map(u => ({ label: u.label, value: u.use }))"
+                class="w-full"
+                :disabled="uploading"
+              />
+            </UFormField>
+
+            <UAlert
+              v-if="currentUse"
+              color="neutral"
+              variant="subtle"
+              icon="i-lucide-info"
+              :title="`Recomendación para ${currentUse.label.toLowerCase()}`"
+              :description="`${currentUse.recommendation} Formatos: ${currentUse.formats.join(', ').toUpperCase()}.`"
+            />
+
+            <UAlert
+              v-if="uploadWarning"
+              color="warning"
+              variant="subtle"
+              icon="i-lucide-triangle-alert"
+              title="Las dimensiones no encajan"
+              :description="uploadWarning"
+            />
+
+            <input
+              ref="uploadInput"
+              type="file"
+              :accept="acceptForCurrentUse"
+              class="hidden"
+              tabindex="-1"
+              aria-hidden="true"
+              @change="onFileSelected"
+            >
+            <UButton
+              label="Elegir archivo y subir"
+              icon="i-lucide-upload"
+              class="self-start"
+              :loading="uploading"
+              @click="uploadInput?.click()"
+            />
+          </div>
+        </template>
+
+        <template #footer>
+          <div class="flex w-full justify-end">
+            <UButton
+              label="Cerrar"
+              color="neutral"
+              variant="soft"
+              :disabled="uploading"
+              @click="uploadOpen = false"
+            />
+          </div>
+        </template>
+      </UModal>
+
       <!-- Modal de borrado -->
       <UModal
         v-model:open="deleteOpen"
@@ -392,8 +612,8 @@ async function confirmDelete() {
               color="warning"
               variant="subtle"
               icon="i-lucide-triangle-alert"
-              title="Puede estar en uso"
-              description="Si este archivo es el avatar del perfil, la miniatura de un proyecto o una imagen de la galería, la web pública mostrará un hueco. Borrar aquí no actualiza los datos que lo referencian."
+              title="No se borra si está en uso"
+              description="Si es el avatar del perfil, la miniatura de un proyecto, una imagen de la galería o la de un certificado, la API lo rechazará y te dirá dónde se usa: primero hay que dejar de usarlo."
             />
           </div>
         </template>
