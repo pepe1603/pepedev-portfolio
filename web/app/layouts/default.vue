@@ -26,6 +26,11 @@ const nextLang = computed(() => (lang.value === 'es' ? 'en' : 'es'))
 function toggleLang() {
   lang.value = nextLang.value
 }
+
+// Atajo oculto al panel: Ctrl+Shift+U / ⌘+Shift+U. La web pública no tiene
+// ningún enlace visible hacia /admin; esta es la vía de acceso. Solo se
+// monta aquí (layout público), no dentro del panel.
+useAdminShortcut()
 </script>
 
 <template>
