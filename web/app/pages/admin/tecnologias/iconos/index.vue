@@ -274,44 +274,84 @@ const catalogColumns: TableColumn<{ name: string, icon: string }>[] = [
             :description="`Estas caen al icono genérico (${TECH_ICON_FALLBACK}): ${uncoveredTechs.map(t => t.name).join(', ')}.`"
           />
 
-          <UTable
+          <div
             v-if="techRows.length"
-            :data="techRows"
-            :columns="techColumns"
-            aria-label="Iconos de tecnologías"
+            class="flex flex-col gap-3"
           >
-            <template #name-cell="{ row }">
-              <span class="font-medium text-highlighted">
-                {{ row.original.name }}
-              </span>
-            </template>
-
-            <template #icon-cell="{ row }">
-              <div class="flex items-center gap-2">
-                <UIcon
-                  :name="row.original.icon"
-                  class="size-5 shrink-0"
-                />
-                <code class="text-muted text-xs">{{ row.original.icon }}</code>
-              </div>
-            </template>
-
-            <template #covered-cell="{ row }">
-              <UBadge
-                :color="row.original.covered ? 'success' : 'warning'"
-                variant="subtle"
-                size="sm"
+            <!-- Tarjetas por debajo de lg, igual que el resto del panel. -->
+            <div class="flex flex-col gap-3 lg:hidden">
+              <UCard
+                v-for="row in techRows"
+                :key="row.name"
               >
-                {{ row.original.covered ? 'Propio' : 'Genérico' }}
-              </UBadge>
-            </template>
+                <div class="flex flex-col gap-2">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-medium text-highlighted">
+                      {{ row.name }}
+                    </span>
+                    <UBadge
+                      :color="row.covered ? 'success' : 'warning'"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {{ row.covered ? 'Propio' : 'Genérico' }}
+                    </UBadge>
+                  </div>
 
-            <template #projects-cell="{ row }">
-              <span class="text-muted text-xs">
-                {{ row.original.projects.join(', ') }}
-              </span>
-            </template>
-          </UTable>
+                  <div class="flex items-center gap-2">
+                    <UIcon
+                      :name="row.icon"
+                      class="size-5 shrink-0"
+                    />
+                    <code class="text-muted text-xs">{{ row.icon }}</code>
+                  </div>
+
+                  <p class="text-muted text-xs">
+                    {{ row.projects.join(', ') }}
+                  </p>
+                </div>
+              </UCard>
+            </div>
+
+            <UTable
+              class="hidden lg:block"
+              :data="techRows"
+              :columns="techColumns"
+              aria-label="Iconos de tecnologías"
+            >
+              <template #name-cell="{ row }">
+                <span class="font-medium text-highlighted">
+                  {{ row.original.name }}
+                </span>
+              </template>
+
+              <template #icon-cell="{ row }">
+                <div class="flex items-center gap-2">
+                  <UIcon
+                    :name="row.original.icon"
+                    class="size-5 shrink-0"
+                  />
+                  <code class="text-muted text-xs">{{ row.original.icon }}</code>
+                </div>
+              </template>
+
+              <template #covered-cell="{ row }">
+                <UBadge
+                  :color="row.original.covered ? 'success' : 'warning'"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ row.original.covered ? 'Propio' : 'Genérico' }}
+                </UBadge>
+              </template>
+
+              <template #projects-cell="{ row }">
+                <span class="text-muted text-xs">
+                  {{ row.original.projects.join(', ') }}
+                </span>
+              </template>
+            </UTable>
+          </div>
 
           <UCard
             v-else
@@ -352,44 +392,84 @@ const catalogColumns: TableColumn<{ name: string, icon: string }>[] = [
             :description="`Estas caen al icono genérico (${CATEGORY_ICON_FALLBACK}): ${uncoveredCategories.map(c => c.name).join(', ')}.`"
           />
 
-          <UTable
+          <div
             v-if="categoryRows.length"
-            :data="categoryRows"
-            :columns="categoryColumns"
-            aria-label="Iconos de categorías"
+            class="flex flex-col gap-3"
           >
-            <template #name-cell="{ row }">
-              <span class="font-medium text-highlighted">
-                {{ row.original.name }}
-              </span>
-            </template>
-
-            <template #icon-cell="{ row }">
-              <div class="flex items-center gap-2">
-                <UIcon
-                  :name="row.original.icon"
-                  class="size-5 shrink-0"
-                />
-                <code class="text-muted text-xs">{{ row.original.icon }}</code>
-              </div>
-            </template>
-
-            <template #covered-cell="{ row }">
-              <UBadge
-                :color="row.original.covered ? 'success' : 'warning'"
-                variant="subtle"
-                size="sm"
+            <!-- Tarjetas por debajo de lg. -->
+            <div class="flex flex-col gap-3 lg:hidden">
+              <UCard
+                v-for="row in categoryRows"
+                :key="row.name"
               >
-                {{ row.original.covered ? 'Propio' : 'Genérico' }}
-              </UBadge>
-            </template>
+                <div class="flex flex-col gap-2">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-medium text-highlighted">
+                      {{ row.name }}
+                    </span>
+                    <UBadge
+                      :color="row.covered ? 'success' : 'warning'"
+                      variant="subtle"
+                      size="sm"
+                    >
+                      {{ row.covered ? 'Propio' : 'Genérico' }}
+                    </UBadge>
+                  </div>
 
-            <template #count-cell="{ row }">
-              <span class="text-muted text-sm">
-                {{ row.original.count }}
-              </span>
-            </template>
-          </UTable>
+                  <div class="flex items-center gap-2">
+                    <UIcon
+                      :name="row.icon"
+                      class="size-5 shrink-0"
+                    />
+                    <code class="text-muted text-xs">{{ row.icon }}</code>
+                  </div>
+
+                  <p class="text-muted text-xs">
+                    {{ row.count }} {{ row.count === 1 ? 'tecnología' : 'tecnologías' }}
+                  </p>
+                </div>
+              </UCard>
+            </div>
+
+            <UTable
+              class="hidden lg:block"
+              :data="categoryRows"
+              :columns="categoryColumns"
+              aria-label="Iconos de categorías"
+            >
+              <template #name-cell="{ row }">
+                <span class="font-medium text-highlighted">
+                  {{ row.original.name }}
+                </span>
+              </template>
+
+              <template #icon-cell="{ row }">
+                <div class="flex items-center gap-2">
+                  <UIcon
+                    :name="row.original.icon"
+                    class="size-5 shrink-0"
+                  />
+                  <code class="text-muted text-xs">{{ row.original.icon }}</code>
+                </div>
+              </template>
+
+              <template #covered-cell="{ row }">
+                <UBadge
+                  :color="row.original.covered ? 'success' : 'warning'"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ row.original.covered ? 'Propio' : 'Genérico' }}
+                </UBadge>
+              </template>
+
+              <template #count-cell="{ row }">
+                <span class="text-muted text-sm">
+                  {{ row.original.count }}
+                </span>
+              </template>
+            </UTable>
+          </div>
 
           <UCard
             v-else
@@ -420,7 +500,28 @@ const catalogColumns: TableColumn<{ name: string, icon: string }>[] = [
             aria-label="Buscar en el catálogo de iconos"
           />
 
+          <!-- Tarjetas por debajo de lg; el catalogo tiene muchas filas, pero
+               se uniforma con el resto del panel. -->
+          <div class="flex flex-col gap-3 lg:hidden">
+            <UCard
+              v-for="row in visibleCatalog"
+              :key="row.name"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-highlighted">{{ row.name }}</span>
+                <div class="flex items-center gap-2">
+                  <UIcon
+                    :name="row.icon"
+                    class="size-5 shrink-0"
+                  />
+                  <code class="text-muted text-xs">{{ row.icon }}</code>
+                </div>
+              </div>
+            </UCard>
+          </div>
+
           <UTable
+            class="hidden lg:block"
             :data="visibleCatalog"
             :columns="catalogColumns"
             aria-label="Catálogo de iconos"
