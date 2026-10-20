@@ -307,88 +307,171 @@ function rowActions(project: AdminProject): DropdownMenuItem[][] {
         </div>
       </UCard>
 
-      <UTable
+      <div
         v-else
-        :data="visibleProjects"
-        :columns="columns"
-        aria-label="Listado de proyectos"
+        class="flex flex-col gap-3"
       >
-        <template #title-cell="{ row }">
-          <div class="min-w-0">
-            <p class="truncate font-medium text-highlighted">
-              {{ localizedText(row.original.title) || '(sin título)' }}
-            </p>
-            <p class="text-muted truncate text-xs">
-              {{ row.original.slug }}
-            </p>
-          </div>
-        </template>
-
-        <template #status-cell="{ row }">
-          <UBadge
-            :color="row.original.status === 'PUBLISHED' ? 'success' : 'neutral'"
-            variant="subtle"
-            size="sm"
+        <!-- Tarjetas por debajo de lg: la tabla mide ~735 px y en pantallas
+             estrechas el menu de acciones quedaba fuera de vista. Se usa lg
+             (1024 px) y no sm porque el corte de 640 px seguiria dejando la
+             tabla apretada entre 640 y 735 px. -->
+        <div class="flex flex-col gap-3 lg:hidden">
+          <UCard
+            v-for="project in visibleProjects"
+            :key="project.id"
           >
-            {{ row.original.status === 'PUBLISHED' ? 'Publicado' : 'Borrador' }}
-          </UBadge>
-        </template>
+            <div class="flex flex-col gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-medium text-highlighted">
+                  {{ localizedText(project.title) || '(sin título)' }}
+                </span>
+                <UBadge
+                  :color="project.status === 'PUBLISHED' ? 'success' : 'neutral'"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ project.status === 'PUBLISHED' ? 'Publicado' : 'Borrador' }}
+                </UBadge>
+                <UIcon
+                  v-if="project.featured"
+                  name="i-lucide-star"
+                  class="text-warning size-4"
+                  aria-label="Destacado"
+                />
+              </div>
 
-        <template #featured-cell="{ row }">
-          <UIcon
-            v-if="row.original.featured"
-            name="i-lucide-star"
-            class="text-warning size-4"
-            aria-label="Destacado"
-          />
-          <span
-            v-else
-            class="text-dimmed text-xs"
-            aria-label="No destacado"
-          >—</span>
-        </template>
+              <code class="text-muted truncate text-xs">{{ project.slug }}</code>
 
-        <template #stack-cell="{ row }">
-          <div class="flex flex-wrap gap-1">
+              <div
+                v-if="project.stack.length"
+                class="flex flex-wrap gap-1"
+              >
+                <UBadge
+                  v-for="tech in project.stack.slice(0, 3)"
+                  :key="tech"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                >
+                  {{ tech }}
+                </UBadge>
+                <span
+                  v-if="project.stack.length > 3"
+                  class="text-dimmed self-center text-xs"
+                >
+                  +{{ project.stack.length - 3 }}
+                </span>
+              </div>
+
+              <p class="text-muted text-xs">
+                Actualizado el {{ adminDate(project.updatedAt) }}
+              </p>
+            </div>
+
+            <template #footer>
+              <div class="flex w-full justify-end">
+                <UDropdownMenu
+                  :items="rowActions(project)"
+                  :content="{ align: 'end' }"
+                >
+                  <UButton
+                    label="Acciones"
+                    icon="i-lucide-ellipsis"
+                    color="neutral"
+                    variant="soft"
+                    size="sm"
+                    block
+                    aria-label="Acciones del proyecto"
+                  />
+                </UDropdownMenu>
+              </div>
+            </template>
+          </UCard>
+        </div>
+
+        <UTable
+          class="hidden lg:block"
+          :data="visibleProjects"
+          :columns="columns"
+          aria-label="Listado de proyectos"
+        >
+          <template #title-cell="{ row }">
+            <div class="min-w-0">
+              <p class="truncate font-medium text-highlighted">
+                {{ localizedText(row.original.title) || '(sin título)' }}
+              </p>
+              <p class="text-muted truncate text-xs">
+                {{ row.original.slug }}
+              </p>
+            </div>
+          </template>
+
+          <template #status-cell="{ row }">
             <UBadge
-              v-for="tech in row.original.stack.slice(0, 3)"
-              :key="tech"
-              color="neutral"
-              variant="outline"
+              :color="row.original.status === 'PUBLISHED' ? 'success' : 'neutral'"
+              variant="subtle"
               size="sm"
             >
-              {{ tech }}
+              {{ row.original.status === 'PUBLISHED' ? 'Publicado' : 'Borrador' }}
             </UBadge>
-            <span
-              v-if="row.original.stack.length > 3"
-              class="text-dimmed self-center text-xs"
-            >
-              +{{ row.original.stack.length - 3 }}
-            </span>
-          </div>
-        </template>
+          </template>
 
-        <template #updatedAt-cell="{ row }">
-          <span class="text-muted text-sm">
-            {{ adminDate(row.original.updatedAt) }}
-          </span>
-        </template>
-
-        <template #actions-cell="{ row }">
-          <UDropdownMenu
-            :items="rowActions(row.original)"
-            :content="{ align: 'end' }"
-          >
-            <UButton
-              icon="i-lucide-ellipsis"
-              color="neutral"
-              variant="ghost"
-              square
-              aria-label="Acciones del proyecto"
+          <template #featured-cell="{ row }">
+            <UIcon
+              v-if="row.original.featured"
+              name="i-lucide-star"
+              class="text-warning size-4"
+              aria-label="Destacado"
             />
-          </UDropdownMenu>
-        </template>
-      </UTable>
+            <span
+              v-else
+              class="text-dimmed text-xs"
+              aria-label="No destacado"
+            >—</span>
+          </template>
+
+          <template #stack-cell="{ row }">
+            <div class="flex flex-wrap gap-1">
+              <UBadge
+                v-for="tech in row.original.stack.slice(0, 3)"
+                :key="tech"
+                color="neutral"
+                variant="outline"
+                size="sm"
+              >
+                {{ tech }}
+              </UBadge>
+              <span
+                v-if="row.original.stack.length > 3"
+                class="text-dimmed self-center text-xs"
+              >
+                +{{ row.original.stack.length - 3 }}
+              </span>
+            </div>
+          </template>
+
+          <template #updatedAt-cell="{ row }">
+            <span class="text-muted text-sm">
+              {{ adminDate(row.original.updatedAt) }}
+            </span>
+          </template>
+
+          <template #actions-cell="{ row }">
+            <UDropdownMenu
+              :items="rowActions(row.original)"
+              :content="{ align: 'end' }"
+            >
+              <UButton
+                icon="i-lucide-ellipsis"
+                color="neutral"
+                variant="ghost"
+                square
+                aria-label="Acciones del proyecto"
+              />
+            </UDropdownMenu>
+          </template>
+        </UTable>
+      </div>
 
       <!-- Borrado. El modal se cierra con ESC o clic fuera, y no deja
            restos: el backend limpia del bucket lo que deje de referenciarse. -->
