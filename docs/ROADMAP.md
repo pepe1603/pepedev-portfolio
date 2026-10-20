@@ -39,7 +39,7 @@
 - [ ] CRUD certificados/cursos
 - [ ] Bandeja de mensajes (leído/archivado/borrar)
 - [ ] Gestión de media (subida de archivos → URL) y activación de CV es/en en profile
-- [ ] Exclusión del CRM en sitemap/robots
+- [x] Exclusión del CRM en sitemap/robots
 
 ## Fase 4 · Pulido
 
