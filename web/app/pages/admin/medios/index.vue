@@ -17,10 +17,16 @@
 // StorageUse. Las dimensiones las devuelve el propio POST para avisar si no
 // encajan; nunca bloquean (solo el formato lo hace, y eso ya lo valida la API).
 //
+// El CV es el único caso en que subir un fichero NO basta: hace falta decirle
+// al perfil que lo use, porque GET /public/cv/{lang} lee profile.cvUrlEs/En.
+// De eso se encarga el menú "Usar como CV" de cada PDF, que reenvía el perfil
+// entero (PUT /admin/profile) cambiando solo su campo de CV.
+//
 // El listado llega paginado (GET /admin/storage?page=&size=) y ordenado por
 // fecha de modificación, lo más reciente primero.
 // ======================================================================
 import { toApiError, unwrapApiError } from '~/composables/useApi'
+import type { DropdownMenuItem } from '@nuxt/ui'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -48,6 +54,14 @@ const { data, status, error, refresh } = await useAsyncData(
 const { data: uses } = await useAsyncData(
   'admin-media-uses',
   () => api.get<AdminStorageUse[]>('/storage/uses'),
+  { server: false }
+)
+
+// El perfil, para saber qué PDF es ya el CV en cada idioma y poder reenviarlo
+// entero al asignar (PUT /admin/profile reemplaza, no hace merge).
+const { data: profile } = await useAsyncData(
+  'admin-media-profile',
+  () => api.get<AdminProfile>('/profile'),
   { server: false }
 )
 
@@ -208,6 +222,116 @@ async function onFileSelected(event: Event) {
   } finally {
     uploading.value = false
   }
+}
+
+// ---------------------------------------------------------------------------
+// CV EN EL PERFIL
+//
+// Subir un PDF con tipo "CV" solo lo deja en el bucket: el portfolio público
+// lee profile.cvUrlEs/cvUrlEn (GET /public/cv/{lang} redirige ahí). Asignarlo
+// es este menú, el único sitio del panel donde el CV se dice al perfil.
+//
+// PUT /admin/profile reemplaza el perfil ENTERO, así que se reenvía tal cual
+// se leyó y solo se cambia el campo del idioma elegido; si no, asignar el CV
+// borraría la biografía, el stack y las experiencias.
+// ---------------------------------------------------------------------------
+const assigningCv = ref(false)
+
+/** URL del PDF que el perfil usa ya como CV de ese idioma, o null. */
+function currentCvUrl(lang: 'es' | 'en'): string | null {
+  return (lang === 'es' ? profile.value?.cvUrlEs : profile.value?.cvUrlEn) ?? null
+}
+
+/** true si este objeto es el CV ya asignado al idioma. */
+function isCurrentCv(object: AdminStorageObject, lang: 'es' | 'en'): boolean {
+  return currentCvUrl(lang) === object.url
+}
+
+/**
+ * Asigna (o quita) este PDF como CV del idioma. `url` null lo desasigna.
+ * Reenvía el perfil completo con solo ese campo cambiado.
+ */
+async function assignCv(object: AdminStorageObject, lang: 'es' | 'en', url: string | null) {
+  const current = profile.value
+  if (!current) {
+    notify('Todavía no se ha cargado el perfil. Vuelve a intentarlo.', 'error')
+    return
+  }
+
+  // La API exige estos tres en cualquier PUT del perfil (@NotBlank y
+  // @LocalizedNonBlank). El mismo aviso que da Tecnologías antes de mandar.
+  const missing: string[] = []
+  if (!current.fullName.trim()) missing.push('el nombre completo')
+  if (!hasLocalizedText(current.headline)) missing.push('el titular bilingüe')
+  if (!hasLocalizedText(current.bio)) missing.push('la biografía bilingüe')
+  if (missing.length) {
+    notify(`No se puede asignar: al perfil le falta ${missing.join(' y ')}, y la API lo exige al guardarlo.`, 'error')
+    return
+  }
+
+  const body: ProfileRequest = {
+    fullName: current.fullName,
+    headline: current.headline ?? {},
+    bio: current.bio ?? {},
+    location: current.location,
+    githubUrl: current.githubUrl,
+    linkedinUrl: current.linkedinUrl,
+    emailPublic: current.emailPublic,
+    websiteUrl: current.websiteUrl,
+    cvUrlEs: lang === 'es' ? url : current.cvUrlEs,
+    cvUrlEn: lang === 'en' ? url : current.cvUrlEn,
+    avatarUrl: current.avatarUrl,
+    skills: current.skills,
+    experiences: current.experiences
+  }
+
+  assigningCv.value = true
+  try {
+    profile.value = await api.put<AdminProfile>('/profile', body)
+    const label = lang === 'es' ? 'español' : 'inglés'
+    notify(url ? `CV en ${label} actualizado` : `CV en ${label} quitado`, 'success')
+  } catch (err) {
+    const apiError = toApiError(err)
+    notify(apiError.problem.detail || apiError.message, 'error')
+  } finally {
+    assigningCv.value = false
+  }
+}
+
+/** Ítems del menú "Usar como CV" de un PDF. */
+function cvMenuItems(object: AdminStorageObject): DropdownMenuItem[][] {
+  const entry = (lang: 'es' | 'en', label: string, icon: string) => {
+    const isCurrent = isCurrentCv(object, lang)
+    return {
+      label: isCurrent ? `${label} (actual)` : label,
+      icon,
+      disabled: isCurrent || assigningCv.value,
+      onSelect: () => assignCv(object, lang, object.url)
+    }
+  }
+
+  const clearEntry = (lang: 'es' | 'en', label: string) => ({
+    label,
+    icon: 'i-lucide-x',
+    disabled: assigningCv.value,
+    onSelect: () => assignCv(object, lang, null)
+  })
+
+  const groups: DropdownMenuItem[][] = [
+    [
+      entry('es', 'Usar como CV en español', 'i-lucide-file-check'),
+      entry('en', 'Usar como CV en inglés', 'i-lucide-file-check')
+    ]
+  ]
+
+  // Solo se ofrece quitar el que esté puesto: dos entradas "quitar" fijas
+  // serían ruido en el caso normal (ninguno o uno asignado).
+  const clears = []
+  if (isCurrentCv(object, 'es')) clears.push(clearEntry('es', 'Quitar como CV en español'))
+  if (isCurrentCv(object, 'en')) clears.push(clearEntry('en', 'Quitar como CV en inglés'))
+  if (clears.length) groups.push(clears)
+
+  return groups
 }
 
 // ---------------------------------------------------------------------------
@@ -431,13 +555,32 @@ async function confirmDelete() {
 
           <div class="mt-3 flex flex-col gap-1">
             <div class="flex items-center justify-between gap-2">
-              <UBadge
-                color="neutral"
-                variant="outline"
-                size="sm"
-              >
-                {{ typeLabel(object) }}
-              </UBadge>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <UBadge
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                >
+                  {{ typeLabel(object) }}
+                </UBadge>
+                <!-- Qué idiomas del CV usan ya este PDF. -->
+                <UBadge
+                  v-if="isPdf(object) && isCurrentCv(object, 'es')"
+                  color="success"
+                  variant="subtle"
+                  size="sm"
+                >
+                  CV ES
+                </UBadge>
+                <UBadge
+                  v-if="isPdf(object) && isCurrentCv(object, 'en')"
+                  color="success"
+                  variant="subtle"
+                  size="sm"
+                >
+                  CV EN
+                </UBadge>
+              </div>
               <span class="text-muted text-xs">{{ humanSize(object.size) }}</span>
             </div>
 
@@ -451,34 +594,54 @@ async function confirmDelete() {
           </div>
 
           <template #footer>
-            <div class="flex items-center justify-between gap-1">
-              <div class="flex gap-1">
+            <div class="flex flex-col gap-2">
+              <!-- Solo los PDF pueden ser CV; en el resto no se pinta nada. -->
+              <UDropdownMenu
+                v-if="isPdf(object)"
+                :items="cvMenuItems(object)"
+                :content="{ align: 'start' }"
+              >
                 <UButton
-                  label="Copiar URL"
-                  icon="i-lucide-link"
+                  label="Usar como CV"
+                  icon="i-lucide-file-check"
                   color="neutral"
-                  variant="ghost"
+                  variant="soft"
                   size="sm"
-                  @click="copyUrl(object)"
+                  block
+                  :loading="assigningCv"
+                  :aria-label="`Usar ${object.key} como CV`"
                 />
+              </UDropdownMenu>
+
+              <div class="flex items-center justify-between gap-1">
+                <div class="flex gap-1">
+                  <UButton
+                    label="Copiar URL"
+                    icon="i-lucide-link"
+                    color="neutral"
+                    variant="ghost"
+                    size="sm"
+                    @click="copyUrl(object)"
+                  />
+                  <UButton
+                    label="Descargar"
+                    icon="i-lucide-download"
+                    color="neutral"
+                    variant="ghost"
+                    size="sm"
+                    :to="object.url"
+                    :download="object.key"
+                  />
+                </div>
                 <UButton
-                  label="Descargar"
-                  icon="i-lucide-download"
-                  color="neutral"
+                  label="Borrar"
+                  icon="i-lucide-trash-2"
+                  color="error"
                   variant="ghost"
                   size="sm"
-                  :to="object.url"
-                  :download="object.key"
+                  @click="askDelete(object)"
                 />
               </div>
-              <UButton
-                label="Borrar"
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="sm"
-                @click="askDelete(object)"
-              />
             </div>
           </template>
         </UCard>
