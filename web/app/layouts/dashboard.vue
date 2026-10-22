@@ -43,6 +43,7 @@ const items = computed<NavigationMenuItem[][]>(() => [
   ],
   [
     { label: 'Contenido', type: 'label' },
+    { label: 'Perfil', icon: 'i-lucide-user-round', to: '/admin/perfil' },
     {
       label: 'Tecnologías',
       icon: 'i-lucide-code-xml',
