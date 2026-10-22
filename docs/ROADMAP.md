@@ -38,7 +38,8 @@
 - [ ] CRUD proyectos (borrador/publicado, destacados, orden)
 - [ ] CRUD certificados/cursos
 - [ ] Bandeja de mensajes (leído/archivado/borrar)
-- [ ] Gestión de media (subida de archivos → URL) y activación de CV es/en en profile
+- [x] Gestión de media (subida de archivos → URL) y activación de CV es/en en profile
+- [x] Edición del perfil (identidad, enlaces, avatar) desde `/admin/perfil`
 - [x] Exclusión del CRM en sitemap/robots
 
 ## Fase 4 · Pulido
