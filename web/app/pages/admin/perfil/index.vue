@@ -11,12 +11,16 @@
 // tal cual lo que NO se edita: skills (es de Tecnologías) y experiences
 // (todavía no tienen sección) viajan intactas para no borrarlas.
 //
-// Avatar y CV se suben aquí y se eligen del bucket. En el bucket no hay una
-// columna de etiquetas: la "etiqueta" es el uso. Por eso el modal de avatar
-// solo ofrece las imágenes que ya son avatar (deducido del perfil), mientras
-// que el de CV ofrece todos los PDF, porque varios comparten esa extensión y
+// Avatar y CV se suben aquí y se eligen del bucket; el avatar además acepta
+// una URL externa. En el bucket no hay una columna de etiquetas: la "etiqueta"
+// es el uso. El modal de avatar ofrece todas las imágenes (cualquiera puede ser
+// avatar) y el de CV todos los PDF, porque varios comparten esa extensión y
 // nada los distingue salvo la asignación. Subir directamente evita el problema
 // de raíz: el PDF recién subido ES el CV de ese idioma.
+//
+// El CV es UNO por idioma: al sustituirlo, la API borra el PDF anterior si ya
+// no lo usa nadie (lo decide el backend al guardar). El avatar no se borra
+// nunca al cambiarlo: el bucket puede tener varios y se puede querer volver.
 // ======================================================================
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
@@ -238,14 +242,14 @@ const schema = z
       .string()
       .max(320, 'El email no puede superar 320 caracteres')
       .refine(value => value === '' || z.email().safeParse(value).success, 'Debe ser un email válido'),
-    // Avatar y CV solo pueden ser ficheros del bucket propio. No hay campo de
-    // texto para ellos (se rellenan subiendo o eligiendo del modal), así que
-    // esto es una red de seguridad: si algún día llegara una URL externa (o un
-    // dato corrupto), el guardado se corta. La forma es la clave de objeto que
-    // sirve la API: .../files/<uuid>.<ext>. No se comprueba el host a propósito:
-    // el front no conoce APP_STORAGE_PUBLIC_URL y duplicarla aquí la
-    // desincronizaría el día que el storage cambie de host.
-    avatarUrl: bucketUrl('La URL del avatar'),
+    // El avatar puede ser un fichero del bucket o una URL externa (una imagen
+    // pública, tu propio hosting...). Basta con que sea http(s); si es http se
+    // avisa en la tarjeta, no se bloquea.
+    avatarUrl: optionalUrl('La URL del avatar'),
+    // Los CV, en cambio, son siempre del bucket: se sirven por /public/cv/{lang}
+    // y ahí una URL externa no aporta nada. La forma es la clave que sirve la
+    // API (.../files/<uuid>.<ext>); no se comprueba el host porque el front no
+    // conoce APP_STORAGE_PUBLIC_URL.
     cv: z.object({
       es: bucketUrl('La URL del CV en español'),
       en: bucketUrl('La URL del CV en inglés')
@@ -414,20 +418,17 @@ function isPdf(object: AdminStorageObject): boolean {
   return object.contentType === 'application/pdf'
 }
 
-/** true si esta imagen es el avatar que el perfil tiene ahora. */
-function isCurrentAvatar(object: AdminStorageObject): boolean {
-  return !!state.avatarUrl && object.url === state.avatarUrl
-}
-
 /**
- * Imágenes ofrecidas como avatar: la que está puesta ahora y las demás que ya
- * fueron avatar de este perfil. Como el perfil es un singleton, hoy "ya fue
- * avatar" solo puede ser la actual.
+ * Imágenes ofrecidas como avatar: TODAS las imágenes del bucket, más la que
+ * esté puesta si no aparece en el listado (el avatar podría ser una URL externa
+ * o un objeto de una página que no se ha cargado). No se etiqueta nada: como no
+ * hay columna de etiquetas, cualquier imagen puede ser avatar y el admin elige.
  */
 const avatarPool = computed(() => {
-  const list = objects.value.filter(object => isImage(object) && isCurrentAvatar(object))
+  const list = objects.value.filter(isImage)
   if (state.avatarUrl && !list.some(object => object.url === state.avatarUrl)) {
-    // El avatar actual podría no estar en la página listada (bucket grande): se añade.
+    // El avatar actual es externo o no está en el listado: se añade delante
+    // para que se vea marcado como el que está en uso.
     list.unshift({
       key: state.avatarUrl.split('/').pop() ?? state.avatarUrl,
       url: state.avatarUrl,
@@ -438,6 +439,11 @@ const avatarPool = computed(() => {
   }
   return list
 })
+
+/** true si el avatar puesto es una URL de fuera del bucket. */
+const avatarExterno = computed(() =>
+  !!state.avatarUrl && !state.avatarUrl.includes('/files/')
+)
 
 function pickAvatarFile() {
   // Se limpia para poder volver a elegir el mismo fichero si algo falló.
@@ -817,8 +823,8 @@ function cvName(url: string | null): string | null {
             </h3>
           </template>
 
-          <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div class="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-elevated">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div class="bg-elevated flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full">
               <img
                 v-if="state.avatarUrl"
                 :src="state.avatarUrl"
@@ -834,7 +840,8 @@ function cvName(url: string | null): string | null {
 
             <div class="flex flex-col items-start gap-2">
               <p class="text-muted text-sm">
-                La imagen se recorta en círculo. Puedes subir una nueva o elegir entre las que ya fueron avatar.
+                La imagen se recorta en círculo. Puedes subir una nueva, elegir una del bucket o pegar la URL de una
+                imagen de fuera (tu hosting, una imagen pública...).
               </p>
               <div class="flex flex-wrap gap-2">
                 <UButton
@@ -862,12 +869,28 @@ function cvName(url: string | null): string | null {
                   @click="clearAvatar"
                 />
               </div>
-              <p
-                v-if="!avatarPool.length"
-                class="text-dimmed text-xs"
+
+              <UFormField
+                label="O pega una URL"
+                name="avatarUrl"
+                class="mt-1 w-full"
               >
-                Todavía no hay ninguna imagen de avatar en el bucket: sube una con «Subir imagen».
-              </p>
+                <UInput
+                  v-model="state.avatarUrl"
+                  class="w-full"
+                  placeholder="https://tu-sitio.com/avatar.jpg"
+                />
+              </UFormField>
+
+              <UAlert
+                v-if="avatarExterno"
+                color="warning"
+                variant="subtle"
+                icon="i-lucide-triangle-alert"
+                title="Avatar externo"
+                description="El avatar no está en el bucket. Si la URL deja de funcionar, la web mostrará un hueco; y si es http en un sitio https, el navegador puede avisar de contenido mixto."
+              />
+
               <input
                 ref="avatarInput"
                 type="file"
@@ -1024,7 +1047,7 @@ function cvName(url: string | null): string | null {
             v-else
             class="text-muted text-sm"
           >
-            No hay ninguna imagen de avatar en el bucket. Sube una con «Subir imagen».
+            No hay ninguna imagen en el bucket. Sube una con «Subir imagen» o pega una URL externa.
           </p>
         </template>
 

@@ -39,7 +39,7 @@
 - [ ] CRUD certificados/cursos
 - [ ] Bandeja de mensajes (leído/archivado/borrar)
 - [x] Gestión de media (subida de archivos → URL) y activación de CV es/en en profile
-- [x] Edición del perfil (identidad, enlaces, avatar) desde `/admin/perfil`
+- [x] Edición del perfil (identidad, enlaces, avatar y CV) desde `/admin/perfil`, con subida/elección directa y aviso de cambios sin guardar
 - [x] Exclusión del CRM en sitemap/robots
 
 ## Fase 4 · Pulido
