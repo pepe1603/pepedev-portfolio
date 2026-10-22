@@ -18,6 +18,7 @@ demás son lecturas públicas o borrados de huérfanos.
 | Subida | `POST /admin/storage?use=…` | `putObject` con clave `<uuid>.<ext>` |
 | Listado | `GET /admin/storage` | `listObjects`; solo lee, no toca nada |
 | Borrado manual | `DELETE /admin/storage/{name}` | `removeObject` **solo si nadie lo referencia** (409 si está en uso) |
+| Sustituir el CV del perfil | `PUT /admin/profile` | `removeObject` del PDF anterior **solo si nadie lo usa** |
 | Lectura | `GET /files/<uuid>.<ext>` | `getObject` y se devuelve al navegador |
 | Descarga del CV | `GET /public/cv/{lang}` | nada: redirige (302) a la URL del CV |
 | Huérfanos | **solo** al guardar proyecto o certificado | `removeObject` si nadie lo referencia |
@@ -106,13 +107,14 @@ decisiones que no volver a abrir sin motivo:
   se devuelven en la respuesta del `POST` (`{url,width,height}`, leídas de la cabecera con
   `ImageIO`, sin cargar la imagen entera) para que el panel avise si no encajan. Rechazar por
   dimensiones se descartó por frágil y por fricción.
-- **Guardar el perfil NO borra el avatar/CV anterior.** Sustituir o quitar el avatar o un CV deja
-  el fichero viejo en el bucket. Antes `AdminProfileService` llamaba a `OrphanFileCleaner` al
-  guardar, de modo que poner un avatar nuevo borraba el anterior para siempre (el bucket no tiene
-  versionado, §4). Un avatar sustituido suele querer reutilizarse y borrar es una decisión del
-  admin, no un efecto secundario de pulsar Guardar; para deshacerse de él está Medios, que además
-  avisa si sigue en uso. Proyectos y certificados sí siguen limpiando, porque ahí el reemplazo es
-  un cambio de contenido, no de identidad.
+- **Un CV por idioma; el avatar no se borra nunca.** Al guardar el perfil, `AdminProfileService`
+  limpia los CV anteriores **solo si ya no los usa nadie**: el PDF que deja de ser CV ES/EN se borra
+  del bucket, pero si estaba compartido (p. ej. el mismo PDF en los dos idiomas) o lo usa otra cosa,
+  se queda. Un CV es el documento vigente —acumular versiones no aporta y confunde—, así que
+  sustituirlo implica retirar el anterior. El **avatar**, en cambio, no se limpia jamás: el bucket
+  puede tener varios y puede querer volver a uno; deshacerse de una imagen sobrante es cosa de
+  Medios, que además avisa si sigue en uso. Proyectos y certificados también limpian, porque ahí el
+  reemplazo es un cambio de contenido, no de identidad.
 
 ## 4. Lo que no hay, y por qué
 
@@ -125,7 +127,7 @@ Estas son decisiones, no despistes pendientes.
 | **302 a una presignada corta en cada visita** | Arregla el anterior sin caducidad en la base de datos, pero obliga al navegador a alcanzar MinIO —imposible dentro de Docker— y gasta una petición extra en cada imagen. Se descarta con el §3. |
 | **SDK de AWS v2 en lugar del de MinIO** | Son ~30 dependencias (netty, httpclient5, eventstream, tres clientes HTTP) para hablar con el mismo protocolo. Si algún día el destino fuese AWS, el protocolo S3 ya está: el cambio cabe en `S3Properties` y `MinioConfig`. |
 | **`io.minio:minio` 9.x** | A partir de la 8.6 arrastra okhttp 5, que es Kotlin Multiplatform, y Maven no resuelve solo la variante `okhttp-jvm`: habría que añadirla a mano. Se usa la 8.5.17, con API idéntica para lo que se usa aquí. Subir de versión es un commit de una línea más ese `okhttp-jvm`. |
-| **Barrido periódico de huérfanos** | Hoy los huérfanos se limpian al borrar o sustituir en proyecto o certificado, que es donde se sabe que algo dejó de usarse. En el perfil **no**: cambiar o quitar el avatar/CV deja el fichero anterior en el bucket a propósito (ver §3.bis). Listar el bucket entero para cazar huérfanos tiene sentido cuando hay muchas subidas que se quedan a medias; para un admin solo, no. Cuando se añada, listar es más barato que recorrer un sistema de ficheros. |
+| **Barrido periódico de huérfanos** | Hoy los huérfanos se limpian al borrar o sustituir en proyecto, certificado o CV del perfil, que es donde se sabe que algo dejó de usarse. Los avatares sustituidos **no** se barren a propósito: se conservan por si se quiere volver a ellos (ver §3.bis). Listar el bucket entero para cazar huérfanos tiene sentido cuando hay muchas subidas que se quedan a medias; para un admin solo, no. Cuando se añada, listar es más barato que recorrer un sistema de ficheros. |
 | **Versionado del bucket** | Sobra: cada nombre es un UUID distinto, así que una versión antigua nunca se sirve. El borrado es `removeObject` y no hay versiones que restaurar. |
 | **Streaming multipart / resumed uploads** | Los ficheros se validan por magic bytes y se sube de una vez, con un límite de 5/10 MB. El troceado que hace el SDK por debajo ya está. |
 | **CDN delante del proxy** | No hay tráfico que lo justifique. Es lo primero que se pone si algún día lo hay, y no obliga a cambiar nada de lo de aquí. |
@@ -173,7 +175,7 @@ mockeado. El único que toca el servidor es el de la migración, y no lo recoge 
 | Un fichero en uso no se borra: 409 con dónde se usa | `ApiErrorContractTest.storageEnUsoAlBorrar_409ConDetalleDeDondeSeUsa` |
 | Un fichero libre se borra: 204 | `ApiErrorContractTest.storageLibreAlBorrar_204` |
 | La guía de usos se expone con sus formatos | `ApiErrorContractTest.storageUsesDevuelveLosCincoUsosConRecomendacion` |
-| Guardar el perfil NO borra el avatar/CV anterior | `AdminProfileServiceTest.updateGuardaElPerfilSinTocarElBucket` |
+| Un CV sustituido se limpia; el avatar nunca | `AdminProfileServiceTest.updateLimpiaLosCvAntiguosPeroNuncaElAvatar` |
 | Se sabe dónde se usa cada fichero | `StorageReferenceCheckerTest.usagesNombraElProyectoDeLaMiniaturaYDeLaGaleria` y siguientes |
 | Solo se toca lo que es clave de objeto | `StorageServiceTest.isManagedNameEsLaFronteraDelBucket`, `StorageServiceTest.deleteByUrlNoMandaAlBucketUnaClaveQueNoEsDelStorage` |
 | La migración sube, relee y es idempotente | `UploadsToBucketMigrationIT` (opt-in, no lo corre la suite) |
@@ -181,8 +183,8 @@ mockeado. El único que toca el servidor es el de la migración, y no lo recoge 
 `StorageReferenceChecker` y `OrphanFileCleaner` siguen igual y sus tests no han cambiado: la
 comprobación de referencias es contra la base de datos y el borrado es una llamada a
 `deleteByName`, que ya no tiene nada de disco dentro. Lo que hace S3 es más simple, no más
-complicado. El único test que sí cambió es `AdminProfileServiceTest`, porque el perfil dejó de
-llamar a `OrphanFileCleaner` (ver §3.bis).
+complicado. El único test que sí cambió es `AdminProfileServiceTest`, porque el perfil ahora limpia
+los CV anteriores (el avatar no) al guardar (ver §3.bis).
 
 ## 7. Referencia rápida
 
@@ -196,7 +198,7 @@ StorageService
   ├── baseName(url) / isManagedName(name) → qué es una clave de objeto
   └── ensureBucket() → @PostConstruct: crea el bucket si falta
 FileServingController  → GET /files/{name}, proxy en streaming, 304 con If-None-Match
-OrphanFileCleaner      → borra lo que ya no referencia nadie (proyectos y certificados; el perfil no lo llama)
+OrphanFileCleaner      → borra lo que ya no referencia nadie (proyectos, certificados y CV del perfil; el avatar nunca)
 StorageReferenceChecker → usages(fileName): dónde se usa (perfil, proyectos, certificados)
 StorageUse             → label + formatos + recomendación de cada tipo de subida
 ```

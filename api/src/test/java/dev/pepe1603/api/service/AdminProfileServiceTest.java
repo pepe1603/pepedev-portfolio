@@ -3,6 +3,7 @@ package dev.pepe1603.api.service;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import dev.pepe1603.api.dto.admin.ProfileRequest;
@@ -19,17 +20,17 @@ class AdminProfileServiceTest {
 
     private final ProfileRepository profileRepository = mock(ProfileRepository.class);
     private final PublicCacheService cacheService = mock(PublicCacheService.class);
+    private final OrphanFileCleaner orphanFileCleaner = mock(OrphanFileCleaner.class);
     private final AuditService auditService = mock(AuditService.class);
     private final AdminProfileService service =
-            new AdminProfileService(profileRepository, cacheService, auditService);
+            new AdminProfileService(profileRepository, cacheService, orphanFileCleaner, auditService);
 
     @Test
-    void updateGuardaElPerfilSinTocarElBucket() {
+    void updateLimpiaLosCvAntiguosPeroNuncaElAvatar() {
         Profile profile = new Profile();
-        // La entidad llega con avatar y CV del estado anterior; el update los
-        // reemplaza. Los ficheros viejos NO deben borrarse: el bucket no tiene
-        // versionado y borrar es cosa del admin desde Medios, no un efecto
-        // secundario de guardar.
+        // Avatar y CV del estado anterior; el update los reemplaza. El avatar
+        // viejo NO debe borrarse (puede querer reutilizarse), los CV sí —el
+        // cleaner decide si de verdad nadie los usa—.
         profile.setAvatarUrl("/files/123e4567-e89b-12d3-a456-426614174000.png");
         profile.setCvUrlEs("/files/123e4567-e89b-12d3-a456-426614174001.pdf");
         profile.setCvUrlEn("/files/123e4567-e89b-12d3-a456-426614174002.pdf");
@@ -46,7 +47,9 @@ class AdminProfileServiceTest {
 
         service.update(request);
 
-        verify(profileRepository).save(profile);
+        verify(orphanFileCleaner).cleanupIfUnreferenced("/files/123e4567-e89b-12d3-a456-426614174001.pdf");
+        verify(orphanFileCleaner).cleanupIfUnreferenced("/files/123e4567-e89b-12d3-a456-426614174002.pdf");
+        verify(orphanFileCleaner, never()).cleanupIfUnreferenced("/files/123e4567-e89b-12d3-a456-426614174000.png");
         verify(cacheService).evictProfile();
         verify(auditService).record(AuditAction.UPDATE, AuditResource.PROFILE, null, "perfil actualizado");
     }
