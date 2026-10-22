@@ -16,14 +16,12 @@ public class AdminProfileService {
 
     private final ProfileRepository profileRepository;
     private final PublicCacheService cacheService;
-    private final OrphanFileCleaner orphanFileCleaner;
     private final AuditService auditService;
 
     public AdminProfileService(ProfileRepository profileRepository, PublicCacheService cacheService,
-                               OrphanFileCleaner orphanFileCleaner, AuditService auditService) {
+                               AuditService auditService) {
         this.profileRepository = profileRepository;
         this.cacheService = cacheService;
-        this.orphanFileCleaner = orphanFileCleaner;
         this.auditService = auditService;
     }
 
@@ -36,15 +34,16 @@ public class AdminProfileService {
     @Transactional
     public Profile update(ProfileRequest request) {
         Profile profile = get();
-        String oldAvatarUrl = profile.getAvatarUrl();
-        String oldCvUrlEs = profile.getCvUrlEs();
-        String oldCvUrlEn = profile.getCvUrlEn();
         applyRequest(profile, request);
         Profile saved = profileRepository.save(profile);
         cacheService.evictProfile();
-        orphanFileCleaner.cleanupIfUnreferenced(oldAvatarUrl);
-        orphanFileCleaner.cleanupIfUnreferenced(oldCvUrlEs);
-        orphanFileCleaner.cleanupIfUnreferenced(oldCvUrlEn);
+        // Cambiar o quitar el avatar/CV NO borra el fichero anterior del bucket.
+        // Antes se llamaba a OrphanFileCleaner aquí, y eso hacía que poner un
+        // avatar nuevo borrara el viejo para siempre: el bucket no tiene
+        // versionado, así que era irreversible. Un avatar sustituido suele
+        // querer reutilizarse, y borrar es una decisión del admin, no un efecto
+        // secundario de guardar. El fichero se queda en el bucket; desde Medios
+        // se borra a mano cuando de verdad sobra.
         auditService.record(AuditAction.UPDATE, AuditResource.PROFILE, null, "perfil actualizado");
         return saved;
     }
