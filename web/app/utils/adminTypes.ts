@@ -386,4 +386,10 @@ export interface AdminStorageObject {
   lastModified: string
   /** image/jpeg, image/png, image/webp o application/pdf; null si no se pudo deducir. */
   contentType: string | null
+  /**
+   * Uso declarado al subir (avatar, cv...), en minúsculas. Es una etiqueta, no
+   * una referencia: null si el fichero es anterior a la tabla de usos y nada lo
+   * referencia. Sirve para filtrar en los modales, no para decidir borrados.
+   */
+  use: StorageUse | null
 }

@@ -119,6 +119,23 @@ function typeLabel(object: AdminStorageObject): string {
   return object.contentType ?? 'Otro'
 }
 
+/**
+ * Uso declarado del fichero al subirlo. "Sin uso" si es anterior a la tabla y
+ * nada lo referencia: no se inventa uno, porque una etiqueta falsa sería peor
+ * que ninguna.
+ */
+const USE_LABELS: Record<string, string> = {
+  avatar: 'Avatar',
+  thumbnail: 'Miniatura',
+  gallery: 'Galería',
+  image: 'Certificado',
+  cv: 'CV'
+}
+
+function useLabel(object: AdminStorageObject): string {
+  return object.use ? (USE_LABELS[object.use] ?? object.use) : 'Sin uso'
+}
+
 // ---------------------------------------------------------------------------
 // COPIAR URL Y DESCARGAR
 // ---------------------------------------------------------------------------
@@ -562,6 +579,14 @@ async function confirmDelete() {
                   size="sm"
                 >
                   {{ typeLabel(object) }}
+                </UBadge>
+                <!-- Uso declarado al subir (avatar, miniatura, CV...). -->
+                <UBadge
+                  color="neutral"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ useLabel(object) }}
                 </UBadge>
                 <!-- Qué idiomas del CV usan ya este PDF. -->
                 <UBadge

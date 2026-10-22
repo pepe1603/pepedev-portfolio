@@ -419,13 +419,34 @@ function isPdf(object: AdminStorageObject): boolean {
 }
 
 /**
- * Imágenes ofrecidas como avatar: TODAS las imágenes del bucket, más la que
- * esté puesta si no aparece en el listado (el avatar podría ser una URL externa
- * o un objeto de una página que no se ha cargado). No se etiqueta nada: como no
- * hay columna de etiquetas, cualquier imagen puede ser avatar y el admin elige.
+ * ¿Es esta imagen un avatar? Lo dice el uso declarado al subir, que ahora se
+ * guarda. Para las imágenes sin uso (las anteriores a la tabla) se cae al
+ * contentType: cualquier imagen puede serlo, no hay nada mejor que deducir. Un
+ * fichero con uso de otro tipo (thumbnail, gallery, image) NO se ofrece como
+ * avatar: eso es justo lo que se quería separar.
+ */
+function avatarCandidate(object: AdminStorageObject): boolean {
+  if (!isImage(object)) return false
+  return object.use === null || object.use === 'avatar'
+}
+
+/**
+ * ¿Es este PDF un CV? Lo dice el uso declarado. Los PDF sin uso (anteriores a la
+ * tabla) se ofrecen igual, porque el CV es el único uso que admite PDF: no hay
+ * ambigüedad posible y dejarlos fuera escondería un CV real.
+ */
+function cvCandidate(object: AdminStorageObject): boolean {
+  if (!isPdf(object)) return false
+  return object.use === null || object.use === 'cv'
+}
+
+/**
+ * Imágenes ofrecidas como avatar: los avatares declarados, las imágenes sin uso
+ * (anteriores a la tabla) y la que esté puesta si no aparece en el listado (el
+ * avatar podría ser una URL externa o un objeto que no se ha cargado).
  */
 const avatarPool = computed(() => {
-  const list = objects.value.filter(isImage)
+  const list = objects.value.filter(avatarCandidate)
   if (state.avatarUrl && !list.some(object => object.url === state.avatarUrl)) {
     // El avatar actual es externo o no está en el listado: se añade delante
     // para que se vea marcado como el que está en uso.
@@ -434,7 +455,8 @@ const avatarPool = computed(() => {
       url: state.avatarUrl,
       size: 0,
       lastModified: '',
-      contentType: null
+      contentType: null,
+      use: 'avatar'
     })
   }
   return list
@@ -498,7 +520,7 @@ function clearAvatar() {
 const cvOpen = ref(false)
 
 const cvPdfs = computed(() =>
-  objects.value.filter(isPdf).sort((a, b) => (b.lastModified || '').localeCompare(a.lastModified || ''))
+  objects.value.filter(cvCandidate).sort((a, b) => (b.lastModified || '').localeCompare(a.lastModified || ''))
 )
 
 function cvUrlFor(lang: 'es' | 'en'): string | null {
