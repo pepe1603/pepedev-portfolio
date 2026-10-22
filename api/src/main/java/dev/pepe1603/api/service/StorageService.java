@@ -3,7 +3,9 @@ package dev.pepe1603.api.service;
 import dev.pepe1603.api.config.S3Properties;
 import dev.pepe1603.api.config.StorageProperties;
 import dev.pepe1603.api.dto.admin.StorageObjectResponse;
+import dev.pepe1603.api.entity.StorageFile;
 import dev.pepe1603.api.enums.StorageUse;
+import dev.pepe1603.api.repository.StorageFileRepository;
 import io.minio.BucketExistsArgs;
 import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
@@ -16,6 +18,7 @@ import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -62,11 +65,23 @@ public class StorageService {
     private final MinioClient minioClient;
     private final S3Properties s3Properties;
     private final StorageProperties properties;
+    private final StorageFileRepository storageFileRepository;
+    private final StorageReferenceChecker referenceChecker;
 
-    public StorageService(MinioClient minioClient, S3Properties s3Properties, StorageProperties properties) {
+    /**
+     * {@code StorageReferenceChecker} no depende de este servicio (solo llama a
+     * su método estático {@link #baseName(String)}, que no es un bean), así que
+     * no hay ciclo. Se usa para inferir el uso de los ficheros que no tienen fila
+     * en {@code storage_files}: los anteriores a la tabla, o los subidos por otra
+     * vía. Su uso vive con el resto de la comprobación de referencias.
+     */
+    public StorageService(MinioClient minioClient, S3Properties s3Properties, StorageProperties properties,
+                          StorageFileRepository storageFileRepository, StorageReferenceChecker referenceChecker) {
         this.minioClient = minioClient;
         this.s3Properties = s3Properties;
         this.properties = properties;
+        this.storageFileRepository = storageFileRepository;
+        this.referenceChecker = referenceChecker;
     }
 
     /**
@@ -120,6 +135,15 @@ public class StorageService {
             // para quien está subiendo, así que todo acaba en el mismo 500.
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo guardar el fichero", e);
         }
+        // Se recuerda con qué uso se subió. Es una etiqueta, no una referencia:
+        // si el guardado del uso fallara, el fichero ya está arriba y no tiene
+        // sentido romper la subida por esto; el uso se podrá inferir después de
+        // quién lo referencie.
+        try {
+            storageFileRepository.save(new StorageFile(name, use));
+        } catch (RuntimeException ignored) {
+            // best-effort, igual que el borrado
+        }
         return publicUrl(properties.getPublicUrl()) + "/" + name;
     }
 
@@ -137,6 +161,12 @@ public class StorageService {
      */
     public List<StorageObjectResponse> list() {
         String baseUrl = publicUrl(properties.getPublicUrl());
+        // El uso declarado de todos los ficheros, de una vez: listar el bucket ya
+        // recorre todo, así que no tiene sentido una consulta por objeto.
+        Map<String, StorageUse> declaredUses = new HashMap<>();
+        for (StorageFile stored : storageFileRepository.findAll()) {
+            declaredUses.put(stored.getFileName(), stored.getUse());
+        }
         List<StorageObjectResponse> objects = new ArrayList<>();
         try {
             Iterable<Result<Item>> results = minioClient.listObjects(ListObjectsArgs.builder()
@@ -154,12 +184,27 @@ public class StorageService {
                         baseUrl + "/" + key,
                         item.size(),
                         item.lastModified().toInstant(),
-                        contentTypeFor(key)));
+                        contentTypeFor(key),
+                        useFor(key, declaredUses)));
             }
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo listar el bucket", e);
         }
         return objects;
+    }
+
+    /**
+     * Uso que se enseña para un fichero: el declarado al subir, y si no hay fila
+     * (fichero anterior a la tabla, o subido por otra vía) se infiere de quién lo
+     * referencia. Devuelve el nombre del enum en minúsculas, o {@code null} si no
+     * hay ni etiqueta ni referencia.
+     */
+    private String useFor(String key, Map<String, StorageUse> declaredUses) {
+        StorageUse use = declaredUses.get(key);
+        if (use == null) {
+            use = referenceChecker.inferUse(key);
+        }
+        return use == null ? null : use.name().toLowerCase();
     }
 
     private static boolean allows(StorageUse use, String extension) {

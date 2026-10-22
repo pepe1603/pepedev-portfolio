@@ -3,6 +3,7 @@ package dev.pepe1603.api.service;
 import dev.pepe1603.api.entity.Certificate;
 import dev.pepe1603.api.entity.Profile;
 import dev.pepe1603.api.entity.Project;
+import dev.pepe1603.api.enums.StorageUse;
 import dev.pepe1603.api.repository.CertificateRepository;
 import dev.pepe1603.api.repository.ProfileRepository;
 import dev.pepe1603.api.repository.ProjectRepository;
@@ -37,6 +38,56 @@ public class StorageReferenceChecker {
     /** ¿Lo usa alguien? Atajo de {@code !usages(fileName).isEmpty()}. */
     public boolean isReferenced(String fileName) {
         return !usages(fileName).isEmpty();
+    }
+
+    /**
+     * Infiere el uso de un fichero a partir de quién lo referencia. Sirve para
+     * los ficheros sin fila en {@code storage_files} (anteriores a la tabla, o
+     * subidos por otra vía) y para que el panel los etiquete igual. Si lo usa más
+     * de un sitio se devuelve el primero en este orden: avatar, CV, miniatura,
+     * galería, imagen de certificado; no hay caso hoy en que un mismo fichero se
+     * use en dos sitios distintos. {@code null} si no lo referencia nadie.
+     */
+    public StorageUse inferUse(String fileName) {
+        if (fileName == null) {
+            return null;
+        }
+        StorageUse profileUse = inferProfileUse(fileName);
+        if (profileUse != null) {
+            return profileUse;
+        }
+        return inferProjectOrCertificateUse(fileName);
+    }
+
+    private StorageUse inferProfileUse(String fileName) {
+        return profileRepository.findById((short) 1)
+                .map(profile -> {
+                    if (matches(profile.getAvatarUrl(), fileName)) {
+                        return StorageUse.AVATAR;
+                    }
+                    if (matches(profile.getCvUrlEs(), fileName) || matches(profile.getCvUrlEn(), fileName)) {
+                        return StorageUse.CV;
+                    }
+                    return null;
+                })
+                .orElse(null);
+    }
+
+    private StorageUse inferProjectOrCertificateUse(String fileName) {
+        for (Project project : projectRepository.findAll()) {
+            if (matches(project.getThumbnailUrl(), fileName)) {
+                return StorageUse.THUMBNAIL;
+            }
+            if (project.getGallery().stream().anyMatch(image -> matches(image.url(), fileName))) {
+                return StorageUse.GALLERY;
+            }
+        }
+        for (Certificate certificate : certificateRepository.findAll()) {
+            if (matches(certificate.getImageUrl(), fileName)) {
+                return StorageUse.IMAGE;
+            }
+        }
+        return null;
     }
 
     /**

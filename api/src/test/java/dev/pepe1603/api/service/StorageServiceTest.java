@@ -3,6 +3,7 @@ package dev.pepe1603.api.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,7 +11,10 @@ import static org.mockito.Mockito.doAnswer;
 
 import dev.pepe1603.api.config.S3Properties;
 import dev.pepe1603.api.config.StorageProperties;
+import dev.pepe1603.api.dto.admin.StorageObjectResponse;
+import dev.pepe1603.api.entity.StorageFile;
 import dev.pepe1603.api.enums.StorageUse;
+import dev.pepe1603.api.repository.StorageFileRepository;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
@@ -44,6 +48,8 @@ class StorageServiceTest {
     private static final String BUCKET = "portfolio";
 
     private MinioClient minioClient;
+    private StorageFileRepository storageFileRepository;
+    private StorageReferenceChecker referenceChecker;
     private StorageService service;
 
     /** Bytes que el SDK recibió de verdad, para no conformarse solo con la URL devuelta. */
@@ -74,7 +80,9 @@ class StorageServiceTest {
         ReflectionTestUtils.setField(s3, "bucket", BUCKET);
         ReflectionTestUtils.setField(s3, "region", "us-east-1");
 
-        service = new StorageService(minioClient, s3, storage);
+        service = new StorageService(minioClient, s3, storage,
+                storageFileRepository = mock(StorageFileRepository.class),
+                referenceChecker = mock(StorageReferenceChecker.class));
     }
 
     private MultipartFile file(String name, String contentType, byte[] content) {
@@ -100,6 +108,17 @@ class StorageServiceTest {
         assertThat(args.object()).isEqualTo(name).doesNotContain("/");
         assertThat(args.contentType()).isEqualTo("image/png");
         assertThat(uploaded.get()).containsExactly(PNG);
+    }
+
+    @Test
+    void subirGuardaElUsoDeclaradoEnLaTabla() {
+        String url = service.store(StorageUse.AVATAR, file("foto.png", "image/png", PNG));
+
+        String name = url.substring(url.lastIndexOf('/') + 1);
+        ArgumentCaptor<StorageFile> captor = ArgumentCaptor.forClass(StorageFile.class);
+        verify(storageFileRepository).save(captor.capture());
+        assertThat(captor.getValue().getFileName()).isEqualTo(name);
+        assertThat(captor.getValue().getUse()).isEqualTo(StorageUse.AVATAR);
     }
 
     @Test
@@ -276,5 +295,40 @@ class StorageServiceTest {
         assertThat(StorageService.contentTypeFor("a.pdf")).isEqualTo("application/pdf");
         assertThat(StorageService.contentTypeFor("a.exe")).isNull();
         assertThat(StorageService.contentTypeFor("sin-extension")).isNull();
+    }
+
+    @Test
+    void listExponerElUsoDeclaradoYLoInfierelaSiNoHayFila() throws Exception {
+        // Los items se construyen ANTES de stubbear listObjects: el helper usa
+        // given() por dentro y Mockito no admite stubbings anidados.
+        List<io.minio.Result<io.minio.messages.Item>> listed =
+                List.of(item("con-uso.png"), item("sin-fila-pero-en-uso.png"), item("huerfano.png"));
+
+        // Tres ficheros: uno con uso guardado, otro sin fila pero referenciado
+        // (se infiere), y otro sin fila ni referencias (queda sin uso).
+        given(storageFileRepository.findAll()).willReturn(List.of(new StorageFile("con-uso.png", StorageUse.THUMBNAIL)));
+        given(referenceChecker.inferUse("sin-fila-pero-en-uso.png")).willReturn(StorageUse.AVATAR);
+        given(referenceChecker.inferUse("huerfano.png")).willReturn(null);
+        given(minioClient.listObjects(any(io.minio.ListObjectsArgs.class))).willReturn(listed);
+
+        List<StorageObjectResponse> objects = service.list();
+
+        assertThat(objects).extracting(StorageObjectResponse::key)
+                .containsExactly("con-uso.png", "sin-fila-pero-en-uso.png", "huerfano.png");
+        assertThat(objects.get(0).use()).isEqualTo("thumbnail");
+        assertThat(objects.get(1).use()).isEqualTo("avatar");
+        assertThat(objects.get(2).use()).isNull();
+    }
+
+    @SuppressWarnings("unchecked")
+    private io.minio.Result<io.minio.messages.Item> item(String name) throws Exception {
+        io.minio.messages.Item item = mock(io.minio.messages.Item.class);
+        given(item.isDir()).willReturn(false);
+        given(item.objectName()).willReturn(name);
+        given(item.size()).willReturn(10L);
+        given(item.lastModified()).willReturn(java.time.ZonedDateTime.now());
+        io.minio.Result<io.minio.messages.Item> result = mock(io.minio.Result.class);
+        given(result.get()).willReturn(item);
+        return result;
     }
 }
