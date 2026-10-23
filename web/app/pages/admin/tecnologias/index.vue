@@ -666,7 +666,7 @@ const atLimit = computed(() => (profile.value?.skills.length ?? 0) >= MAX_SKILLS
         </div>
 
         <UTable
-          class="hidden lg:block"
+          class="hidden overflow-hidden rounded-xl border border-default lg:block [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-elevated/50"
           :data="visibleSkills"
           :columns="columns"
           aria-label="Listado de tecnologías"

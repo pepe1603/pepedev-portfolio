@@ -372,7 +372,7 @@ function rowActions(message: AdminMessage): DropdownMenuItem[][] {
         </div>
 
         <UTable
-          class="hidden lg:block"
+          class="hidden overflow-hidden rounded-xl border border-default lg:block [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-elevated/50"
           :data="messages"
           :columns="columns"
           :on-select="(event, row) => openDetail(row.original)"

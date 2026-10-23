@@ -314,7 +314,7 @@ const catalogColumns: TableColumn<{ name: string, icon: string }>[] = [
             </div>
 
             <UTable
-              class="hidden lg:block"
+              class="hidden overflow-hidden rounded-xl border border-default lg:block [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-elevated/50"
               :data="techRows"
               :columns="techColumns"
               aria-label="Iconos de tecnologías"
@@ -432,7 +432,7 @@ const catalogColumns: TableColumn<{ name: string, icon: string }>[] = [
             </div>
 
             <UTable
-              class="hidden lg:block"
+              class="hidden overflow-hidden rounded-xl border border-default lg:block [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-elevated/50"
               :data="categoryRows"
               :columns="categoryColumns"
               aria-label="Iconos de categorías"
