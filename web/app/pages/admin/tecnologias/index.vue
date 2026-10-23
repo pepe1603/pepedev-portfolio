@@ -16,6 +16,7 @@ import * as z from 'zod'
 import type { TableColumn, DropdownMenuItem, FormSubmitEvent } from '@nuxt/ui'
 import { toApiError, unwrapApiError } from '~/composables/useApi'
 import { TECH_ICON_FALLBACK, techIcon } from '~/utils/techIcons'
+import { CARD_INTERACTIVA } from '~/utils/cardStyles'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -592,31 +593,59 @@ const atLimit = computed(() => (profile.value?.skills.length ?? 0) >= MAX_SKILLS
           <UCard
             v-for="skill in visibleSkills"
             :key="`${skill.name}|${skill.category}`"
+            class="cursor-pointer"
+            :ui="{ root: CARD_INTERACTIVA, body: 'flex flex-col gap-2' }"
+            role="button"
+            tabindex="0"
+            :aria-label="`Editar ${skill.name}`"
+            @click="openEdit(skill)"
+            @keydown.enter.prevent="openEdit(skill)"
+            @keydown.space.prevent="openEdit(skill)"
           >
             <div class="flex flex-col gap-2">
-              <span class="font-medium text-highlighted">
-                {{ skill.name }}
-              </span>
+              <div class="flex items-start gap-3">
+                <div class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-elevated">
+                  <UIcon
+                    :name="techIcon(skill.name)"
+                    class="size-5"
+                    aria-hidden="true"
+                  />
+                </div>
+                <div class="flex min-w-0 flex-1 flex-col gap-2">
+                  <span class="font-medium text-highlighted transition-colors group-hover:text-primary">
+                    {{ skill.name }}
+                  </span>
 
-              <div class="flex flex-wrap items-center gap-2">
-                <UBadge
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                >
-                  {{ skill.category || 'Sin categoría' }}
-                </UBadge>
-                <span
-                  v-if="skill.level"
-                  class="text-muted text-sm"
-                >
-                  {{ skill.level }}
-                </span>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <UBadge
+                      color="neutral"
+                      variant="outline"
+                      size="sm"
+                    >
+                      {{ skill.category || 'Sin categoría' }}
+                    </UBadge>
+                    <span
+                      v-if="skill.level"
+                      class="text-muted text-sm"
+                    >
+                      {{ skill.level }}
+                    </span>
+                  </div>
+                </div>
+                <UIcon
+                  name="i-lucide-pencil"
+                  class="mt-1 size-4 shrink-0 text-muted transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-primary motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
               </div>
             </div>
 
             <template #footer>
-              <div class="flex w-full justify-end">
+              <div
+                class="flex w-full justify-end"
+                @click.stop
+                @keydown.stop
+              >
                 <UDropdownMenu
                   :items="rowActions(skill)"
                   :content="{ align: 'end' }"

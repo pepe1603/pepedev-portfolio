@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TableColumn, DropdownMenuItem } from '@nuxt/ui'
 import { toApiError, unwrapApiError } from '~/composables/useApi'
+import { CARD_INTERACTIVA } from '~/utils/cardStyles'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -306,13 +307,19 @@ function rowActions(message: AdminMessage): DropdownMenuItem[][] {
             v-for="message in messages"
             :key="message.id"
             class="cursor-pointer"
+            :ui="{ root: CARD_INTERACTIVA }"
+            role="button"
+            tabindex="0"
+            :aria-label="`Abrir mensaje de ${message.name}`"
             @click="openDetail(message)"
+            @keydown.enter.prevent="openDetail(message)"
+            @keydown.space.prevent="openDetail(message)"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="flex min-w-0 flex-col gap-1">
                 <div class="flex flex-wrap items-center gap-2">
                   <span
-                    class="truncate text-sm"
+                    class="truncate text-sm transition-colors group-hover:text-primary"
                     :class="message.status === 'NEW' ? 'font-semibold text-highlighted' : 'font-medium'"
                   >
                     {{ message.name }}
@@ -343,7 +350,10 @@ function rowActions(message: AdminMessage): DropdownMenuItem[][] {
               </div>
 
               <!-- .stop: desplegar el menu no debe abrir tambien la ficha. -->
-              <div @click.stop>
+              <div
+                @click.stop
+                @keydown.stop
+              >
                 <UDropdownMenu
                   :items="rowActions(message)"
                   :content="{ align: 'end' }"
