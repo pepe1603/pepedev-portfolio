@@ -26,6 +26,7 @@
 // fecha de modificación, lo más reciente primero.
 // ======================================================================
 import { toApiError, unwrapApiError } from '~/composables/useApi'
+import { CARD_INTERACTIVA } from '~/utils/cardStyles'
 import type { DropdownMenuItem } from '@nuxt/ui'
 
 definePageMeta({ layout: 'dashboard' })
@@ -553,70 +554,79 @@ async function confirmDelete() {
           v-for="object in visibleObjects"
           :key="object.key"
           class="flex flex-col"
+          :ui="{ root: CARD_INTERACTIVA, body: 'flex flex-1 flex-col' }"
         >
-          <!-- Miniatura / icono de PDF -->
-          <div class="flex h-40 items-center justify-center overflow-hidden rounded-lg bg-elevated">
-            <img
-              v-if="!isPdf(object)"
-              :src="object.url"
-              :alt="object.key"
-              loading="lazy"
-              class="h-full w-full object-contain"
-            >
-            <UIcon
-              v-else
-              name="i-lucide-file-text"
-              class="text-muted size-12"
-            />
-          </div>
-
-          <div class="mt-3 flex flex-col gap-1">
-            <div class="flex items-center justify-between gap-2">
-              <div class="flex flex-wrap items-center gap-1.5">
-                <UBadge
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                >
-                  {{ typeLabel(object) }}
-                </UBadge>
-                <!-- Uso declarado al subir (avatar, miniatura, CV...). -->
-                <UBadge
-                  color="neutral"
-                  variant="subtle"
-                  size="sm"
-                >
-                  {{ useLabel(object) }}
-                </UBadge>
-                <!-- Qué idiomas del CV usan ya este PDF. -->
-                <UBadge
-                  v-if="isPdf(object) && isCurrentCv(object, 'es')"
-                  color="success"
-                  variant="subtle"
-                  size="sm"
-                >
-                  CV ES
-                </UBadge>
-                <UBadge
-                  v-if="isPdf(object) && isCurrentCv(object, 'en')"
-                  color="success"
-                  variant="subtle"
-                  size="sm"
-                >
-                  CV EN
-                </UBadge>
-              </div>
-              <span class="text-muted text-xs">{{ humanSize(object.size) }}</span>
+          <a
+            :href="object.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            :aria-label="`Abrir ${object.key} en una pestaña nueva`"
+          >
+            <!-- Miniatura / icono de PDF -->
+            <div class="flex h-40 items-center justify-center overflow-hidden rounded-lg bg-elevated">
+              <img
+                v-if="!isPdf(object)"
+                :src="object.url"
+                :alt="object.key"
+                loading="lazy"
+                class="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
+              >
+              <UIcon
+                v-else
+                name="i-lucide-file-text"
+                class="text-muted size-12 transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
+              />
             </div>
 
-            <code
-              class="text-muted truncate text-xs"
-              :title="object.key"
-            >{{ object.key }}</code>
-            <span class="text-dimmed text-xs">
-              {{ adminDate(object.lastModified, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
-            </span>
-          </div>
+            <div class="mt-3 flex flex-col gap-1">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <UBadge
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                  >
+                    {{ typeLabel(object) }}
+                  </UBadge>
+                  <!-- Uso declarado al subir (avatar, miniatura, CV...). -->
+                  <UBadge
+                    color="neutral"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    {{ useLabel(object) }}
+                  </UBadge>
+                  <!-- Qué idiomas del CV usan ya este PDF. -->
+                  <UBadge
+                    v-if="isPdf(object) && isCurrentCv(object, 'es')"
+                    color="success"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    CV ES
+                  </UBadge>
+                  <UBadge
+                    v-if="isPdf(object) && isCurrentCv(object, 'en')"
+                    color="success"
+                    variant="subtle"
+                    size="sm"
+                  >
+                    CV EN
+                  </UBadge>
+                </div>
+                <span class="text-muted text-xs">{{ humanSize(object.size) }}</span>
+              </div>
+
+              <code
+                class="text-muted truncate text-xs transition-colors group-hover:text-primary"
+                :title="object.key"
+              >{{ object.key }}</code>
+              <span class="text-dimmed text-xs">
+                {{ adminDate(object.lastModified, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+              </span>
+            </div>
+          </a>
 
           <template #footer>
             <div class="flex flex-col gap-2">
