@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { TableColumn, DropdownMenuItem } from '@nuxt/ui'
 import { toApiError, unwrapApiError } from '~/composables/useApi'
+import { useTechIcons } from '~/composables/useTechIcons'
+import { CARD_INTERACTIVA } from '~/utils/cardStyles'
+
+const { getTechIcon } = useTechIcons()
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -141,6 +145,10 @@ async function confirmDelete() {
   } finally {
     deleting.value = false
   }
+}
+
+function openProject(id: string) {
+  return navigateTo(`/admin/proyectos/${id}`)
 }
 
 function rowActions(project: AdminProject): DropdownMenuItem[][] {
@@ -319,12 +327,70 @@ function rowActions(project: AdminProject): DropdownMenuItem[][] {
           <UCard
             v-for="project in visibleProjects"
             :key="project.id"
+            class="cursor-pointer"
+            :ui="{
+              root: CARD_INTERACTIVA,
+              body: 'flex flex-col gap-3 p-4 sm:p-5'
+            }"
+            role="button"
+            tabindex="0"
+            :aria-label="`Editar proyecto: ${localizedText(project.title) || project.slug}`"
+            @click="openProject(project.id)"
+            @keydown.enter.prevent="openProject(project.id)"
+            @keydown.space.prevent="openProject(project.id)"
           >
+            <!-- Miniatura -->
+            <div class="relative overflow-hidden rounded-xl bg-elevated">
+              <NuxtImg
+                v-if="project.thumbnailUrl"
+                :src="project.thumbnailUrl"
+                :alt="localizedText(project.title) || ''"
+                width="960"
+                height="540"
+                loading="lazy"
+                class="aspect-video w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
+              />
+              <div
+                v-else
+                class="flex aspect-video w-full items-center justify-center text-muted"
+                aria-hidden="true"
+              >
+                <UIcon
+                  name="i-lucide-panels-top-left"
+                  class="size-10"
+                />
+              </div>
+              <div
+                v-if="project.featured"
+                class="absolute left-3 top-3"
+              >
+                <UBadge
+                  color="primary"
+                  variant="solid"
+                  size="sm"
+                >
+                  <UIcon
+                    name="i-lucide-star"
+                    class="mr-1 size-3"
+                  />
+                  Destacado
+                </UBadge>
+              </div>
+            </div>
+
             <div class="flex flex-col gap-2">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-highlighted">
+              <div class="flex items-start justify-between gap-3">
+                <span class="min-w-0 text-lg font-semibold tracking-tight text-highlighted transition-colors group-hover:text-primary">
                   {{ localizedText(project.title) || '(sin título)' }}
                 </span>
+                <UIcon
+                  name="i-lucide-pencil"
+                  class="mt-1 size-4 shrink-0 text-muted transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-primary motion-reduce:transition-none"
+                  aria-hidden="true"
+                />
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
                 <UBadge
                   :color="project.status === 'PUBLISHED' ? 'success' : 'neutral'"
                   variant="subtle"
@@ -332,29 +398,24 @@ function rowActions(project: AdminProject): DropdownMenuItem[][] {
                 >
                   {{ project.status === 'PUBLISHED' ? 'Publicado' : 'Borrador' }}
                 </UBadge>
-                <UIcon
-                  v-if="project.featured"
-                  name="i-lucide-star"
-                  class="text-warning size-4"
-                  aria-label="Destacado"
-                />
+                <code class="text-muted truncate text-xs">{{ project.slug }}</code>
               </div>
-
-              <code class="text-muted truncate text-xs">{{ project.slug }}</code>
 
               <div
                 v-if="project.stack.length"
-                class="flex flex-wrap gap-1"
+                class="flex flex-wrap items-center gap-1.5"
               >
-                <UBadge
+                <div
                   v-for="tech in project.stack.slice(0, 3)"
                   :key="tech"
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
+                  class="flex items-center gap-1.5 rounded-md border border-default bg-elevated px-2 py-0.5 text-xs font-medium text-muted transition-colors group-hover:border-primary/40 group-hover:text-primary"
                 >
-                  {{ tech }}
-                </UBadge>
+                  <UIcon
+                    :name="getTechIcon(tech)"
+                    class="size-3.5"
+                  />
+                  <span>{{ tech }}</span>
+                </div>
                 <span
                   v-if="project.stack.length > 3"
                   class="text-dimmed self-center text-xs"
@@ -368,8 +429,21 @@ function rowActions(project: AdminProject): DropdownMenuItem[][] {
               </p>
             </div>
 
+            <div class="flex items-center gap-2 border-t border-default pt-3 text-sm font-medium text-primary">
+              <span>Editar</span>
+              <UIcon
+                name="i-lucide-arrow-right"
+                class="size-4 transition-transform group-hover:translate-x-1 motion-reduce:transition-none"
+                aria-hidden="true"
+              />
+            </div>
+
             <template #footer>
-              <div class="flex w-full justify-end">
+              <div
+                class="flex w-full justify-end"
+                @click.stop
+                @keydown.stop
+              >
                 <UDropdownMenu
                   :items="rowActions(project)"
                   :content="{ align: 'end' }"
