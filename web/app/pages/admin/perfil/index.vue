@@ -808,7 +808,7 @@ function cvName(url: string | null): string | null {
           </template>
 
           <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-            <div class="bg-elevated flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full">
+            <div class="bg-elevated relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-default">
               <img
                 v-if="state.avatarUrl"
                 :src="state.avatarUrl"

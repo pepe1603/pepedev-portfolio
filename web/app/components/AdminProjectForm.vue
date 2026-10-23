@@ -755,12 +755,6 @@ const previewHtml = computed(() => {
             placeholder="https://…"
             class="min-w-0 flex-1"
           />
-          <img
-            v-if="state.thumbnailUrl"
-            :src="state.thumbnailUrl"
-            alt="Vista previa de la miniatura"
-            class="size-12 rounded-md border border-default object-cover"
-          >
           <UButton
             v-if="state.thumbnailUrl"
             icon="i-lucide-trash-2"
@@ -770,6 +764,17 @@ const previewHtml = computed(() => {
             aria-label="Quitar miniatura"
             @click="state.thumbnailUrl = ''"
           />
+        </div>
+        <div
+          v-if="state.thumbnailUrl"
+          class="relative mt-3 overflow-hidden rounded-xl border border-default bg-elevated"
+        >
+          <img
+            :src="state.thumbnailUrl"
+            alt="Vista previa de la miniatura"
+            class="aspect-video w-full object-cover"
+            loading="lazy"
+          >
         </div>
       </UFormField>
 
@@ -782,18 +787,21 @@ const previewHtml = computed(() => {
 
       <ul
         v-else
-        class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+        class="grid grid-cols-1 gap-4 md:grid-cols-2"
       >
         <li
           v-for="(image, index) in state.gallery"
           :key="image.url"
-          class="flex gap-3"
+          class="flex flex-col gap-3 rounded-xl border border-default bg-default p-3 sm:flex-row sm:items-start"
         >
-          <img
-            :src="image.url"
-            alt=""
-            class="size-16 shrink-0 rounded-md border border-default object-cover"
-          >
+          <div class="relative overflow-hidden rounded-lg border border-default bg-elevated sm:size-28 sm:shrink-0">
+            <img
+              :src="image.url"
+              alt=""
+              class="aspect-video w-full object-cover sm:h-full sm:aspect-auto"
+              loading="lazy"
+            >
+          </div>
 
           <div class="min-w-0 flex-1 space-y-2">
             <UFormField
@@ -826,6 +834,7 @@ const previewHtml = computed(() => {
             variant="ghost"
             square
             aria-label="Quitar imagen de la galería"
+            class="self-start"
             @click="removeGalleryImage(image.url)"
           />
         </li>

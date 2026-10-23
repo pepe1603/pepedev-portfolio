@@ -506,12 +506,6 @@ async function uploadImage(event: Event) {
               placeholder="https://…"
               class="min-w-0 flex-1"
             />
-            <img
-              v-if="state.imageUrl"
-              :src="state.imageUrl"
-              alt="Vista previa de la imagen"
-              class="size-12 rounded-md border border-default object-cover"
-            >
             <UButton
               v-if="state.imageUrl"
               icon="i-lucide-trash-2"
@@ -521,6 +515,17 @@ async function uploadImage(event: Event) {
               aria-label="Quitar imagen"
               @click="state.imageUrl = ''"
             />
+          </div>
+          <div
+            v-if="state.imageUrl"
+            class="relative mt-3 overflow-hidden rounded-xl border border-default bg-elevated"
+          >
+            <img
+              :src="state.imageUrl"
+              alt="Vista previa de la imagen"
+              class="max-h-72 w-full object-contain"
+              loading="lazy"
+            >
           </div>
         </UFormField>
       </div>
