@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CARD_FOCO, CARD_INTERACTIVA } from '~/utils/cardStyles'
 // ======================================================================
 // DASHBOARD
 //
@@ -171,42 +172,40 @@ const recentProjects = computed(() =>
 
       <template v-else>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <UCard
+          <NuxtLink
             v-for="stat in stats"
             :key="stat.label"
+            :to="stat.to"
+            class="block"
+            :class="CARD_FOCO"
+            :aria-label="stat.label"
           >
-            <div class="flex items-center justify-between">
-              <p class="text-muted text-xs">
-                {{ stat.label }}
+            <UCard
+              :ui="{
+                root: CARD_INTERACTIVA,
+                body: 'flex flex-col gap-1'
+              }"
+            >
+              <div class="flex items-center justify-between">
+                <p class="text-muted text-xs">
+                  {{ stat.label }}
+                </p>
+                <UIcon
+                  :name="stat.icon"
+                  class="text-muted size-4 transition-transform duration-300 group-hover:scale-110 group-hover:text-primary motion-reduce:transform-none"
+                  aria-hidden="true"
+                />
+              </div>
+
+              <p class="text-highlighted mt-1 text-2xl font-bold">
+                {{ stat.value }}
               </p>
-              <UIcon
-                :name="stat.icon"
-                class="text-muted size-4"
-              />
-            </div>
 
-            <p class="text-highlighted mt-1 text-2xl font-bold">
-              {{ stat.value }}
-            </p>
-
-            <p
-              v-if="stat.to"
-              class="mt-1 text-xs"
-            >
-              <ULink
-                :to="stat.to"
-                class="text-muted hover:text-highlighted transition-colors"
-              >
+              <p class="text-muted mt-1 text-xs transition-colors group-hover:text-primary">
                 {{ stat.hint }}
-              </ULink>
-            </p>
-            <p
-              v-else
-              class="text-muted mt-1 text-xs"
-            >
-              {{ stat.hint }}
-            </p>
-          </UCard>
+              </p>
+            </UCard>
+          </NuxtLink>
         </div>
 
         <UCard>
