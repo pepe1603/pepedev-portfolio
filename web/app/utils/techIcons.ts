@@ -5,7 +5,9 @@
 //
 //   1. techIcon(name)  -> icono de UNA tecnología concreta por su nombre.
 //      Se usa en las tarjetas y fichas de proyecto (project.stack), que es
-//      texto libre. Lo que no está en el mapa cae al icono genérico.
+//      texto libre. La resolución es tolerante (nombre exacto, sin versión,
+//      por partes de un nombre compuesto y por palabra completa); si nada
+//      encaja, cae al icono genérico. El orden está explicado en techIcon.
 //
 //   2. categoryIcon(category) -> icono de una CATEGORÍA del stack (Backend,
 //      Frontend...). Se usa en la sección de habilidades de la web pública,
@@ -23,7 +25,8 @@
 
 /**
  * Icono por nombre de tecnología (en minúsculas y sin espacios sobrantes).
- * Es una tabla de marcas: no pretende cubrir todo, solo lo que se usa.
+ * Es una tabla de marcas: no pretende cubrir todo, solo lo que se usa. Alguna
+ * entrada es un genérico a propósito (SQL, que es un estándar y no un producto).
  */
 export const TECH_ICON_MAP: Record<string, string> = {
   'vue': 'i-simple-icons-vuedotjs',
@@ -41,12 +44,16 @@ export const TECH_ICON_MAP: Record<string, string> = {
   'docker': 'i-simple-icons-docker',
   'git': 'i-simple-icons-git',
   'github': 'i-simple-icons-github',
+  'postman': 'i-simple-icons-postman',
   'figma': 'i-simple-icons-figma',
   'react': 'i-simple-icons-react',
   'next.js': 'i-simple-icons-nextdotjs',
   'nextjs': 'i-simple-icons-nextdotjs',
   'postgresql': 'i-simple-icons-postgresql',
   'postgres': 'i-simple-icons-postgresql',
+  // SQL no tiene marca propia (es un lenguaje estándar, no un producto): se
+  // pinta el icono genérico de base de datos de lucide.
+  'sql': 'i-lucide-database',
   'mysql': 'i-simple-icons-mysql',
   'mongodb': 'i-simple-icons-mongodb',
   'aws': 'i-simple-icons-amazonaws',
@@ -93,12 +100,103 @@ export const TECH_ICON_MAP: Record<string, string> = {
 export const TECH_ICON_FALLBACK = 'i-lucide-code-2'
 
 /**
- * Devuelve el icono de una tecnología por su nombre, o el genérico si no
- * hay coincidencia. La normalización (minúsculas + trim) es la misma que
- * usa la web al pintar el stack de un proyecto.
+ * Cómo se resuelve el icono de una tecnología, en este orden:
+ *
+ *  1. NOMBRE EXACTO. Es lo que se hacía siempre y no cambia: "java" -> Java.
+ *  2. SIN VERSIÓN Y POR PARTES. Se quitan los números de versión ("Vue 3",
+ *     "Next.js 15", "HTML5") y se parte el nombre por los separadores con que
+ *     la gente une dos tecnologías ("/", "|", ",", "+", "&", " y ", " and ").
+ *     Así "Vue / Nuxt" resuelve por "Vue" y "Git / GitHub" por "Git". Gana la
+ *     primera parte reconocida, en el orden en que se escribió.
+ *  3. PALABRA COMPLETA MÁS LARGA. Busca dentro del nombre alguna clave del mapa
+ *     que aparezca como palabra completa (nada de subcadenas) y se queda con la
+ *     más larga, para que "Spring Boot" gane a "Spring" en "Spring Boot
+ *     Framework". Así "React Native" resuelve por React y "MongoDB Atlas" por
+ *     MongoDB.
+ *
+ * No se hace coincidencia por subcadena a propósito: "Mongo" acabaría en el
+ * icono de Go y "JavaScript" en el de Java. Solo palabra completa. Si nada
+ * encaja, se devuelve el genérico.
  */
 export function techIcon(tech: string): string {
-  return TECH_ICON_MAP[tech.toLowerCase().trim()] || TECH_ICON_FALLBACK
+  const nombre = normalizarNombre(tech)
+  if (!nombre) return TECH_ICON_FALLBACK
+
+  // 1. Exacta: el caso de siempre, primero y sin tocar nada.
+  const exacta = TECH_ICON_MAP[nombre]
+  if (exacta) return exacta
+
+  // 2. Sin versión y por partes (el nombre entero sin versión, y cada trozo).
+  const variantes = [
+    sinVersion(nombre),
+    ...partesDeNombre(nombre).flatMap(parte => [parte, sinVersion(parte)])
+  ]
+  for (const variante of variantes) {
+    const icon = TECH_ICON_MAP[variante]
+    if (icon) return icon
+  }
+
+  // 3. Palabra completa más larga dentro del nombre.
+  const porPalabra = porPalabraCompleta(nombre)
+  if (porPalabra) return porPalabra
+
+  return TECH_ICON_FALLBACK
+}
+
+/** Minúsculas, sin espacios en los extremos y con los intermedios colapsados. */
+function normalizarNombre(tech: string): string {
+  return tech.toLowerCase().trim().replace(/\s+/g, ' ')
+}
+
+/**
+ * Quita números de versión, pegados o no: "Vue 3" -> "vue", "Next.js 15" ->
+ * "next.js", "HTML5" -> "html", "Python 3.12" -> "python". Los números no
+ * forman parte del nombre de la marca y sin esto "Next.js 15" no resolvería.
+ */
+function sinVersion(nombre: string): string {
+  return nombre.replace(/\d+(?:\.\d+)*/g, '').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Trozos de un nombre compuesto. Los separadores son los que se usan de verdad
+ * para unir dos tecnologías: "/", "|", ",", ";", "+", "&", " y " y " and ".
+ * "C++" da ["c"] (el "+" es separador y el trozo vacío se descarta).
+ */
+function partesDeNombre(nombre: string): string[] {
+  return nombre
+    .split(/\s*(?:\/|\||,|;|\+|&|\by\b|\band\b)\s*/)
+    .map(parte => parte.trim())
+    .filter(Boolean)
+}
+
+/** Escapa un texto para poder meterlo literal dentro de una RegExp. */
+function escaparRegExp(texto: string): string {
+  return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Claves del mapa preparadas para buscar como palabra completa, de la más larga
+ * a la más corta (así la primera que encaje es la mejor). Se calculan una vez al
+ * cargar el módulo: techIcon se llama varias veces por página y no tiene sentido
+ * reconstruir ~60 expresiones regulares en cada llamada.
+ *
+ * Se descartan las claves de menos de 3 letras en esta capa: son demasiado
+ * cortas para buscarlas dentro de otra palabra sin arriesgar falsos positivos
+ * ("go" dentro de "Mongo", por ejemplo). Siguen funcionando por nombre exacto.
+ */
+const CLAVES_POR_PALABRA = Object.entries(TECH_ICON_MAP)
+  .filter(([clave]) => clave.length >= 3)
+  .sort(([a], [b]) => b.length - a.length)
+  .map(([clave, icon]) => ({
+    icon,
+    patron: new RegExp(`(^|[^a-z0-9])${escaparRegExp(clave)}([^a-z0-9]|$)`)
+  }))
+
+function porPalabraCompleta(nombre: string): string | null {
+  for (const { icon, patron } of CLAVES_POR_PALABRA) {
+    if (patron.test(nombre)) return icon
+  }
+  return null
 }
 
 /** Icono que se pinta cuando la categoría no encaja con ninguna regla. */

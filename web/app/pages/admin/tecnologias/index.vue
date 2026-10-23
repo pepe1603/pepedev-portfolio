@@ -15,7 +15,7 @@
 import * as z from 'zod'
 import type { TableColumn, DropdownMenuItem, FormSubmitEvent } from '@nuxt/ui'
 import { toApiError, unwrapApiError } from '~/composables/useApi'
-import { TECH_ICON_MAP } from '~/utils/techIcons'
+import { TECH_ICON_FALLBACK, techIcon } from '~/utils/techIcons'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -254,21 +254,21 @@ const categoryHelp = computed(() => {
 // ---------------------------------------------------------------------------
 // AVISO SOBRE EL ICONO
 //
-// El icono de una tecnología no se adivina: la web lo busca por el NOMBRE en
-// minúsculas y sin espacios sobrantes dentro de una tabla fija (utils/techIcons.ts).
-// Si no hay coincidencia exacta, pinta un icono genérico. Como el nombre lleva
-// además la categoría y el nivel, conviene avisar de la regla aquí, donde se
-// escribe: de nada sirve un nombre bonito si el icono sale genérico.
+// El icono de una tecnología se resuelve por el NOMBRE: exacto, y si no, sin la
+// versión y por partes de un nombre compuesto, y por último buscando una
+// tecnología conocida como palabra completa dentro del nombre (el orden exacto
+// está en techIcon, utils/techIcons.ts). Si no aparece ninguna, se pinta un
+// icono genérico. Conviene avisarlo aquí, donde se escribe el nombre.
 //
-// Los ejemplos salen de la tabla real, no de una lista escrita a mano, y por eso
-// no se desincronizan: si mañana se añade una marca al mapa, aparece en el aviso.
+// Los ejemplos salen de la tabla y del resolutor reales, no de una lista escrita
+// a mano, y por eso no se desincronizan: un nombre que hoy no resuelve no se
+// muestra como ejemplo.
 // ---------------------------------------------------------------------------
-const ejemploIconos = ['Vue', 'Nuxt', 'TypeScript', 'Spring Boot', 'PostgreSQL', 'Docker']
+const ejemploIconos = ['Vue / Nuxt', 'Git / GitHub', 'TypeScript', 'Spring Boot', 'PostgreSQL', 'Docker']
 
-const ejemploIconosTexto = computed(() => {
-  const reconocidos = ejemploIconos.filter(nombre => TECH_ICON_MAP[nombre.toLowerCase()])
-  return reconocidos.join(', ')
-})
+const ejemploIconosTexto = computed(() =>
+  ejemploIconos.filter(nombre => techIcon(nombre) !== TECH_ICON_FALLBACK).join(', ')
+)
 
 function openCreate() {
   editing.value = null
@@ -721,10 +721,11 @@ const atLimit = computed(() => (profile.value?.skills.length ?? 0) >= MAX_SKILLS
             >
               <template #description>
                 <p>
-                  Escríbelo tal cual está en la tabla: se compara sin distinguir mayúsculas ni
-                  espacios sobrantes. Si no coincide exactamente, se pinta un icono genérico.
-                  Ojo: «Vue / Nuxt» o «Git / GitHub» no coinciden con ninguna fila; para que
-                  salga el icono, usa un nombre por tecnología.
+                  Se busca por el nombre: primero exacto y, si no coincide, ignorando la versión
+                  («Next.js 15») y los separadores con que se unen dos tecnologías («Vue / Nuxt»
+                  usa el icono de Vue). También se reconoce una tecnología conocida dentro del
+                  nombre («React Native» usa el de React). Si no aparece ninguna, se pinta un
+                  icono genérico.
                 </p>
                 <p
                   v-if="ejemploIconosTexto"
