@@ -18,7 +18,7 @@ const { refreshUnread } = useUnreadMessages()
 //
 // UPagination va con páginas 1-based; a la API se le manda 0-based.
 // ---------------------------------------------------------------------------
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 const page = ref(1)
 const statusFilter = ref<'todos' | MessageStatus>('todos')
@@ -372,7 +372,7 @@ function rowActions(message: AdminMessage): DropdownMenuItem[][] {
         </div>
 
         <UTable
-          class="hidden overflow-hidden rounded-xl border border-default lg:block [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-elevated/50"
+          class="hidden rounded-xl border border-default lg:block [&_tbody_tr]:transition-colors [&_tbody_tr:hover]:bg-elevated/50"
           :data="messages"
           :columns="columns"
           :on-select="(event, row) => openDetail(row.original)"
