@@ -15,6 +15,7 @@
 import * as z from 'zod'
 import type { TableColumn, DropdownMenuItem, FormSubmitEvent } from '@nuxt/ui'
 import { toApiError, unwrapApiError } from '~/composables/useApi'
+import { TECH_ICON_MAP } from '~/utils/techIcons'
 
 definePageMeta({ layout: 'dashboard' })
 
@@ -248,6 +249,25 @@ const categoryHelp = computed(() => {
   return inUse
     ? `La web agrupa por texto exacto; reutiliza las existentes para no partir un grupo en dos: ${inUse}.`
     : 'La web agrupa por categoría. Déjala vacía para agruparla en «Otros».'
+})
+
+// ---------------------------------------------------------------------------
+// AVISO SOBRE EL ICONO
+//
+// El icono de una tecnología no se adivina: la web lo busca por el NOMBRE en
+// minúsculas y sin espacios sobrantes dentro de una tabla fija (utils/techIcons.ts).
+// Si no hay coincidencia exacta, pinta un icono genérico. Como el nombre lleva
+// además la categoría y el nivel, conviene avisar de la regla aquí, donde se
+// escribe: de nada sirve un nombre bonito si el icono sale genérico.
+//
+// Los ejemplos salen de la tabla real, no de una lista escrita a mano, y por eso
+// no se desincronizan: si mañana se añade una marca al mapa, aparece en el aviso.
+// ---------------------------------------------------------------------------
+const ejemploIconos = ['Vue', 'Nuxt', 'TypeScript', 'Spring Boot', 'PostgreSQL', 'Docker']
+
+const ejemploIconosTexto = computed(() => {
+  const reconocidos = ejemploIconos.filter(nombre => TECH_ICON_MAP[nombre.toLowerCase()])
+  return reconocidos.join(', ')
 })
 
 function openCreate() {
@@ -691,6 +711,39 @@ const atLimit = computed(() => (profile.value?.skills.length ?? 0) >= MAX_SKILLS
               icon="i-lucide-circle-x"
               :description="formAlert"
             />
+
+            <!-- Cómo se resuelve el icono: evita nombres que caen al genérico. -->
+            <UAlert
+              color="info"
+              variant="subtle"
+              icon="i-lucide-info"
+              title="El icono se busca por el nombre"
+            >
+              <template #description>
+                <p>
+                  Escríbelo tal cual está en la tabla: se compara sin distinguir mayúsculas ni
+                  espacios sobrantes. Si no coincide exactamente, se pinta un icono genérico.
+                  Ojo: «Vue / Nuxt» o «Git / GitHub» no coinciden con ninguna fila; para que
+                  salga el icono, usa un nombre por tecnología.
+                </p>
+                <p
+                  v-if="ejemploIconosTexto"
+                  class="mt-2"
+                >
+                  Reconocidos, por ejemplo: <strong>{{ ejemploIconosTexto }}</strong>.
+                </p>
+              </template>
+              <template #actions>
+                <UButton
+                  label="Ver todos los iconos reconocidos"
+                  icon="i-lucide-swatch-book"
+                  color="info"
+                  variant="link"
+                  size="sm"
+                  to="/admin/tecnologias/iconos"
+                />
+              </template>
+            </UAlert>
 
             <UFormField
               label="Nombre"
