@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useTechIcons } from '~/composables/useTechIcons.ts'
+import { CARD_FOCO, CARD_INTERACTIVA } from '~/utils/cardStyles'
 
 const api = useApi()
 const lang = useLang()
@@ -140,12 +141,13 @@ useSeoMeta({
             v-for="project in filteredProjects"
             :key="project.slug"
             :to="`/proyectos/${project.slug}`"
-            class="group block min-w-0 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+            class="block min-w-0"
+            :class="CARD_FOCO"
             :aria-label="`Ver proyecto: ${project.title}`"
           >
             <UCard
               :ui="{
-                root: 'h-full overflow-hidden rounded-2xl border border-default bg-default transition-[border-color,transform,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:border-primary/50 group-hover:shadow-lg motion-reduce:transform-none motion-reduce:transition-none',
+                root: CARD_INTERACTIVA,
                 body: 'flex h-full flex-col gap-4 p-4 sm:p-5 lg:p-6'
               }"
             >
