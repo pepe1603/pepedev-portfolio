@@ -62,6 +62,20 @@ const state = reactive({
   sortOrder: props.certificate?.sortOrder ?? 0
 })
 
+// Un solo punto donde volcar un certificado al formulario: al montar y al
+// descartar cambios. Evita duplicar la asignación campo a campo.
+function fillFrom(certificate: AdminCertificate) {
+  state.title = pickLocalized(certificate.title)
+  state.issuer = certificate.issuer
+  state.kind = certificate.kind
+  state.issueDate = certificate.issueDate ?? ''
+  state.expiryDate = certificate.expiryDate ?? ''
+  state.credentialUrl = certificate.credentialUrl ?? ''
+  state.imageUrl = certificate.imageUrl ?? ''
+  state.featured = certificate.featured
+  state.sortOrder = certificate.sortOrder
+}
+
 // ---------------------------------------------------------------------------
 // ESQUEMA
 //
@@ -149,6 +163,68 @@ function toBody(): CertificateRequest {
     featured: state.featured,
     sortOrder: state.sortOrder
   }
+}
+
+/**
+ * Mismo ensamblado pero a partir de un certificado guardado. Sirve para
+ * comparar peras con peras en el contador de cambios: los dos lados pasan por
+ * las mismas normalizaciones (vacío → null, bilingüe sin claves vacías...), así
+ * que un campo sale "cambiado" solo si el PUT mandaría otra cosa.
+ */
+function bodyFrom(certificate: AdminCertificate): CertificateRequest {
+  return {
+    title: toLocalized(pickLocalized(certificate.title)) ?? {},
+    issuer: certificate.issuer.trim(),
+    kind: certificate.kind,
+    issueDate: certificate.issueDate || null,
+    expiryDate: certificate.expiryDate || null,
+    credentialUrl: certificate.credentialUrl?.trim() || null,
+    imageUrl: certificate.imageUrl || null,
+    featured: certificate.featured,
+    sortOrder: certificate.sortOrder
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CAMBIOS SIN GUARDAR
+//
+// Sin esto el formulario no diría qué se ha tocado, y el PUT reemplaza el
+// certificado entero: conviene verlo antes de pulsar Guardar. Solo se compara
+// en edición (al crear no hay original contra el que comparar). La cuenta la
+// lleva el composable compartido, el mismo que usa el perfil.
+// ---------------------------------------------------------------------------
+const ETIQUETAS: Record<string, string> = {
+  title: 'título',
+  issuer: 'emisor',
+  kind: 'tipo',
+  issueDate: 'fecha de emisión',
+  expiryDate: 'caducidad',
+  credentialUrl: 'URL de la credencial',
+  imageUrl: 'imagen',
+  featured: 'destacado',
+  sortOrder: 'orden'
+}
+
+const { hayCambios, claseCambio, textoCambios, listaCambios } = useCambiosSinGuardar(
+  Object.fromEntries(
+    Object.entries(ETIQUETAS).map(([campo, etiqueta]) => [
+      campo,
+      {
+        etiqueta,
+        actual: () => normalizarValor(toBody()[campo as keyof CertificateRequest]),
+        guardado: () => normalizarValor(
+          props.certificate ? bodyFrom(props.certificate)[campo as keyof CertificateRequest] : null
+        )
+      }
+    ])
+  ),
+  () => isEdit.value
+)
+
+/** Vuelve el formulario al último estado guardado. No toca el servidor. */
+function descartarCambios() {
+  if (props.certificate) fillFrom(props.certificate)
+  alert.value = ''
 }
 
 // ---------------------------------------------------------------------------
@@ -239,8 +315,56 @@ async function uploadImage(event: Event) {
       class="order-first"
     />
 
+    <!-- Barra de estado: qué va a cambiar y el Guardar, siempre a la vista.
+         Solo en edición: al crear no hay "cambios sin guardar" que contar. -->
+    <div
+      v-if="isEdit"
+      class="bg-default/90 supports-backdrop-blur:bg-default/70 sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg px-1 py-2 backdrop-blur"
+    >
+      <div class="flex items-center gap-2">
+        <UBadge
+          v-if="hayCambios"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-pencil"
+        >
+          {{ textoCambios }}
+        </UBadge>
+        <UBadge
+          v-else
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-check"
+        >
+          Sin cambios
+        </UBadge>
+        <span
+          v-if="hayCambios"
+          class="text-muted hidden text-xs sm:inline"
+        >
+          {{ listaCambios }}
+        </span>
+      </div>
+      <div class="flex gap-2">
+        <UButton
+          v-if="hayCambios"
+          label="Descartar"
+          icon="i-lucide-undo-2"
+          color="neutral"
+          variant="ghost"
+          @click="descartarCambios"
+        />
+        <UButton
+          label="Guardar"
+          icon="i-lucide-save"
+          type="submit"
+          :disabled="!hayCambios"
+        />
+      </div>
+    </div>
+
     <!-- DATOS -->
-    <UCard>
+    <UCard :class="claseCambio('title', 'issuer', 'kind')">
       <template #header>
         <h3 class="font-semibold text-highlighted">
           Datos
@@ -301,7 +425,7 @@ async function uploadImage(event: Event) {
     </UCard>
 
     <!-- FECHAS Y ENLACES -->
-    <UCard>
+    <UCard :class="claseCambio('issueDate', 'expiryDate', 'credentialUrl', 'imageUrl')">
       <template #header>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -403,7 +527,7 @@ async function uploadImage(event: Event) {
     </UCard>
 
     <!-- PUBLICACIÓN -->
-    <UCard>
+    <UCard :class="claseCambio('featured', 'sortOrder')">
       <template #header>
         <h3 class="font-semibold text-highlighted">
           Publicación
@@ -455,9 +579,19 @@ async function uploadImage(event: Event) {
         @click="navigateTo('/admin/certificados')"
       />
       <UButton
+        v-if="isEdit"
+        label="Descartar"
+        icon="i-lucide-undo-2"
+        color="neutral"
+        variant="soft"
+        :disabled="!hayCambios"
+        @click="descartarCambios"
+      />
+      <UButton
         type="submit"
         :label="isEdit ? 'Guardar cambios' : 'Crear certificado'"
         :icon="isEdit ? 'i-lucide-save' : 'i-lucide-plus'"
+        :disabled="isEdit && !hayCambios"
       />
     </div>
   </UForm>

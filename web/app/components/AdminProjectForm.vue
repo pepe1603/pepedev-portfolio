@@ -76,6 +76,29 @@ const state = reactive({
   sortOrder: props.project?.sortOrder ?? 0
 })
 
+// Un solo punto donde volcar un proyecto al formulario: al montar y al
+// descartar cambios. Evita duplicar la asignación campo a campo.
+function fillFrom(project: AdminProject) {
+  state.slug = project.slug
+  state.title = pickLocalized(project.title)
+  state.subtitle = pickLocalized(project.subtitle)
+  state.summary = pickLocalized(project.summary)
+  state.descriptionMd = pickLocalized(project.descriptionMd)
+  state.thumbnailUrl = project.thumbnailUrl ?? ''
+  state.gallery = (project.gallery ?? []).map(image => ({
+    url: image.url,
+    alt: image.alt ?? '',
+    caption: image.caption ?? ''
+  }))
+  state.repoUrl = project.repoUrl ?? ''
+  state.demoUrl = project.demoUrl ?? ''
+  state.stack = [...(project.stack ?? [])]
+  state.periodStart = project.periodStart ?? ''
+  state.periodEnd = project.periodEnd ?? ''
+  state.featured = project.featured
+  state.sortOrder = project.sortOrder
+}
+
 // ---------------------------------------------------------------------------
 // ESQUEMA
 //
@@ -175,6 +198,82 @@ function toBody(): ProjectRequest {
     featured: state.featured,
     sortOrder: state.sortOrder
   }
+}
+
+/**
+ * Mismo ensamblado pero a partir de un proyecto guardado. Sirve para comparar
+ * peras con peras en el contador de cambios: los dos lados pasan por las mismas
+ * normalizaciones (vacío → null, bilingüe sin claves vacías...), así que un
+ * campo sale "cambiado" solo si el PUT mandaría otra cosa.
+ */
+function bodyFrom(project: AdminProject): ProjectRequest {
+  return {
+    slug: project.slug.trim(),
+    title: toLocalized(pickLocalized(project.title)) ?? {},
+    subtitle: toLocalized(pickLocalized(project.subtitle)),
+    summary: toLocalized(pickLocalized(project.summary)),
+    descriptionMd: toLocalized(pickLocalized(project.descriptionMd)),
+    thumbnailUrl: project.thumbnailUrl || null,
+    gallery: (project.gallery ?? []).map(image => ({
+      url: image.url,
+      alt: image.alt?.trim() || null,
+      caption: image.caption?.trim() || null
+    })),
+    repoUrl: project.repoUrl?.trim() || null,
+    demoUrl: project.demoUrl?.trim() || null,
+    stack: project.stack ?? [],
+    periodStart: project.periodStart || null,
+    periodEnd: project.periodEnd || null,
+    featured: project.featured,
+    sortOrder: project.sortOrder
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CAMBIOS SIN GUARDAR
+//
+// Sin esto el formulario no diría qué se ha tocado, y el PUT reemplaza el
+// proyecto entero: conviene verlo antes de pulsar Guardar. Solo se compara en
+// edición (al crear no hay original contra el que comparar; todo está "nuevo").
+// La cuenta la lleva el composable compartido, el mismo que usa el perfil.
+// ---------------------------------------------------------------------------
+const ETIQUETAS: Record<string, string> = {
+  slug: 'slug',
+  title: 'título',
+  subtitle: 'subtítulo',
+  summary: 'resumen',
+  descriptionMd: 'descripción',
+  thumbnailUrl: 'miniatura',
+  gallery: 'galería',
+  repoUrl: 'repositorio',
+  demoUrl: 'demo',
+  stack: 'stack',
+  periodStart: 'fecha de inicio',
+  periodEnd: 'fecha de fin',
+  featured: 'destacado',
+  sortOrder: 'orden'
+}
+
+const { hayCambios, claseCambio, textoCambios, listaCambios } = useCambiosSinGuardar(
+  Object.fromEntries(
+    Object.entries(ETIQUETAS).map(([campo, etiqueta]) => [
+      campo,
+      {
+        etiqueta,
+        actual: () => normalizarValor(toBody()[campo as keyof ProjectRequest]),
+        guardado: () => normalizarValor(
+          props.project ? bodyFrom(props.project)[campo as keyof ProjectRequest] : null
+        )
+      }
+    ])
+  ),
+  () => isEdit.value
+)
+
+/** Vuelve el formulario al último estado guardado. No toca el servidor. */
+function descartarCambios() {
+  if (props.project) fillFrom(props.project)
+  alert.value = ''
 }
 
 // ---------------------------------------------------------------------------
@@ -368,8 +467,57 @@ const previewHtml = computed(() => {
       class="order-first"
     />
 
+    <!-- Barra de estado: qué va a cambiar y el Guardar, siempre a la vista.
+         Solo en edición: al crear no hay "cambios sin guardar" que contar. -->
+    <div
+      v-if="isEdit"
+      class="bg-default/90 supports-backdrop-blur:bg-default/70 sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg px-1 py-2 backdrop-blur"
+    >
+      <div class="flex items-center gap-2">
+        <UBadge
+          v-if="hayCambios"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-pencil"
+        >
+          {{ textoCambios }}
+        </UBadge>
+        <UBadge
+          v-else
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-check"
+        >
+          Sin cambios
+        </UBadge>
+        <span
+          v-if="hayCambios"
+          class="text-muted hidden text-xs sm:inline"
+        >
+          {{ listaCambios }}
+        </span>
+      </div>
+      <div class="flex gap-2">
+        <UButton
+          v-if="hayCambios"
+          label="Descartar"
+          icon="i-lucide-undo-2"
+          color="neutral"
+          variant="ghost"
+          @click="descartarCambios"
+        />
+        <UButton
+          label="Guardar"
+          icon="i-lucide-save"
+          type="submit"
+          :loading="false"
+          :disabled="!hayCambios"
+        />
+      </div>
+    </div>
+
     <!-- IDENTIDAD -->
-    <UCard>
+    <UCard :class="claseCambio('slug', 'title', 'subtitle', 'summary')">
       <template #header>
         <h3 class="font-semibold text-highlighted">
           Identidad
@@ -441,7 +589,7 @@ const previewHtml = computed(() => {
     </UCard>
 
     <!-- CONTENIDO -->
-    <UCard>
+    <UCard :class="claseCambio('descriptionMd')">
       <template #header>
         <div class="flex items-center justify-between gap-3">
           <h3 class="font-semibold text-highlighted">
@@ -540,7 +688,7 @@ const previewHtml = computed(() => {
     </UCard>
 
     <!-- IMÁGENES -->
-    <UCard>
+    <UCard :class="claseCambio('thumbnailUrl', 'gallery')">
       <template #header>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -685,7 +833,7 @@ const previewHtml = computed(() => {
     </UCard>
 
     <!-- ENLACES Y DATOS -->
-    <UCard>
+    <UCard :class="claseCambio('repoUrl', 'demoUrl', 'stack', 'periodStart', 'periodEnd')">
       <template #header>
         <h3 class="font-semibold text-highlighted">
           Enlaces y datos
@@ -789,7 +937,7 @@ const previewHtml = computed(() => {
     </UCard>
 
     <!-- PUBLICACIÓN -->
-    <UCard>
+    <UCard :class="claseCambio('featured', 'sortOrder')">
       <template #header>
         <h3 class="font-semibold text-highlighted">
           Publicación
@@ -841,10 +989,20 @@ const previewHtml = computed(() => {
         @click="navigateTo('/admin/proyectos')"
       />
       <UButton
+        v-if="isEdit"
+        label="Descartar"
+        icon="i-lucide-undo-2"
+        color="neutral"
+        variant="soft"
+        :disabled="!hayCambios"
+        @click="descartarCambios"
+      />
+      <UButton
         type="submit"
         :label="isEdit ? 'Guardar cambios' : 'Crear proyecto'"
         :icon="isEdit ? 'i-lucide-save' : 'i-lucide-plus'"
         :loading="false"
+        :disabled="isEdit && !hayCambios"
       />
     </div>
   </UForm>

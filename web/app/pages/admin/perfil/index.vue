@@ -90,112 +90,74 @@ watch(profile, (value) => {
 // CAMBIOS SIN GUARDAR
 //
 // El formulario no dice en ningún sitio qué se ha tocado, y como el PUT
-// reemplaza el perfil entero conviene verlo antes de pulsar Guardar. Se compara
-// el estado actual contra el perfil guardado (profile.value), aplicando las
-// mismas normalizaciones que toBody: cadena vacía es null, y el texto bilingüe
-// se compara en su forma sin claves vacías. Así "3 cambios" significa de verdad
-// "3 campos que van a cambiar en el PUT".
+// reemplaza el perfil entero conviene verlo antes de pulsar Guardar. La cuenta
+// la lleva el composable compartido (useCambiosSinGuardar), el mismo que usan
+// proyectos y certificados: aquí solo se declara, por campo, su etiqueta y cómo
+// se normaliza a cada lado. Las normalizaciones replican las de toBody (vacío es
+// null, el texto bilingüe se compara sin claves vacías), así "3 cambios" son de
+// verdad "3 campos que van a cambiar en el PUT".
 // ---------------------------------------------------------------------------
-const ETIQUETAS_CAMPO: Record<string, string> = {
-  'fullName': 'nombre completo',
-  'headline': 'titular',
-  'bio': 'biografía',
-  'location': 'ubicación',
-  'githubUrl': 'GitHub',
-  'linkedinUrl': 'LinkedIn',
-  'websiteUrl': 'web',
-  'emailPublic': 'email público',
-  'avatarUrl': 'avatar',
-  'cv.es': 'CV en español',
-  'cv.en': 'CV en inglés'
-}
-
-/** Normaliza un valor del formulario a como lo mandaría toBody, para comparar. */
-function valorNormalizado(campo: string): string {
-  switch (campo) {
-    case 'fullName':
-      return state.fullName.trim()
-    case 'headline':
-      return JSON.stringify(toLocalized(state.headline))
-    case 'bio':
-      return JSON.stringify(toLocalized(state.bio))
-    case 'avatarUrl':
-      return JSON.stringify(orNull(state.avatarUrl))
-    case 'cv.es':
-      return JSON.stringify(orNull(state.cv.es))
-    case 'cv.en':
-      return JSON.stringify(orNull(state.cv.en))
-    case 'location':
-      return JSON.stringify(orNull(state.location))
-    case 'githubUrl':
-      return JSON.stringify(orNull(state.githubUrl))
-    case 'linkedinUrl':
-      return JSON.stringify(orNull(state.linkedinUrl))
-    case 'websiteUrl':
-      return JSON.stringify(orNull(state.websiteUrl))
-    case 'emailPublic':
-      return JSON.stringify(orNull(state.emailPublic))
-    default:
-      return ''
-  }
-}
-
-/** Valor guardado del mismo campo, normalizado igual, para comparar peras con peras. */
-function valorGuardado(campo: string, current: AdminProfile): string {
-  switch (campo) {
-    case 'fullName':
-      return current.fullName.trim()
-    case 'headline':
-      return JSON.stringify(toLocalized(pickLocalized(current.headline)))
-    case 'bio':
-      return JSON.stringify(toLocalized(pickLocalized(current.bio)))
-    case 'avatarUrl':
-      return JSON.stringify(orNull(current.avatarUrl ?? ''))
-    case 'cv.es':
-      return JSON.stringify(orNull(current.cvUrlEs ?? ''))
-    case 'cv.en':
-      return JSON.stringify(orNull(current.cvUrlEn ?? ''))
-    case 'location':
-      return JSON.stringify(orNull(current.location ?? ''))
-    case 'githubUrl':
-      return JSON.stringify(orNull(current.githubUrl ?? ''))
-    case 'linkedinUrl':
-      return JSON.stringify(orNull(current.linkedinUrl ?? ''))
-    case 'websiteUrl':
-      return JSON.stringify(orNull(current.websiteUrl ?? ''))
-    case 'emailPublic':
-      return JSON.stringify(orNull(current.emailPublic ?? ''))
-    default:
-      return ''
-  }
-}
-
-/** Campos que van a cambiar si se guarda ahora. Vacío si no hay nada que guardar. */
-const camposCambiados = computed(() => {
-  const current = profile.value
-  if (!current) return []
-  return Object.keys(ETIQUETAS_CAMPO).filter(
-    campo => valorNormalizado(campo) !== valorGuardado(campo, current)
+const { hayCambios, claseCambio, textoCambios, listaCambios }
+  = useCambiosSinGuardar(
+    {
+      'fullName': {
+        etiqueta: 'nombre completo',
+        actual: () => state.fullName.trim(),
+        guardado: () => (profile.value?.fullName ?? '').trim()
+      },
+      'headline': {
+        etiqueta: 'titular',
+        actual: () => normalizarValor(toLocalized(state.headline)),
+        guardado: () => normalizarValor(toLocalized(pickLocalized(profile.value?.headline)))
+      },
+      'bio': {
+        etiqueta: 'biografía',
+        actual: () => normalizarValor(toLocalized(state.bio)),
+        guardado: () => normalizarValor(toLocalized(pickLocalized(profile.value?.bio)))
+      },
+      'location': {
+        etiqueta: 'ubicación',
+        actual: () => normalizarValor(state.location),
+        guardado: () => normalizarValor(profile.value?.location)
+      },
+      'githubUrl': {
+        etiqueta: 'GitHub',
+        actual: () => normalizarValor(state.githubUrl),
+        guardado: () => normalizarValor(profile.value?.githubUrl)
+      },
+      'linkedinUrl': {
+        etiqueta: 'LinkedIn',
+        actual: () => normalizarValor(state.linkedinUrl),
+        guardado: () => normalizarValor(profile.value?.linkedinUrl)
+      },
+      'websiteUrl': {
+        etiqueta: 'web',
+        actual: () => normalizarValor(state.websiteUrl),
+        guardado: () => normalizarValor(profile.value?.websiteUrl)
+      },
+      'emailPublic': {
+        etiqueta: 'email público',
+        actual: () => normalizarValor(state.emailPublic),
+        guardado: () => normalizarValor(profile.value?.emailPublic)
+      },
+      'avatarUrl': {
+        etiqueta: 'avatar',
+        actual: () => normalizarValor(state.avatarUrl),
+        guardado: () => normalizarValor(profile.value?.avatarUrl)
+      },
+      'cv.es': {
+        etiqueta: 'CV en español',
+        actual: () => normalizarValor(state.cv.es),
+        guardado: () => normalizarValor(profile.value?.cvUrlEs)
+      },
+      'cv.en': {
+        etiqueta: 'CV en inglés',
+        actual: () => normalizarValor(state.cv.en),
+        guardado: () => normalizarValor(profile.value?.cvUrlEn)
+      }
+    },
+    () => !!profile.value
   )
-})
-
-const hayCambios = computed(() => camposCambiados.value.length > 0)
-
-/** true si ese campo cambiará al guardar; se usa para resaltarlo en el formulario. */
-function campoCambiado(campo: string): boolean {
-  return camposCambiados.value.includes(campo)
-}
-
-/** Clase de resalte para una tarjeta si alguno de sus campos cambió. */
-function claseCambio(...campos: string[]): string {
-  return campos.some(campoCambiado) ? 'ring-2 ring-warning' : ''
-}
-
-/** "3 cambios sin guardar" / "1 cambio sin guardar". */
-const textoCambios = computed(() => {
-  const n = camposCambiados.value.length
-  return n === 1 ? '1 cambio sin guardar' : `${n} cambios sin guardar`
-})
 
 // ---------------------------------------------------------------------------
 // ESQUEMA
@@ -669,7 +631,7 @@ function cvName(url: string | null): string | null {
               v-if="hayCambios"
               class="text-muted hidden text-xs sm:inline"
             >
-              {{ camposCambiados.map(c => ETIQUETAS_CAMPO[c]).join(', ') }}
+              {{ listaCambios }}
             </span>
           </div>
           <div class="flex gap-2">
