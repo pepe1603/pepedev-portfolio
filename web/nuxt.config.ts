@@ -8,7 +8,8 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     '@vueuse/motion/nuxt',
     'vue3-carousel-nuxt',
-    'nuxt-auth-utils'
+    'nuxt-auth-utils',
+    'nuxt-qrcode'
   ],
 
   // Sin pathPrefix, una seccion en components/sections/HeroSection.vue se

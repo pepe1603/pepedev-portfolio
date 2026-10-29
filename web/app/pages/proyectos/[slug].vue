@@ -57,6 +57,8 @@ const descriptionHtml = computed(() => {
   return DOMPurify.sanitize(marked.parse(md, { async: false }))
 })
 
+const qrOpen = ref(false)
+
 // periodStart/periodEnd llegan como 'yyyy-MM-dd'. Fin null = en curso.
 // El formato de mes abreviado depende del idioma activo, que es el mismo
 // que el contenido de la API.
@@ -255,18 +257,72 @@ useSeoMeta({
               class="sm:flex-1"
             />
 
-            <UButton
+            <div
               v-if="project.demoUrl"
-              :to="project.demoUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              label="Ver demo"
-              icon="i-lucide-external-link"
-              size="lg"
-              block
-              class="sm:flex-1"
-            />
+              class="flex gap-2 sm:flex-1"
+            >
+              <UButton
+                :to="project.demoUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                label="Ver demo"
+                icon="i-lucide-external-link"
+                size="lg"
+                block
+                class="flex-1"
+              />
+              <UButton
+                icon="i-lucide-qr-code"
+                aria-label="Mostrar QR"
+                color="neutral"
+                variant="outline"
+                size="lg"
+                @click="qrOpen = true"
+              />
+            </div>
           </div>
+
+          <Teleport to="body">
+            <div
+              v-if="qrOpen && project?.demoUrl"
+              class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+              @click.self="qrOpen = false"
+            >
+              <div class="w-full max-w-sm rounded-2xl border border-default bg-default p-6 shadow-xl">
+                <div class="flex items-center justify-between">
+                  <h3 class="font-semibold text-highlighted">
+                    Código QR del demo
+                  </h3>
+                  <UButton
+                    icon="i-lucide-x"
+                    color="neutral"
+                    variant="ghost"
+                    square
+                    aria-label="Cerrar"
+                    @click="qrOpen = false"
+                  />
+                </div>
+                <div class="mt-4 flex justify-center">
+                  <Qrcode
+                    :value="project.demoUrl"
+                    variant="pixelated"
+                    class="h-48 w-48"
+                  />
+                </div>
+                <p class="mt-4 break-all text-center text-xs text-muted">
+                  {{ project.demoUrl }}
+                </p>
+                <div class="mt-4 flex justify-end">
+                  <UButton
+                    label="Cerrar"
+                    color="neutral"
+                    variant="soft"
+                    @click="qrOpen = false"
+                  />
+                </div>
+              </div>
+            </div>
+          </Teleport>
         </section>
 
         <!-- Volver al listado -->
