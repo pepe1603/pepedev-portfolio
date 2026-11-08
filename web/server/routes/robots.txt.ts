@@ -9,10 +9,15 @@
 // --------------------------------------------------------------------------
 // LAS RUTAS ADMINISTRATIVAS
 //
-// Todavía no existe ninguna ruta /admin en el front (la Fase B del CMS
-// vendrá después), así que ahora todo es indexable. Cuando esas rutas
-// entren, aquí se añade su Disallow y hay que sacarlas también del
-// sitemap (ver server/routes/sitemap.xml.ts).
+// El panel vive bajo /admin y no aporta nada al índice: es privado, exige
+// sesión y no hay enlaces públicos hacia él. Se excluye con Disallow para
+// que ningún rastreador lo visite siquiera (ahorrando peticiones que
+// acabarían en 401/403). Es una capa de cortesía: lo que de verdad impide
+// la indexación es el `noindex` que ponen los propios layouts del panel y
+// del acceso (ver app/layouts/dashboard.vue y app/layouts/auth.vue).
+//
+// Las pantallas de acceso (/login, /recuperar, /verificar, /restablecer)
+// también se excluyen: son flujos, no contenido, y ensucian el índice.
 // ======================================================================
 export default defineEventHandler((event) => {
   const config = useRuntimeConfig(event)
@@ -23,6 +28,12 @@ export default defineEventHandler((event) => {
   return [
     'User-agent: *',
     'Allow: /',
+    '',
+    'Disallow: /admin',
+    'Disallow: /login',
+    'Disallow: /recuperar',
+    'Disallow: /verificar',
+    'Disallow: /restablecer',
     '',
     `Sitemap: ${base}/sitemap.xml`,
     ''

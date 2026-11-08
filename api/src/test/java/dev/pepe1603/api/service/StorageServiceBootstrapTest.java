@@ -43,7 +43,9 @@ class StorageServiceBootstrapTest {
         StorageProperties storage = new StorageProperties();
         ReflectionTestUtils.setField(storage, "publicUrl", "http://localhost:8080/files");
 
-        service = new StorageService(minioClient, s3, storage);
+        service = new StorageService(minioClient, s3, storage,
+                mock(dev.pepe1603.api.repository.StorageFileRepository.class),
+                mock(StorageReferenceChecker.class));
     }
 
     @Test

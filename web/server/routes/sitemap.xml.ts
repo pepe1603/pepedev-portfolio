@@ -10,8 +10,9 @@
 // caracteres reservados. Si la API no responde, el sitemap sigue
 // sirviendo las rutas fijas en vez de devolver 500.
 //
-// Los /admin futuros (Fase B del CMS) no deben entrar aquí; ver también
-// server/routes/robots.txt.ts.
+// Los /admin no entran aquí: no son contenido público. Van excluidos en
+// robots.txt y con noindex en los layouts (ver server/routes/robots.txt.ts
+// y app/layouts/dashboard.vue).
 // ======================================================================
 import type { ProjectSummaryDTO } from '../../app/utils/types'
 

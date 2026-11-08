@@ -15,10 +15,13 @@ demás son lecturas públicas o borrados de huérfanos.
 
 | Flujo | Lo dispara | Qué ocurre en el bucket |
 |---|---|---|
-| Subida | `POST /admin/storage?use=…` | `putObject` con clave `<uuid>.<ext>` |
+| Subida | `POST /admin/storage?use=…` | `putObject` con clave `<uuid>.<ext>` + fila en `storage_files` con el uso |
+| Listado | `GET /admin/storage` | `listObjects`; solo lee, no toca nada |
+| Borrado manual | `DELETE /admin/storage/{name}` | `removeObject` **solo si nadie lo referencia** (409 si está en uso) |
+| Sustituir el CV del perfil | `PUT /admin/profile` | `removeObject` del PDF anterior **solo si nadie lo usa** |
 | Lectura | `GET /files/<uuid>.<ext>` | `getObject` y se devuelve al navegador |
 | Descarga del CV | `GET /public/cv/{lang}` | nada: redirige (302) a la URL del CV |
-| Huérfanos | al borrar o sustituir perfil, proyecto o certificado | `removeObject` si nadie lo referencia |
+| Huérfanos | **solo** al guardar proyecto o certificado | `removeObject` si nadie lo referencia |
 
 Variables, todas en `.env.example`:
 
@@ -57,6 +60,43 @@ datos, porque todas las filas guardadas dejan de coincidir. Por eso la variable 
 nombre aunque su significado haya cambiado, para que nadie la renombre creyendo que es un
 detalle.
 
+## 2.bis El uso se guarda (tabla `storage_files`)
+
+Hasta la migración V7, el "uso" de un fichero (`avatar`, `thumbnail`, `gallery`, `image`, `cv`)
+solo existía como parámetro de la subida y se perdía: al listar el bucket se deducía el tipo de
+la extensión (`contentType`) y las referencias de quién apuntaba a qué, pero no había forma de
+saber si un `<uuid>.jpg` era un avatar o una miniatura de proyecto. Eso obligaba al modal de
+avatar del perfil a ofrecer **todas** las imágenes, porque ninguna estaba etiquetada.
+
+La tabla `storage_files(file_name PK, use, created_at)` recuerda el uso declarado al subir. La
+escribe `StorageService.store` y la lee `StorageService.list` para rellenar el campo `use` de
+cada objeto.
+
+Reglas, pensadas para no crear dos verdades:
+
+- **Es solo una etiqueta.** NO participa en el borrado. `StorageReferenceChecker` sigue decidiendo
+  si un fichero se puede borrar (perfil/proyectos/certificados) y `OrphanFileCleaner` sigue
+  barriendo. Que un fichero tenga fila aquí no lo hace imborrable: si nadie lo referencia, se
+  borra, y la fila se queda huérfana sin bloquear nada. Así una etiqueta equivocada no convierte
+  un fichero en basura imborrable.
+- **Ficheros sin fila.** Los anteriores a V7 (o subidos por otra vía) no tienen uso guardado. Al
+  listar, `StorageReferenceChecker.inferUse` deduce el uso de quién los referencia —avatar si el
+  perfil, miniatura/galería si un proyecto, imagen si un certificado— y si nadie los referencia,
+  el uso sale `null` ("sin uso" en el panel). No hay migración de datos: se infiere en lectura.
+- **Un uso por fichero.** Es lo que se eligió al subir. Si luego el mismo fichero pasa a usarse de
+  otra forma, la etiqueta guardada no cambia, pero la inferencia de los sin-fila sí refleja el
+  uso real. Para el mismo fichero con dos usos reales no hay caso hoy.
+- **El guardado del uso es best-effort.** Va después del `putObject` y su fallo no rompe la subida:
+  el fichero ya está en el bucket y el uso se podrá inferir igual.
+
+Consumidores del campo `use`:
+
+- **Modal de avatar de `/admin/perfil`**: ofrece los ficheros con `use = avatar` (más los sin uso,
+  como imágenes que pueden serlo). Ya no mezcla miniaturas ni imágenes de certificado.
+- **Modal de CV de `/admin/perfil`**: ofrece los PDF con `use = cv` (más los PDF sin uso, porque el
+  CV es el único uso que admite PDF y no hay ambigüedad).
+- **Panel de Medios**: cada tarjeta muestra el uso declarado bajo el tipo.
+
 ## 3. Por qué la API hace de proxy y no manda al navegador a MinIO
 
 Era la decisión con más riesgo de la migración, y está descartada en la §4. Lo que se paga por
@@ -84,6 +124,35 @@ no se bufferea el fichero en memoria, y el content type se deduce de la extensi�
 los magic bytes, no del nombre que manda el cliente— para que lo que se anuncia y lo que se
 comprueba no puedan separarse.
 
+## 3.bis Gobierno del bucket desde el panel de Medios
+
+El panel de Medios (`/admin/medios`) es la cara visible de `GET`/`DELETE /admin/storage`. Dos
+decisiones que no volver a abrir sin motivo:
+
+- **Un fichero en uso no se borra (409).** El borrado manual comparte criterio con
+  `OrphanFileCleaner`: si perfil, un proyecto o un certificado siguen apuntando al fichero, el
+  `DELETE` responde **409** y el detalle dice *dónde* se usa ("avatar del perfil", "miniatura
+  del proyecto vault-qr"...). La alternativa —borrar con aviso y dejar la web pública con un
+  hueco— se descartó: para borrar un fichero, primero se deja de usar, y el panel lo dice.
+  `StorageReferenceChecker.usages()` es la única fuente de esa lista, y `isReferenced()` se
+  apoya en ella para que no puedan desincronizarse.
+- **La subida guía, no adivina.** `POST /admin/storage` acepta cinco usos (`avatar`,
+  `thumbnail`, `gallery`, `image`, `cv`), cada uno con sus formatos y una recomendación en
+  `StorageUse`. `GET /admin/storage/uses` los expone para que el front no duplique esas reglas.
+  La recomendación es **orientativa**: la API no puede saber por los bytes si una imagen es "de
+  galería" o "de avatar", así que solo se valida el formato (duro: 415/400) y las dimensiones
+  se devuelven en la respuesta del `POST` (`{url,width,height}`, leídas de la cabecera con
+  `ImageIO`, sin cargar la imagen entera) para que el panel avise si no encajan. Rechazar por
+  dimensiones se descartó por frágil y por fricción.
+- **Un CV por idioma; el avatar no se borra nunca.** Al guardar el perfil, `AdminProfileService`
+  limpia los CV anteriores **solo si ya no los usa nadie**: el PDF que deja de ser CV ES/EN se borra
+  del bucket, pero si estaba compartido (p. ej. el mismo PDF en los dos idiomas) o lo usa otra cosa,
+  se queda. Un CV es el documento vigente —acumular versiones no aporta y confunde—, así que
+  sustituirlo implica retirar el anterior. El **avatar**, en cambio, no se limpia jamás: el bucket
+  puede tener varios y puede querer volver a uno; deshacerse de una imagen sobrante es cosa de
+  Medios, que además avisa si sigue en uso. Proyectos y certificados también limpian, porque ahí el
+  reemplazo es un cambio de contenido, no de identidad.
+
 ## 4. Lo que no hay, y por qué
 
 Estas son decisiones, no despistes pendientes.
@@ -95,7 +164,7 @@ Estas son decisiones, no despistes pendientes.
 | **302 a una presignada corta en cada visita** | Arregla el anterior sin caducidad en la base de datos, pero obliga al navegador a alcanzar MinIO —imposible dentro de Docker— y gasta una petición extra en cada imagen. Se descarta con el §3. |
 | **SDK de AWS v2 en lugar del de MinIO** | Son ~30 dependencias (netty, httpclient5, eventstream, tres clientes HTTP) para hablar con el mismo protocolo. Si algún día el destino fuese AWS, el protocolo S3 ya está: el cambio cabe en `S3Properties` y `MinioConfig`. |
 | **`io.minio:minio` 9.x** | A partir de la 8.6 arrastra okhttp 5, que es Kotlin Multiplatform, y Maven no resuelve solo la variante `okhttp-jvm`: habría que añadirla a mano. Se usa la 8.5.17, con API idéntica para lo que se usa aquí. Subir de versión es un commit de una línea más ese `okhttp-jvm`. |
-| **Barrido periódico de huérfanos** | Hoy los huérfanos se limpian al borrar o sustituir, que es donde se sabe que algo dejó de usarse. Listar el bucket entero para cazar huérfanos tiene sentido cuando hay muchas subidas que se quedan a medias; para un admin solo, no. Cuando se añada, listar es más barato que recorrer un sistema de ficheros. |
+| **Barrido periódico de huérfanos** | Hoy los huérfanos se limpian al borrar o sustituir en proyecto, certificado o CV del perfil, que es donde se sabe que algo dejó de usarse. Los avatares sustituidos **no** se barren a propósito: se conservan por si se quiere volver a ellos (ver §3.bis). Listar el bucket entero para cazar huérfanos tiene sentido cuando hay muchas subidas que se quedan a medias; para un admin solo, no. Cuando se añada, listar es más barato que recorrer un sistema de ficheros. |
 | **Versionado del bucket** | Sobra: cada nombre es un UUID distinto, así que una versión antigua nunca se sirve. El borrado es `removeObject` y no hay versiones que restaurar. |
 | **Streaming multipart / resumed uploads** | Los ficheros se validan por magic bytes y se sube de una vez, con un límite de 5/10 MB. El troceado que hace el SDK por debajo ya está. |
 | **CDN delante del proxy** | No hay tráfico que lo justifique. Es lo primero que se pone si algún día lo hay, y no obliga a cambiar nada de lo de aquí. |
@@ -127,7 +196,7 @@ retirarlo, cuando toca:
 
 ## 6. Cómo se comprueban estas decisiones
 
-255 tests en total. `./mvnw -o clean test` desde `api/`, sin MinIO levantado: el SDK va
+270 tests en total. `./mvnw -o clean test` desde `api/`, sin MinIO levantado: el SDK va
 mockeado. El único que toca el servidor es el de la migración, y no lo recoge la suite.
 
 | Decisión | Test |
@@ -139,26 +208,40 @@ mockeado. El único que toca el servidor es el de la migración, y no lo recoge 
 | El bucket se crea al arrancar si falta, con su región | `StorageServiceBootstrapTest.creaElBucketConSuRegionSiNoExiste` |
 | Si MinIO no responde, la app no arranca | `StorageServiceBootstrapTest.siMinioNoRespondeFallaAlArrancarDiciendoQueMinio` |
 | Se sube al bucket correcto, con el content type y los bytes de verdad | `StorageServiceTest.pngAvatarSeGuardaConUrlPublicaYNombreUUID` |
+| Subir guarda el uso declarado en la tabla | `StorageServiceTest.subirGuardaElUsoDeclaradoEnLaTabla` |
+| El listado expone el uso guardado y lo infiere si no hay fila | `StorageServiceTest.listExponerElUsoDeclaradoYLoInfierelaSiNoHayFila` |
+| La inferencia de uso acierta por cada referencia | `StorageReferenceCheckerTest.inferUseDeduceElUsoDeQuienLoReferencia`, `…inferUseEsNullSiNadieLoReferencia` |
+| Las dimensiones salen de la cabecera; un PDF no las tiene | `StorageServiceTest.imageSizeLeeLasDimensionesDeUnPng`, `…imageSizeEsNullParaUnPdf` |
+| Un fichero en uso no se borra: 409 con dónde se usa | `ApiErrorContractTest.storageEnUsoAlBorrar_409ConDetalleDeDondeSeUsa` |
+| Un fichero libre se borra: 204 | `ApiErrorContractTest.storageLibreAlBorrar_204` |
+| La guía de usos se expone con sus formatos | `ApiErrorContractTest.storageUsesDevuelveLosCincoUsosConRecomendacion` |
+| Un CV sustituido se limpia; el avatar nunca | `AdminProfileServiceTest.updateLimpiaLosCvAntiguosPeroNuncaElAvatar` |
+| Se sabe dónde se usa cada fichero | `StorageReferenceCheckerTest.usagesNombraElProyectoDeLaMiniaturaYDeLaGaleria` y siguientes |
 | Solo se toca lo que es clave de objeto | `StorageServiceTest.isManagedNameEsLaFronteraDelBucket`, `StorageServiceTest.deleteByUrlNoMandaAlBucketUnaClaveQueNoEsDelStorage` |
 | La migración sube, relee y es idempotente | `UploadsToBucketMigrationIT` (opt-in, no lo corre la suite) |
 
 `StorageReferenceChecker` y `OrphanFileCleaner` siguen igual y sus tests no han cambiado: la
 comprobación de referencias es contra la base de datos y el borrado es una llamada a
 `deleteByName`, que ya no tiene nada de disco dentro. Lo que hace S3 es más simple, no más
-complicado.
+complicado. El único test que sí cambió es `AdminProfileServiceTest`, porque el perfil ahora limpia
+los CV anteriores (el avatar no) al guardar (ver §3.bis).
 
 ## 7. Referencia rápida
 
 ```
 S3Properties (endpoint, claves, bucket, región) + MinioConfig → MinioClient
 StorageService
-  ├── store(use, fichero)  → valida magic bytes y tamaño, putObject, devuelve URL
+  ├── store(use, fichero)  → valida magic bytes y tamaño, putObject, guarda el uso, devuelve URL
+  ├── list() → lista el bucket (recursive), con URL, tamaño, content type y uso
+  ├── imageSize(fichero) → dimensiones desde la cabecera, null si no es imagen
   ├── deleteByUrl / deleteByName → removeObject, best-effort
   ├── baseName(url) / isManagedName(name) → qué es una clave de objeto
   └── ensureBucket() → @PostConstruct: crea el bucket si falta
 FileServingController  → GET /files/{name}, proxy en streaming, 304 con If-None-Match
-OrphanFileCleaner      → borra lo que ya no referencia nadie
-StorageReferenceChecker → mira perfil, proyectos y certificados
+StorageFileRepository  → uso declarado por fichero (tabla storage_files, migración V7)
+OrphanFileCleaner      → borra lo que ya no referencia nadie (proyectos, certificados y CV del perfil; el avatar nunca)
+StorageReferenceChecker → usages(fileName): dónde se usa; inferUse(fileName): uso si no hay fila
+StorageUse             → label + formatos + recomendación de cada tipo de subida
 ```
 
 ## 8. Qué queda para el paso a Docker y a Nuxt

@@ -58,8 +58,12 @@ export class ApiError extends Error {
  * ProblemDelail parseable (sin conexion, JSON inesperado...) queda como un
  * error generico con status 0, para que la UI pueda distinguirlo de un 404
  * real sin tratar `undefined`.
+ *
+ * Es exportada (ademas de auto-importada por estar en composables/) porque
+ * useAuthApi la reutiliza: los endpoints del BFF en /api/auth tambien
+ * responden con el mismo envelope ProblemDetail que la API de Spring.
  */
-function toApiError(error: unknown): ApiError {
+export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error
 
   const fetchError = error as FetchError

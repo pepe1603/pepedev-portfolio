@@ -18,32 +18,6 @@ const grouped = computed(() => {
 
   return [...map.entries()]
 })
-
-function categoryIcon(category: string): string {
-  const value = category.toLowerCase()
-
-  if (value.includes('backend') || value.includes('servidor')) {
-    return 'i-lucide-server'
-  }
-
-  if (value.includes('base de datos') || value.includes('database')) {
-    return 'i-lucide-database'
-  }
-
-  if (value.includes('frontend') || value.includes('interfaz')) {
-    return 'i-lucide-monitor'
-  }
-
-  if (value.includes('herramienta') || value.includes('tool')) {
-    return 'i-lucide-wrench'
-  }
-
-  if (value.includes('devops') || value.includes('infraestructura')) {
-    return 'i-lucide-container'
-  }
-
-  return 'i-lucide-code-2'
-}
 </script>
 
 <template>

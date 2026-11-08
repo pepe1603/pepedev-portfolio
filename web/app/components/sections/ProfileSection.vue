@@ -30,6 +30,14 @@ const lang = useLang()
 // el boton ya apunta al destino y el browser sigue el redirect solo.
 const cvUrl = computed(() => (lang.value === 'en' ? props.profile.cvUrlEn : props.profile.cvUrlEs))
 
+// El avatar puede apuntar a un fichero del bucket o a una URL de fuera
+// (hosting propio, imagen pública...). NuxtImg solo se usa con el bucket: pasa
+// por ipx, que valida el host contra la lista `domains` de nuxt.config y
+// devolvería un 404 para cualquier dominio de fuera. Un avatar externo se pinta
+// con un <img> normal para que lo cargue el navegador directamente, sin proxy ni
+// lista de permitidos. Se distingue por la ruta /files/ que sirve la API.
+const avatarInterno = computed(() => !!props.profile.avatarUrl?.includes('/files/'))
+
 interface SocialLink {
   label: string
   icon: string
@@ -81,7 +89,7 @@ const socialLinks = computed<SocialLink[]>(() => {
                  md:size-56"
         >
           <NuxtImg
-            v-if="profile.avatarUrl"
+            v-if="profile.avatarUrl && avatarInterno"
             :src="profile.avatarUrl"
             :alt="`Foto de ${profile.fullName}`"
             width="224"
@@ -90,6 +98,13 @@ const socialLinks = computed<SocialLink[]>(() => {
             format="webp"
             class="size-full object-cover"
           />
+
+          <img
+            v-else-if="profile.avatarUrl"
+            :src="profile.avatarUrl"
+            :alt="`Foto de ${profile.fullName}`"
+            class="size-full object-cover"
+          >
 
           <div
             v-else
