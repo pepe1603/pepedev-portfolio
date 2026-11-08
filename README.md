@@ -65,6 +65,25 @@ pepedev-portfolio/
 └── README.md
 ```
 
+## Docker (desarrollo / despliegue)
+
+```bash
+# 1. Copiar los .env (no versionados) a partir de los .example
+cp .env.example .env
+cp web/.env.example web/.env
+# Rellenar secretos (JWT, SMTP, etc.) en ambos ficheros.
+
+# 2. Levantar todo (Postgres, Redis, MinIO, API, Web)
+docker compose up -d --build
+
+# API:   http://localhost:8080/actuator/health
+# Web:   http://localhost:3000
+# MinIO: http://localhost:9001
+```
+
+Los Dockerfiles viven en `docker/` (`Dockerfile.api`, `Dockerfile.web`); el compose
+está en la raíz (`docker-compose.yml`).
+
 ## Comandos de desarrollo (sin Docker)
 
 ```bash

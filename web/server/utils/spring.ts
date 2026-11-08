@@ -50,7 +50,8 @@ const API_BASE_FALLBACK = 'http://localhost:8080'
 
 /** URL base de la API, sin barra final. */
 export function springBaseUrl(event: NitroEvent): string {
-  const configured = useRuntimeConfig(event).public.apiBase || API_BASE_FALLBACK
+  const runtime = useRuntimeConfig(event) as { apiBaseServer?: string; public?: { apiBase?: string } }
+  const configured = runtime.apiBaseServer || runtime.public?.apiBase || API_BASE_FALLBACK
   return configured.replace(/\/+$/, '')
 }
 
