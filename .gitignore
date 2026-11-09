@@ -12,3 +12,5 @@ dist/
 .DS_Store
 *.zip
 *.log
+# Historial de sesiones de desarrollo (no versionado)
+docs-archive/
