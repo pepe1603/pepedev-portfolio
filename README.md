@@ -73,12 +73,15 @@ cp .env.example .env
 cp web/.env.example web/.env
 # Rellenar secretos (JWT, SMTP, etc.) en ambos ficheros.
 
-# 2. Levantar todo (Postgres, Redis, MinIO, API, Web)
+# 2. Levantar todo (Postgres, Redis, API, Web). El storage (MinIO/AWS S3) es
+#    externo: ver APP_S3_ENDPOINT en .env (VPS Terramount/Hostinger o AWS S3).
 docker compose up -d --build
 
 # API:   http://localhost:8080/actuator/health
 # Web:   http://localhost:3000
-# MinIO: http://localhost:9001
+
+# (Opcional) MinIO local para pruebas de storage:
+# docker compose --profile storage up -d minio
 ```
 
 Los Dockerfiles viven en `docker/` (`Dockerfile.api`, `Dockerfile.web`); el compose

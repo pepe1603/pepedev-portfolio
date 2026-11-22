@@ -34,7 +34,11 @@ services:
       timeout: 5s
       retries: 5
 
+  # MinIO es OPCIONAL en el stack de la app: por defecto el storage vive fuera
+  # (VPS Terramount/Hostinger o AWS S3). Se levanta solo con --profile storage
+  # para pruebas locales/staging del bucket.
   minio:
+    profiles: ["storage"]
     image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -68,8 +72,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      minio:
         condition: service_healthy
     ports:
       - "8080:8080"

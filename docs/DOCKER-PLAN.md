@@ -28,7 +28,7 @@ rama `feature/docker`. No se ha hecho push todavía.
 - [ ] Instalar Docker en la máquina de desarrollo y levantar `docker compose up -d --build`.
 - [ ] Verificar healthchecks (`/actuator/health`, web, minio).
 - [ ] Probar flujo completo: login admin, subida de media, CV, contacto, imágenes.
-- [ ] Ajustar MinIO healthcheck (curl vs `mc ready`) si falla.
+- [x] MinIO sacado del stack de la app: storage externo (VPS Terramount/Hostinger o AWS S3). Perfil `storage` opcional para pruebas locales.
 - [ ] Añadir healthcheck de web validado (respuestas 200).
 - [ ] Documentar variables de entorno necesarias para Docker en `.env.example`.
 
@@ -38,7 +38,8 @@ rama `feature/docker`. No se ha hecho push todavía.
 - [ ] Añadir script `scripts/dev.sh` (o Makefile) para `docker compose up`.
 - [ ] Definir volúmenes nombrados y política de backup local (pg_dump, mc mirror).
 - [ ] Probar migración Flyway en contenedor limpio (BD vacía).
-- [ ] Probar bucket: la API crea `portfolio` al arrancar.
+- [ ] Probar bucket: la API crea `portfolio` al arrancar (en AWS requiere permisos de creacion; en MinIO del VPS, igual).
+- [ ] Documentar la URL del MinIO/S3 del VPS y las credenciales en `/etc/portfolio.env`.
 
 ## 3. Proxy TLS y producción local
 
