@@ -248,8 +248,10 @@ StorageUse             → label + formatos + recomendación de cada tipo de sub
 
 Nada de esto está hecho, y nada de ello bloquea lo que sí está:
 
-- **MinIO en Docker.** Solo `APP_S3_ENDPOINT=http://minio:9000` y las credenciales del
-  compose. El bucket lo crea la API, así que no hay script de arranque que mantener.
+- **MinIO NO va en el stack de la app.** El storage es externo (VPS Terramount/Hostinger
+  o AWS S3). Solo se cambia `APP_S3_ENDPOINT` y las credenciales; el SDK es S3-compatible,
+  así que la API no cambia. No hay servicio MinIO en el compose; el bucket se prueba
+  contra el MinIO local instalado o contra el VPS/AWS.
 - **Que la API quede accesible desde el contenedor de MinIO y al revés** (la red del compose),
   y que `APP_STORAGE_PUBLIC_URL` pase a ser el dominio público detrás del proxy TLS.
 - **Que Nuxt consuma `/files/**`** sin cambios: es la misma URL de siempre, así que el front
