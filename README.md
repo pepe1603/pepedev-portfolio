@@ -80,8 +80,7 @@ docker compose up -d --build
 # API:   http://localhost:8080/actuator/health
 # Web:   http://localhost:3000
 
-# (Opcional) MinIO local para pruebas de storage:
-# docker compose --profile storage up -d minio
+# El storage (MinIO/AWS S3) es externo: configurar APP_S3_ENDPOINT en .env.
 ```
 
 Los Dockerfiles viven en `docker/` (`Dockerfile.api`, `Dockerfile.web`); el compose

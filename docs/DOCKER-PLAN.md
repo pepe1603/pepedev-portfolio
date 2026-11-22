@@ -28,7 +28,7 @@ rama `feature/docker`. No se ha hecho push todavía.
 - [ ] Instalar Docker en la máquina de desarrollo y levantar `docker compose up -d --build`.
 - [ ] Verificar healthchecks (`/actuator/health`, web, minio).
 - [ ] Probar flujo completo: login admin, subida de media, CV, contacto, imágenes.
-- [x] MinIO sacado del stack de la app: storage externo (VPS Terramount/Hostinger o AWS S3). Perfil `storage` opcional para pruebas locales.
+- [x] MinIO sacado del stack de la app: storage externo (VPS Terramount/Hostinger o AWS S3). Sin servicio MinIO en el compose.
 - [ ] Añadir healthcheck de web validado (respuestas 200).
 - [ ] Documentar variables de entorno necesarias para Docker en `.env.example`.
 
