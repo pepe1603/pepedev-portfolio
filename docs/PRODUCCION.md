@@ -1,6 +1,6 @@
 # Guía de producción — pepedev-portfolio (backend API)
 
-Runbook para desplegar `portfolio-api` (Spring Boot 4.1.1 · Java 21) detrás de un proxy con TLS.
+Runbook para desplegar `api` (Spring Boot 4.1.1 · Java 21) detrás de un proxy con TLS.
 **No hay infraestructura desplegada todavía**: esta es la guía canónica para cuando exista.
 
 ## 1. Arquitectura objetivo
@@ -16,7 +16,7 @@ Internet ── HTTPS:443 ──> proxy (Caddy/nginx) ── HTTP:8080 ──> A
   así las cookies, links y el rate limit por IP ven la IP real del cliente.
 - Como no hay Docker, el despliegue es: **jar + systemd** en el mismo host del proxy.
 
-## 2. Variables de entorno (`/etc/portfolio-api.env`, permiso `600`)
+## 2. Variables de entorno (`/etc/api.env`, permiso `600`)
 
 Copiar de `.env.example` y **ajustar**:
 
@@ -48,20 +48,20 @@ Notas:
 
 ```bash
 cd api
-./mvnw -q -DskipTests package            # genera target/portfolio-api-*.jar
-APP_...=/etc/portfolio-api.env           # conjunto de vars de producción
+./mvnw -q -DskipTests package            # genera target/api-*.jar
+APP_...=/etc/api.env           # conjunto de vars de producción
 
 # arranque manual (pruebas)
-setsid nohup bash -c 'set -a; . /etc/portfolio-api.env; set +a; \
-  exec java -jar target/portfolio-api-*.jar' > /var/log/portfolio-api.log 2>&1 &
+setsid nohup bash -c 'set -a; . /etc/api.env; set +a; \
+  exec java -jar target/api-*.jar' > /var/log/api.log 2>&1 &
 ```
 
 ### systemd (recomendado)
 
 ```ini
-# /etc/systemd/system/portfolio-api.service
+# /etc/systemd/system/api.service
 [Unit]
-Description=portfolio-api (Spring Boot)
+Description=api (Spring Boot)
 After=network-online.target
 Wants=network-online.target
 
@@ -69,8 +69,8 @@ Wants=network-online.target
 Type=simple
 User=portfolio
 WorkingDirectory=/srv/portfolio/api
-EnvironmentFile=/etc/portfolio-api.env
-ExecStart=/usr/bin/java -jar /srv/portfolio/api/target/portfolio-api-*.jar
+EnvironmentFile=/etc/api.env
+ExecStart=/usr/bin/java -jar /srv/portfolio/api/target/api-*.jar
 SuccessExitStatus=143
 Restart=on-failure
 RestartSec=5
@@ -81,8 +81,8 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now portfolio-api
-sudo systemctl restart portfolio-api && sudo journalctl -u portfolio-api -f
+sudo systemctl enable --now api
+sudo systemctl restart api && sudo journalctl -u api -f
 ```
 
 ## 4. Proxy TLS (Caddy como ejemplo)

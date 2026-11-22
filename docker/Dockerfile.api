@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+# API (Spring Boot 4.1 · Java 21)
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /app
+COPY api/pom.xml ./
+RUN mvn -q -o dependency:go-offline -DskipTests 2>/dev/null || mvn -q dependency:go-offline -DskipTests
+COPY api/src ./src
+RUN mvn -q -DskipTests package
+
+FROM eclipse-temurin:21-jre-alpine AS runtime
+WORKDIR /app
+RUN addgroup -S portfolio && adduser -S -G portfolio portfolio
+COPY --from=build /app/target/*.jar /app/app.jar
+COPY docker/entrypoint.api.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+USER portfolio
+EXPOSE 8080
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+ENTRYPOINT ["/entrypoint.sh"]

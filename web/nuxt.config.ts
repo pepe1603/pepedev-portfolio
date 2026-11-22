@@ -7,7 +7,9 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@vueuse/nuxt',
     '@vueuse/motion/nuxt',
-    'vue3-carousel-nuxt'
+    'vue3-carousel-nuxt',
+    'nuxt-auth-utils',
+    'nuxt-qrcode'
   ],
 
   // Sin pathPrefix, una seccion en components/sections/HeroSection.vue se
@@ -37,18 +39,44 @@ export default defineNuxtConfig({
     disableTransition: true
   },
 
-  ui: {
-    experimental: {
-      // componentDetection activa el recorte de temas: Nuxt UI escanea que
-      // componentes se usan de verdad y solo genera el CSS de esos. Con
-      // `true` no haria falta la lista; el array la completa con los que
-      // se usan de forma dinamica y el escaner no puede ver.
-      //
-      // 'Modal' y 'Drawer' van aqui porque AppModal.vue y AppDrawer.vue los
-      // envuelven, pero envuelto no cuenta como dinamico: es una referencia
-      // estatica y el escaner la ve. Se dejan de forma explicita para que sus
-      // temas no dependan de que las secciones que los usan sigan en la pagina.
-      componentDetection: ['Modal', 'Drawer']
+  // El experimental.componentDetection de la plantilla (['Modal', 'Drawer'],
+  // para que los temas no dependieran de las secciones demo) se va con esas
+  // secciones: UModal se sigue usando en AppCommandPalette como referencia
+  // estática, y el escáner lo ve sin ayuda.
+
+  // El host de la API nunca se escribe a mano en un componente: sale de aqui
+  // y se lee con useRuntimeConfig().public.apiBase (ver composables/useApi.ts).
+  // El nombre de la variable que lo sobreescribe es NUXT_PUBLIC_API_BASE: nuxt
+  // convierte la ruta del config a SCREAMING_SNAKE_CASE (public.apiBase →
+  // PUBLIC_API_BASE) y le pone el prefijo NUXT_.
+  runtimeConfig: {
+    // Base interna de la API para las llamadas que hace el servidor de Nitro
+    // (BFF /auth/**, /admin/**). En Docker apunta al servicio `api` de la
+    // red interna; en local cae al mismo valor que public.apiBase. Se
+    // sobreescribe con NUXT_API_BASE_SERVER.
+    apiBaseServer: '',
+    // nuxt-auth-utils sella la sesion —incluido el access token y el refresh
+    // token que devuelve Spring— en una cookie httpOnly cifrada con AES-GCM.
+    // La clave sale de NUXT_SESSION_PASSWORD (32+ caracteres, obligatoria) y
+    // el JWT nunca llega al navegador: solo viaja a la API desde el servidor.
+    session: {
+      // El refresh token de Spring vive 7 dias (APP_JWT_REFRESH_TTL). La
+      // cookie de sesion se alinea con el para no obligar a reautenticar
+      // antes de que el refresh caduque por su cuenta.
+      maxAge: 60 * 60 * 24 * 7,
+      cookie: {
+        // Secure por defecto (solo viaja por HTTPS). Se declara aqui para que
+        // Nuxt registre la clave y permita sobreescribirla con
+        // NUXT_SESSION_COOKIE_SECURE (en dev sobre http se pone en false).
+        secure: true
+      }
+    },
+    public: {
+      apiBase: 'http://localhost:8080',
+      // Dominio del sitio para canonical, Open Graph, sitemap y robots.
+      // El nombre de la variable que lo sobreescribe es NUXT_PUBLIC_SITE_URL
+      // (siteUrl → SITE_URL), ya alineada en .env.example.
+      siteUrl: 'http://localhost:3000'
     }
   },
 
@@ -84,6 +112,8 @@ export default defineNuxtConfig({
     // ningun aviso en consola. El host tiene que ir aqui, no la URL entera.
     // picsum.photos responde 302 a fastly.picsum.photos e ipx valida el host
     // despues del redirect, asi que van los dos.
-    domains: ['4kwallpapers.com', 'picsum.photos', 'fastly.picsum.photos']
+    // localhost:8080 va porque las URLs que la API devuelve (avatar, miniatura,
+    // galeria) apuntan a su propio host via APP_STORAGE_PUBLIC_URL.
+    domains: ['4kwallpapers.com', 'picsum.photos', 'fastly.picsum.photos', 'localhost:8080']
   }
 })

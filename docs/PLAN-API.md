@@ -1,6 +1,6 @@
 # Plan de construcción de la API — pepedev-portfolio
 
-> Objetivo: dejar la API (`portfolio-api/`) lista para que el front (Nuxt) consuma todo lo que
+> Objetivo: dejar la API (`api/`) lista para que el front (Nuxt) consuma todo lo que
 > necesita, avanzando **commit por commit** y aprobando cada paso. NO se corre delante:
 > cada bloque se revisa y aproba antes del siguiente.
 > Stack cerrado: Spring Boot 4.1.1 (estable de Initializr, ver SESION2) · Java 21 · Maven · PostgreSQL + JSONB · Flyway ·
@@ -17,7 +17,7 @@
 
 | # | Tarea | Entregable | Commit sugerido | DoD (definición de hecho) |
 |---|---|---|---|---|
-| ✔ **0** | Cimientos del repo | `.gitignore`, `.env.example`, docs (incluido este plan), rama `main`. El proyecto `portfolio-api/` lo genera EL USUARIO en start.spring.io y lo coloca en la raíz (pom en `portfolio-api/pom.xml`), después se commitea como `chore: proyecto spring boot generado en spring.io` | `chore: base del monorepo` | `git status` limpio de secretos |
+| ✔ **0** | Cimientos del repo | `.gitignore`, `.env.example`, docs (incluido este plan), rama `main`. El proyecto `api/` lo genera EL USUARIO en start.spring.io y lo coloca en la raíz (pom en `api/pom.xml`), después se commitea como `chore: proyecto spring boot generado en spring.io` | `chore: base del monorepo` | `git status` limpio de secretos |
 | ✔ **1.1** | **Definir el modelo de datos** (revisión, sin código) | Modelo detallado: tablas, columnas, tipos, JSONB `{es,en}`, enums (CHECK), índices, singleton, seed, decisiones abiertas resueltas | `docs: modelo de datos mínimo (fuente de verdad)` | Modelo revisado y **aprobado por ti** |
 | ✔ **1.2** | Migración del modelo | `V1__init.sql` con las 5 tablas + CHECKs + índices + seed `profile` | `feat(db): migración flyway V1__init` | SQL revisado (se aplica en el paso 2.1, al conectar) |
 | ✔ **2** | Persistencia JPA | 5 entidades + mapeo JSONB (Hibernate 6 `@JdbcTypeCode(SqlTypes.JSON)`) + enums Java + repos Spring Data | `feat(api): entidades jpa y repositorios` | Compila sin BD (escribir no requiere conexión) |

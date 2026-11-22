@@ -33,13 +33,15 @@
 
 ## Fase 3 · CRM privado
 
-- [ ] Ruta oculta + combinación de teclas (p. ej. `Ctrl+Shift+A`) que abre el login
+- [x] Ruta oculta + combinación de teclas (p. ej. `Ctrl+Shift+A`) que abre el login
 - [ ] Auth: login email/password, JWT access + refresh rotativo, guard de rutas
 - [ ] CRUD proyectos (borrador/publicado, destacados, orden)
 - [ ] CRUD certificados/cursos
 - [ ] Bandeja de mensajes (leído/archivado/borrar)
-- [ ] Gestión de media (subida de archivos → URL) y activación de CV es/en en profile
-- [ ] Exclusión del CRM en sitemap/robots
+- [x] Gestión de media (subida de archivos → URL) y activación de CV es/en en profile
+- [x] Edición del perfil (identidad, enlaces, avatar y CV) desde `/admin/perfil`, con subida/elección directa y aviso de cambios sin guardar
+- [x] Aviso de cambios sin guardar (contador, lista y Descartar) también en la edición de proyectos y certificados, con un composable común (`useCambiosSinGuardar`)
+- [x] Exclusión del CRM en sitemap/robots
 
 ## Fase 4 · Pulido
 

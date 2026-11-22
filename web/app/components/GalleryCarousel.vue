@@ -281,8 +281,8 @@ onUnmounted(() => {
       >
         <button
           type="button"
-          class="block w-full overflow-hidden rounded-lg ring-offset-2 ring-offset-transparent transition"
-          :class="index === current ? 'ring-2 ring-primary' : 'opacity-60 hover:opacity-100'"
+          class="block w-full overflow-hidden rounded-lg p-1 m-0.5 ring-offset-1 ring-offset-transparent transition"
+          :class="index === current ? 'ring-1 ring-primary' : 'opacity-60 hover:opacity-100'"
           :aria-label="`Ver imagen ${index + 1}`"
           :aria-current="index === current"
           @click="goTo(index)"

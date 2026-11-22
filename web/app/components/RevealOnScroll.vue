@@ -28,11 +28,11 @@
 // dispararian nunca. El rootMargin encoge el viewport, asi que el disparo
 // no depende de la altura del elemento.
 //
-// AVISO 4: el animation `blur` deja `filter: blur(0)` en el estado visible.
-// Un filter distinto de none crea bloque contenedor para descendientes
-// fixed y un nuevo contexto de apilamiento. No afecta a este caso, pero
-// hay que saberlo antes de meter un tooltip o un modal dentro de un
-// RevealOnScroll con blur.
+// AVISO 4: el animation `blur` NO aplica `filter` al contenedor. Un filter
+// en un antecesor aisla el grupo y altera los `blur` decorativos de dentro:
+// un resplandor con `blur-3xl` (HeroSection) parece recortarse. Por eso este
+// estado resuelve la entrada con opacidad, desplazamiento y escala; el nombre
+// se mantiene porque las llamadas de index.vue lo usan asi.
 // ======================================================================
 
 type RevealAnimation = 'fade' | 'fade-up' | 'fade-down' | 'from-left' | 'from-right' | 'zoom-in' | 'zoom-out' | 'blur'
@@ -97,9 +97,8 @@ const { stop } = useIntersectionObserver(
 )
 
 // Cada animation declara su propio reseteo de motion-reduce. Asi el
-// usuario que pide menos movimiento no ve ni desplazamiento, ni escala, ni
-// desenfoque, y el estado visible no arrastra transform ni filter en el
-// resto de los casos.
+// usuario que pide menos movimiento no ve desplazamiento ni escala, y el
+// estado visible no arrastra transform en el resto de los casos.
 const hiddenClass: Record<RevealAnimation, string> = {
   'fade': 'opacity-0',
   'fade-up': 'translate-y-14 opacity-0 motion-reduce:translate-none',
@@ -108,7 +107,7 @@ const hiddenClass: Record<RevealAnimation, string> = {
   'from-right': 'translate-x-14 opacity-0 motion-reduce:translate-none',
   'zoom-in': 'scale-90 opacity-0 motion-reduce:scale-100',
   'zoom-out': 'scale-110 opacity-0 motion-reduce:scale-100',
-  'blur': 'translate-y-10 scale-105 opacity-0 blur-sm motion-reduce:translate-none motion-reduce:scale-100 motion-reduce:blur-none'
+  'blur': 'translate-y-10 scale-105 blur-sm opacity-0 motion-reduce:translate-none motion-reduce:scale-100 motion-reduce:blur-none'
 }
 
 const visibleClass: Record<RevealAnimation, string> = {

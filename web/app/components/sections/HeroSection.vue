@@ -1,47 +1,96 @@
 <script setup lang="ts">
+// ======================================================================
+// HERO DE LA LANDING
+//
+// Es la adaptación del HeroSection de la plantilla: mismo UPageHero y
+// mismo GradientTitle, pero con los datos del profile público en vez del
+// texto de ejemplo del sistema de diseño.
+//
+// El headline va arriba (kicker) y el nombre grande en el slot title
+// porque UPageHero envuelve ese slot en un <h1>: GradientTitle va como
+// span para no meter un <h1> dentro de otro <h1>.
+// ======================================================================
+import type { ProfilePublicDTO } from '~/utils/types'
+
+defineProps<{
+  profile: ProfilePublicDTO
+}>()
+
+// Los tres CTA de la navegación pública. Contacto es un ancla de esta
+// misma página (id="contacto" en ContactSection), no una ruta: no existe
+// /contacto en el portfolio.
 const links = [
   {
-    label: 'Ver secciones',
-    to: '#texto',
+    label: 'Ver proyectos',
+    to: '/proyectos',
     size: 'lg' as const,
-    icon: 'i-lucide-arrow-down'
+    icon: 'i-lucide-folder-kanban'
   },
   {
-    label: 'Documentación',
-    to: 'https://ui.nuxt.com',
-    target: '_blank' as const,
+    label: 'Certificados',
+    to: '/certificados',
     size: 'lg' as const,
     color: 'neutral' as const,
     variant: 'outline' as const,
-    icon: 'i-lucide-book-open'
+    icon: 'i-lucide-award'
+  },
+  {
+    label: 'Contacto',
+    to: '/#contacto',
+    size: 'lg' as const,
+    color: 'neutral' as const,
+    variant: 'outline' as const,
+    icon: 'i-lucide-mail'
   }
 ]
 </script>
 
 <template>
   <UPageHero
-    headline="Nuxt UI Template"
+    class="relative isolate"
     :links="links"
   >
-    <!--
-      UPageHero ya envuelve el slot title en un <h1>, asi que aqui el
-      componente va como span: un <h1> dentro de un <h1> seria HTML
-      invalido y ademas duplicaria el rol de encabezado.
-    -->
+    <template #top>
+      <div
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-0 z-10 overflow-visible"
+      >
+        <div
+          class="absolute left-1/2 top-0 size-80
+                 -translate-x-1/2 rounded-full
+                 bg-primary/10 blur-3xl sm:size-96"
+        />
+      </div>
+    </template>
+
+    <template #headline>
+      <span
+        class="inline-flex items-center gap-2 rounded-full
+               border border-default bg-elevated/70
+               px-3 py-1.5 text-sm font-medium
+               text-muted backdrop-blur"
+      >
+        <UIcon
+          name="i-lucide-code-2"
+          class="size-4 text-primary"
+        />
+        Portfolio de desarrollo
+      </span>
+    </template>
+
     <template #title>
       <GradientTitle
         as="span"
         size="xl"
       >
-        Sistema de diseño
+        {{ profile.headline }}
       </GradientTitle>
     </template>
 
     <template #description>
-      <p>
-        Todos los valores de esta página salen de los tokens
-        <code class="text-toned">--ui-*</code>. Cambia el tema con el botón
-        superior: nada del CSS de la página cambia, solo las variables.
+      <p class="mx-auto max-w-xl text-pretty">
+        Explora mis proyectos y las tecnologías que utilizo
+        para construir soluciones de software.
       </p>
     </template>
   </UPageHero>
