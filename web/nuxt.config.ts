@@ -50,6 +50,11 @@ export default defineNuxtConfig({
   // convierte la ruta del config a SCREAMING_SNAKE_CASE (public.apiBase →
   // PUBLIC_API_BASE) y le pone el prefijo NUXT_.
   runtimeConfig: {
+    // Base interna de la API para las llamadas que hace el servidor de Nitro
+    // (BFF /auth/**, /admin/**). En Docker apunta al servicio `api` de la
+    // red interna; en local cae al mismo valor que public.apiBase. Se
+    // sobreescribe con NUXT_API_BASE_SERVER.
+    apiBaseServer: '',
     // nuxt-auth-utils sella la sesion —incluido el access token y el refresh
     // token que devuelve Spring— en una cookie httpOnly cifrada con AES-GCM.
     // La clave sale de NUXT_SESSION_PASSWORD (32+ caracteres, obligatoria) y
